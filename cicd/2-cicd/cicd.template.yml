@@ -1,0 +1,444 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+Description: OpenAiProxy Continuous Integration pipeline
+
+Parameters:
+  GitHubOwner:
+    Type: String
+    Description: GitHub repository owner
+    Default: code-dot-org
+  GitHubRepo:
+    Type: String
+    Description: GitHub repository name
+    Default: openaiproxy
+  GitHubBranch:
+    Type: String
+    Description: The branch that these resources test and deploy. Not necessarily `main`.
+    Default: main
+    AllowedPattern: ^(?!test|load-test$).*$
+    ConstraintDescription: GitHubBranch cannot be `test` or other values that match special environments
+  GitHubBadgeEnabled:
+    Type: String
+    Description: Whether to report back to github the status of build projects
+    Default: true
+    AllowedValues: [true, false]
+  CodeStarConnectionResourceId:
+    Type: String
+    Description: The Resource Id component of the CodeStar connection ARN for the code-dot-org GitHub
+    Default: 9e27ebd6-de25-495c-9a2d-b24077376de8
+  EnvironmentType:
+    Type: String
+    Description: A 'production' cicd stack includes automated tests in the pipeline and deploys 'test' and 'production' environments. Whereas a 'development' type will only deploy a development environment.
+    Default: production
+    AllowedValues: [development, production]
+
+Conditions:
+  TargetsMainBranch: !Equals [ !Ref GitHubBranch, main ]
+  DeployForDevelopment: !Equals [!Ref EnvironmentType, development ]
+  DeployForProduction: !Equals [!Ref EnvironmentType, production ]
+
+
+Resources:
+
+  # The Elastic Container Registry Repository will store our built docker
+  # images.
+  EcrRepository:
+    Type: AWS::ECR::Repository
+    Properties: 
+      RepositoryName: !Sub openaiproxy-${GitHubBranch}
+      RepositoryPolicyText:
+        Version: "2012-10-17"
+        Statement: 
+          - 
+            Sid: AllowDeveloperPushPull
+            Effect: Allow
+            Principal: 
+              AWS: 
+                - !ImportValue OpenAiProxyCodeBuildRoleArn
+                - !Sub arn:aws:iam::${AWS::AccountId}:role/admin/Developer
+                - !Sub arn:aws:iam::${AWS::AccountId}:role/Engineering_FullAccess
+            Action: 
+              - "ecr:GetDownloadUrlForLayer"
+              - "ecr:BatchGetImage"
+              - "ecr:BatchCheckLayerAvailability"
+              - "ecr:PutImage"
+              - "ecr:InitiateLayerUpload"
+              - "ecr:UploadLayerPart"
+              - "ecr:CompleteLayerUpload"
+
+  EncryptionKey:
+    Type: 'AWS::KMS::Key'
+    Properties:
+      Description: encryption key for openaiproxy cicd artifacts
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: 2012-10-17
+        Statement:
+          - Sid: Ensure root user access
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: Allow administration of the key
+            Effect: Allow
+            Principal:
+              AWS:
+                - !Sub arn:aws:iam::${AWS::AccountId}:role/admin/Developer
+                - !Sub arn:aws:iam::${AWS::AccountId}:role/Engineering_FullAccess
+            Action:
+              - 'kms:Create*'
+              - 'kms:Describe*'
+              - 'kms:Enable*'
+              - 'kms:List*'
+              - 'kms:Put*'
+              - 'kms:Update*'
+              - 'kms:Revoke*'
+              - 'kms:Disable*'
+              - 'kms:Get*'
+              - 'kms:Delete*'
+              - 'kms:ScheduleKeyDeletion'
+              - 'kms:CancelKeyDeletion'
+            Resource: '*'
+          - Sid: Allow use of the key
+            Effect: Allow
+            Principal:
+              AWS: !ImportValue OpenAiProxyCodeBuildRoleArn
+            Action:
+              - 'kms:DescribeKey'
+              - 'kms:Encrypt'
+              - 'kms:Decrypt'
+              - 'kms:ReEncrypt*'
+              - 'kms:GenerateDataKey'
+              - 'kms:GenerateDataKeyWithoutPlaintext'
+            Resource: '*'
+
+  # The CodeBuild Project is triggered by pull requests targeting $GitHubBranch
+  # It will perform any steps defined in the pr-buildspec.yml file.
+  PullRequestBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub ${AWS::StackName}-${GitHubBranch}-pr-build
+      ServiceRole: !ImportValue OpenAiProxyCodeBuildRoleArn
+      BadgeEnabled: !Ref GitHubBadgeEnabled
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:5.0
+        PrivilegedMode: true
+        EnvironmentVariables:
+          - Name: ARTIFACT_STORE
+            Value: !ImportValue OpenAiProxyCodeBuildArtifactBucket
+          - Name: ECR_REPOSITORY
+            Value: !GetAtt EcrRepository.RepositoryUri
+      Cache:
+        Type: LOCAL
+        Modes:
+          - LOCAL_CUSTOM_CACHE
+          - LOCAL_DOCKER_LAYER_CACHE
+      Source:
+        Type: GITHUB
+        Location: !Sub https://github.com/${GitHubOwner}/${GitHubRepo}.git
+        BuildSpec: cicd/3-app/openaiproxy/pr-buildspec.yml
+        ReportBuildStatus: true
+      SourceVersion: !Ref GitHubBranch
+      Artifacts:
+        # We're uplading artifacts manually, to organize by branch.
+        Type: NO_ARTIFACTS
+      Triggers:
+        Webhook: true
+        FilterGroups:
+          - - Pattern: !Sub ^refs/heads/${GitHubBranch}$
+              Type: BASE_REF
+            - Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED,PULL_REQUEST_REOPENED
+              Type: EVENT
+  
+  # The CodeBuild Project is used in the CodePipeline pipeline to prepare for a release.
+  # It will perform any steps defined in the referenced buildspec.yml file.
+  AppBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub ${AWS::StackName}-app-build
+      ServiceRole: !ImportValue OpenAiProxyCodeBuildRoleArn
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:5.0
+        PrivilegedMode: true
+        EnvironmentVariables:
+          - Name: ARTIFACT_STORE
+            Value: !ImportValue OpenAiProxyCodeBuildArtifactBucket
+          - Name: ECR_REPOSITORY
+            Value: !GetAtt EcrRepository.RepositoryUri
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: cicd/3-app/openaiproxy/buildspec.yml
+      Artifacts:
+        Type: CODEPIPELINE
+
+  IntegrationTestBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub ${AWS::StackName}-integration-test
+      ServiceRole: !ImportValue OpenAiProxyCodeBuildRoleArn
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:5.0
+        PrivilegedMode: true
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: cicd/3-app/openaiproxy/integration-test-buildspec.yml
+      Artifacts:
+        Type: CODEPIPELINE
+
+  # Grant the OpenAiProxy CodeBuild Role additional permissions for resources in
+  # this template. This allows us to avoid granting permission to * resources.
+  OpenAiProxyRolePolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: !Sub "${AWS::StackName}-codebuild-policy"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - codebuild:*
+            Resource:
+              - !GetAtt AppBuildProject.Arn
+              - !GetAtt IntegrationTestBuildProject.Arn
+          - Effect: Allow
+            Action:
+              - codebuild:CreateReportGroup
+              - codebuild:CreateReport
+              - codebuild:UpdateReport
+              - codebuild:BatchPutTestCases
+              - codebuild:BatchPutCodeCoverage
+            Resource:
+              - !Sub arn:aws:codebuild:us-east-1:165336972514:report-group/${AWS::StackName}-${GitHubBranch}-pr-build
+      Roles:
+        - !ImportValue OpenAiProxyCodeBuildRoleName
+
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties: 
+      Name: !Ref AWS::StackName
+      RoleArn: !ImportValue OpenAiProxyCodeBuildRoleArn
+      RestartExecutionOnUpdate: true
+      ArtifactStore: 
+        Type: S3 
+        Location: !ImportValue OpenAiProxyCodeBuildArtifactBucket
+        EncryptionKey:
+          Id: !Ref EncryptionKey
+          Type: KMS
+      Stages: 
+        - Name: Source
+          Actions:
+            - Name: Source
+              ActionTypeId:
+                Category: Source
+                Provider: CodeStarSourceConnection
+                Owner: AWS
+                Version: 1
+              OutputArtifacts:
+                - Name: sourceCode
+              Configuration:
+                ConnectionArn: !Sub arn:aws:codestar-connections:us-east-1:${AWS::AccountId}:connection/${CodeStarConnectionResourceId}
+                FullRepositoryId: !Sub ${GitHubOwner}/${GitHubRepo}
+                BranchName: !Ref GitHubBranch
+
+        - Name: Build
+          Actions:
+            - Name: app-build
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              InputArtifacts:
+                - Name: sourceCode
+              Configuration:
+                ProjectName: !Ref AppBuildProject
+              OutputArtifacts:
+                - Name: appBuildResults
+
+        - !If
+          - DeployForDevelopment
+          - Name: Deploy_To_Development
+            Actions:
+              - Name: app-deploy
+                ActionTypeId: 
+                  Category: Deploy 
+                  Owner: AWS 
+                  Version: 1 
+                  Provider: CloudFormation
+                InputArtifacts:
+                  - Name: appBuildResults
+                Configuration:
+                  StackName: !Sub "openaiproxy-dev-${GitHubBranch}"
+                  ActionMode: CREATE_UPDATE
+                  TemplatePath: appBuildResults::packaged-app-template.yml
+                  TemplateConfiguration: appBuildResults::cicd/3-app/openaiproxy/dev.config.json
+                  ParameterOverrides: !Join
+                      - ''
+                      - - '{ "SubdomainName": "'
+                        - !Sub "openaiproxy-dev-${GitHubBranch}"
+                        - '" }'
+                  Capabilities: CAPABILITY_AUTO_EXPAND,CAPABILITY_IAM
+                  RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/admin/CloudFormationService
+          - !Ref AWS::NoValue
+
+        - !If
+          - DeployForProduction
+          - Name: Deploy_To_Test
+            Actions:
+              - Name: app-deploy
+                ActionTypeId: 
+                  Category: Deploy 
+                  Owner: AWS 
+                  Version: 1 
+                  Provider: CloudFormation
+                InputArtifacts:
+                  - Name: appBuildResults
+                Configuration:
+                  StackName: !If [TargetsMainBranch, "openaiproxy-test", !Sub "openaiproxy-${GitHubBranch}-test"]
+                  ActionMode: CREATE_UPDATE
+                  TemplatePath: appBuildResults::packaged-app-template.yml
+                  TemplateConfiguration: appBuildResults::cicd/3-app/openaiproxy/test.config.json
+                  ParameterOverrides: !Join
+                      - ''
+                      - - '{ "SubdomainName": "'
+                        - !If [ TargetsMainBranch, 'openaiproxy-test', !Sub 'openaiproxy-${GitHubBranch}-test' ]
+                        - '" }'
+                  Capabilities: CAPABILITY_AUTO_EXPAND,CAPABILITY_IAM
+                  RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/admin/CloudFormationService
+          - !Ref AWS::NoValue
+
+        - !If
+          - DeployForProduction
+          - Name: Integration_Test
+            Actions:
+              - Name: integration-test
+                ActionTypeId:
+                  Category: Build
+                  Owner: AWS
+                  Provider: CodeBuild
+                  Version: 1
+                InputArtifacts:
+                  - Name: sourceCode
+                Configuration:
+                  ProjectName: !Ref IntegrationTestBuildProject
+                  EnvironmentVariables: !Sub
+                    - '[{"name":"APP_SUBDOMAIN","value":"${SUBDOMAIN}","type":"PLAINTEXT"},{"name":"APP_BASE_DOMAIN","value":"${BASE_DOMAIN}","type":"PLAINTEXT"}]'
+                    - BASE_DOMAIN: code.org
+                      SUBDOMAIN: !If [TargetsMainBranch, "openaiproxy-test", !Sub "openaiproxy-${GitHubBranch}-test"]
+                OutputArtifacts:
+                  - Name: integrationTestResultsPOC
+          - !Ref AWS::NoValue
+
+        - !If
+          - DeployForProduction
+          - Name: Deploy_To_Production
+            Actions:
+              - Name: app-deploy
+                ActionTypeId: 
+                  Category: Deploy 
+                  Owner: AWS 
+                  Version: 1 
+                  Provider: CloudFormation
+                InputArtifacts:
+                  - Name: appBuildResults
+                # The value of `Configuration` must be an object with String (or simple type) properties
+                Configuration:
+                  StackName: !If [TargetsMainBranch, "openaiproxy", !Sub "openaiproxy-${GitHubBranch}"]
+                  ActionMode: CREATE_UPDATE
+                  TemplatePath: appBuildResults::packaged-app-template.yml
+                  TemplateConfiguration: appBuildResults::cicd/3-app/openaiproxy/production.config.json
+                  ParameterOverrides: !Join
+                    - ''
+                    - - '{ "SubdomainName": "'
+                      - !If [ TargetsMainBranch, 'openaiproxy', !Sub 'openaiproxy-${GitHubBranch}' ]
+                      - '" }'
+                  Capabilities: CAPABILITY_AUTO_EXPAND,CAPABILITY_IAM
+                  RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/admin/CloudFormationService
+          - !Ref AWS::NoValue
+
+        - !If
+          - DeployForProduction
+          - Name: Smoke_Test
+            Actions:
+              - Name: smoke-test
+                ActionTypeId:
+                  Category: Build
+                  Owner: AWS
+                  Provider: CodeBuild
+                  Version: 1
+                InputArtifacts:
+                  - Name: sourceCode
+                Configuration:
+                  ProjectName: !Ref IntegrationTestBuildProject
+                  EnvironmentVariables: !Sub
+                    - '[{"name":"APP_SUBDOMAIN","value":"${SUBDOMAIN}","type":"PLAINTEXT"},{"name":"APP_BASE_DOMAIN","value":"${BASE_DOMAIN}","type":"PLAINTEXT"}]'
+                    - BASE_DOMAIN: code.org
+                      SUBDOMAIN: !If [TargetsMainBranch, "openaiproxy", !Sub "openaiproxy-${GitHubBranch}"]
+                OutputArtifacts:
+                  - Name: smokeTestResults
+          - !Ref AWS::NoValue
+  
+  # Send pipeline events to an SNS topic.
+  # Note:
+  # Integration with Slack via AWS ChatBot is configured manually via AWS
+  # Console. If you recreate this stack, you will need to reconnect the SNS
+  # topic to the ChatBot configuration.
+  PipelineNotificationRule:
+    Type: AWS::CodeStarNotifications::NotificationRule
+    Properties:
+      Name: !Sub ${AWS::StackName}-pipeline
+      DetailType: FULL
+      Resource: !Sub "arn:${AWS::Partition}:codepipeline:${AWS::Region}:${AWS::AccountId}:${Pipeline}"
+      EventTypeIds: 
+        # Pipeline events
+        - codepipeline-pipeline-pipeline-execution-failed
+        - codepipeline-pipeline-pipeline-execution-succeeded
+        - codepipeline-pipeline-pipeline-execution-canceled
+        - codepipeline-pipeline-pipeline-execution-superseded
+        - codepipeline-pipeline-pipeline-execution-started
+        - codepipeline-pipeline-pipeline-execution-resumed
+        # Stage Events
+        - codepipeline-pipeline-stage-execution-started
+        - codepipeline-pipeline-stage-execution-succeeded
+        - codepipeline-pipeline-stage-execution-resumed
+        - codepipeline-pipeline-stage-execution-canceled
+        - codepipeline-pipeline-stage-execution-failed
+        # Action Events
+        - codepipeline-pipeline-action-execution-succeeded
+        - codepipeline-pipeline-action-execution-failed
+        - codepipeline-pipeline-action-execution-canceled
+        - codepipeline-pipeline-action-execution-started
+        # Approval Events (we don't use approvals yet)
+        - codepipeline-pipeline-manual-approval-needed
+        - codepipeline-pipeline-manual-approval-failed
+        - codepipeline-pipeline-manual-approval-succeeded
+      Targets: 
+        - TargetType: SNS 
+          TargetAddress: !Ref PipelineNotificationTopic
+
+  PipelineNotificationTopic:
+    Type: AWS::SNS::Topic
+
+  # This policy is necessary for CodePipeline to be allowed to publish to the Topic.
+  PipelineNotificationTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties: 
+      Topics:
+        - !Ref PipelineNotificationTopic
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: AWSCodeStarNotifications_publish
+          Effect: Allow
+          Principal:
+            Service:
+            - codestar-notifications.amazonaws.com
+          Action: SNS:Publish
+          Resource: !Ref PipelineNotificationTopic

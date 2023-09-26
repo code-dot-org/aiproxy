@@ -1,0 +1,13 @@
+version: 0.2
+phases:
+  install:
+    runtime-versions:
+      python: 3.11
+  pre_build:
+    commands:
+      - python --version
+  build:
+    commands:
+      - set -e
+
+      - echo "This is where I would run my integration tests, if I had any tests"

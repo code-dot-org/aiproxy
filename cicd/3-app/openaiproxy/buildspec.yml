@@ -1,0 +1,26 @@
+version: 0.2
+phases:
+  install:
+    runtime-versions:
+      python: 3.11
+    commands:
+      - pip install cfn-lint
+  build:
+    # This should be moved to a shell script if it gets more complicated.
+    commands:
+      - set -e
+      - BRANCH_NAME=${CODEBUILD_WEBHOOK_HEAD_REF#"refs/heads/"}
+
+      - echo "This is where I would run python tests, if I had any tests"
+
+      - cd $CODEBUILD_SRC_DIR
+      - cfn-lint template.yml
+      - cat template.yml
+      
+      - cicd/3-app/openaiproxy/config/create-environment-config.sh
+      
+      - aws cloudformation package --template-file template.yml --s3-bucket $ARTIFACT_STORE --s3-prefix package --output-template-file packaged-app-template.yml
+      
+      - ls cicd/3-app/openaiproxy
+artifacts:
+  files: '**/*'

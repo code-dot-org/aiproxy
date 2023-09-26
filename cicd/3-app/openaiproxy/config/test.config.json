@@ -1,0 +1,9 @@
+{
+    "Parameters": {
+        "BaseDomainName": "code.org",
+        "BaseDomainNameHostedZonedID": "Z2LCOI49SCXUGU"
+    },
+    "Tags": {
+        "EnvType": "test"
+    }
+}
