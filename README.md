@@ -5,6 +5,7 @@ To Do:
 * create python flask app
 * create build and test steps for cicd
 * create [application cloudformation template](cicd/3-app/openaiproxy/template.yml)
+* authentication
 
 ## Local Development
 
