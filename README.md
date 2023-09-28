@@ -5,7 +5,8 @@ Python-based API layer for LLM API's
 To Do:
 * [x] validate cicd infra (using placeholder app template)
 * [ ] create python flask app
-* [ ] create build and test steps for cicd
+* [ ] add test steps for cicd
+* [ ] add build & push-to-ecr steps for cicd
 * [ ] create [application cloudformation template](cicd/3-app/aiproxy/template.yml)
 * [ ] authentication
 
