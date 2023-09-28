@@ -19,6 +19,7 @@ phases:
       - echo "This is where I would test my python code, if I had any tests"
 
       - cd $CODEBUILD_SRC_DIR
+      - cp cicd/3-app/aiproxy/template.yml ./template.yml
       - cfn-lint template.yml
       - aws cloudformation package --template-file template.yml --output-template-file cloudformation-output.yml --s3-bucket $ARTIFACT_STORE --s3-prefix "$ARTIFACT_PATH/cloudformation-package"
       - aws s3 cp cloudformation-output.yml "s3://${ARTIFACT_STORE}/${ARTIFACT_PATH}/"
