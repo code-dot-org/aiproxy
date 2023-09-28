@@ -4,6 +4,7 @@ Python-based API layer for LLM API's
 
 To Do:
 * [x] validate cicd infra (using placeholder app template)
+* [ ] validate pr validation
 * [ ] create python flask app
 * [ ] add test steps for cicd
 * [ ] add build & push-to-ecr steps for cicd
