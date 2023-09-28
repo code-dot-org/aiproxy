@@ -12,8 +12,8 @@ Parameters:
     Type: String
     Description: Subdomain name for javabuilder service (e.g. 'javabuilder' in 'javabuilder.code.org').
 
-Conditions:
-  IsDevCondition: !Equals [!Ref BaseDomainName, "dev-code.org"]
+# Conditions:
+#   IsDevCondition: !Equals [!Ref BaseDomainName, "dev-code.org"]
 
 Resources:
   Domain:
