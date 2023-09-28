@@ -17,7 +17,7 @@ phases:
       - cfn-lint template.yml
       - cat template.yml
       
-      - cicd/3-app/aiproxy/config/create-environment-config.sh
+      - config/create-environment-config.sh
       
       - aws cloudformation package --template-file template.yml --s3-bucket $ARTIFACT_STORE --s3-prefix package --output-template-file packaged-app-template.yml
 artifacts:
