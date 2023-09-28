@@ -5,9 +5,9 @@ Parameters:
   BaseDomainName:
     Type: String
     Description: Base domain name (e.g. 'code.org' in 'javabuilder.code.org').
-  BaseDomainNameHostedZonedID:
-    Type: String
-    Description: AWS Route53 Hosted Zone ID for base domain name.
+  # BaseDomainNameHostedZonedID:
+  #   Type: String
+  #   Description: AWS Route53 Hosted Zone ID for base domain name.
   SubdomainName:
     Type: String
     Description: Subdomain name for javabuilder service (e.g. 'javabuilder' in 'javabuilder.code.org').
