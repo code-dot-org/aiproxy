@@ -14,6 +14,8 @@ phases:
       - echo "This is where I would run python tests, if I had any tests"
 
       - cd $CODEBUILD_SRC_DIR
+      - pwd
+      - ls
       - cfn-lint template.yml
       - cat template.yml
       
