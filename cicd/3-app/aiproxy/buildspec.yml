@@ -14,7 +14,7 @@ phases:
       - echo "This is where I would run python tests, if I had any tests"
 
       - cd $CODEBUILD_SRC_DIR
-      - cp /cicd/3-app/aiproxy/template.yml ./template.yml
+      - cp cicd/3-app/aiproxy/template.yml ./template.yml
       - cfn-lint template.yml
       - cat template.yml
       
