@@ -1,8 +1,8 @@
 #!/bin/bash
 
-echo Deploying OpenAiProxy CICD Pipeline
+echo Deploying AiProxy CICD Pipeline
 
-# Create/Update the OpenAiProxy build/deploy pipeline stack. This is manually created and maintained, but should not require elevated permissions.
+# Create/Update the AiProxy build/deploy pipeline stack. This is manually created and maintained, but should not require elevated permissions.
 # Options include:
 # - TARGET_BRANCH: Defaults to `main`, passed as a Parameter for "cicd/2-cicd/cicd.template.yml"
 # - ENVIRONMENT_TYPE: Can be 'production' (default) or 'development', passed as a Parameter for "cicd/2-cicd/cicd.template.yml"
@@ -19,12 +19,12 @@ TARGET_BRANCH=${TARGET_BRANCH-'main'}
 
 if [ "$TARGET_BRANCH" == "main" ]
 then
-  STACK_NAME="openaiproxy-cicd"
+  STACK_NAME="aiproxy-cicd"
 else
   # only allow alphanumeric branch names that may contain an internal hyphen.
   # to avoid complicated logic elsewhere, we're constraining it here.
   if [[ "$TARGET_BRANCH" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])$ ]]; then
-    STACK_NAME="openaiproxy-${TARGET_BRANCH}-cicd"
+    STACK_NAME="aiproxy-${TARGET_BRANCH}-cicd"
   else
     echo "Invalid branch name '${TARGET_BRANCH}', branches must be alphanumeric and may contain hyphens."
     exit

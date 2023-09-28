@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: 2010-09-09
 Transform: AWS::Serverless-2016-10-31
-Description: OpenAiProxy Continuous Integration pipeline
+Description: AiProxy Continuous Integration pipeline
 
 Parameters:
   GitHubOwner:
@@ -10,7 +10,7 @@ Parameters:
   GitHubRepo:
     Type: String
     Description: GitHub repository name
-    Default: openaiproxy
+    Default: aiproxy
   GitHubBranch:
     Type: String
     Description: The branch that these resources test and deploy. Not necessarily `main`.
@@ -45,7 +45,7 @@ Resources:
   EcrRepository:
     Type: AWS::ECR::Repository
     Properties: 
-      RepositoryName: !Sub openaiproxy-${GitHubBranch}
+      RepositoryName: !Sub aiproxy-${GitHubBranch}
       RepositoryPolicyText:
         Version: "2012-10-17"
         Statement: 
@@ -54,7 +54,7 @@ Resources:
             Effect: Allow
             Principal: 
               AWS: 
-                - !ImportValue OpenAiProxyCodeBuildRoleArn
+                - !ImportValue AiProxyCodeBuildRoleArn
                 - !Sub arn:aws:iam::${AWS::AccountId}:role/admin/Developer
                 - !Sub arn:aws:iam::${AWS::AccountId}:role/Engineering_FullAccess
             Action: 
@@ -69,7 +69,7 @@ Resources:
   EncryptionKey:
     Type: 'AWS::KMS::Key'
     Properties:
-      Description: encryption key for openaiproxy cicd artifacts
+      Description: encryption key for aiproxy cicd artifacts
       EnableKeyRotation: true
       KeyPolicy:
         Version: 2012-10-17
@@ -103,7 +103,7 @@ Resources:
           - Sid: Allow use of the key
             Effect: Allow
             Principal:
-              AWS: !ImportValue OpenAiProxyCodeBuildRoleArn
+              AWS: !ImportValue AiProxyCodeBuildRoleArn
             Action:
               - 'kms:DescribeKey'
               - 'kms:Encrypt'
@@ -119,7 +119,7 @@ Resources:
     Type: AWS::CodeBuild::Project
     Properties:
       Name: !Sub ${AWS::StackName}-${GitHubBranch}-pr-build
-      ServiceRole: !ImportValue OpenAiProxyCodeBuildRoleArn
+      ServiceRole: !ImportValue AiProxyCodeBuildRoleArn
       BadgeEnabled: !Ref GitHubBadgeEnabled
       Environment:
         Type: LINUX_CONTAINER
@@ -128,7 +128,7 @@ Resources:
         PrivilegedMode: true
         EnvironmentVariables:
           - Name: ARTIFACT_STORE
-            Value: !ImportValue OpenAiProxyCodeBuildArtifactBucket
+            Value: !ImportValue AiProxyCodeBuildArtifactBucket
           - Name: ECR_REPOSITORY
             Value: !GetAtt EcrRepository.RepositoryUri
       Cache:
@@ -139,7 +139,7 @@ Resources:
       Source:
         Type: GITHUB
         Location: !Sub https://github.com/${GitHubOwner}/${GitHubRepo}.git
-        BuildSpec: cicd/3-app/openaiproxy/pr-buildspec.yml
+        BuildSpec: cicd/3-app/aiproxy/pr-buildspec.yml
         ReportBuildStatus: true
       SourceVersion: !Ref GitHubBranch
       Artifacts:
@@ -159,7 +159,7 @@ Resources:
     Type: AWS::CodeBuild::Project
     Properties:
       Name: !Sub ${AWS::StackName}-app-build
-      ServiceRole: !ImportValue OpenAiProxyCodeBuildRoleArn
+      ServiceRole: !ImportValue AiProxyCodeBuildRoleArn
       Environment:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
@@ -167,12 +167,12 @@ Resources:
         PrivilegedMode: true
         EnvironmentVariables:
           - Name: ARTIFACT_STORE
-            Value: !ImportValue OpenAiProxyCodeBuildArtifactBucket
+            Value: !ImportValue AiProxyCodeBuildArtifactBucket
           - Name: ECR_REPOSITORY
             Value: !GetAtt EcrRepository.RepositoryUri
       Source:
         Type: CODEPIPELINE
-        BuildSpec: cicd/3-app/openaiproxy/buildspec.yml
+        BuildSpec: cicd/3-app/aiproxy/buildspec.yml
       Artifacts:
         Type: CODEPIPELINE
 
@@ -180,7 +180,7 @@ Resources:
     Type: AWS::CodeBuild::Project
     Properties:
       Name: !Sub ${AWS::StackName}-integration-test
-      ServiceRole: !ImportValue OpenAiProxyCodeBuildRoleArn
+      ServiceRole: !ImportValue AiProxyCodeBuildRoleArn
       Environment:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
@@ -188,13 +188,13 @@ Resources:
         PrivilegedMode: true
       Source:
         Type: CODEPIPELINE
-        BuildSpec: cicd/3-app/openaiproxy/integration-test-buildspec.yml
+        BuildSpec: cicd/3-app/aiproxy/integration-test-buildspec.yml
       Artifacts:
         Type: CODEPIPELINE
 
-  # Grant the OpenAiProxy CodeBuild Role additional permissions for resources in
+  # Grant the AiProxy CodeBuild Role additional permissions for resources in
   # this template. This allows us to avoid granting permission to * resources.
-  OpenAiProxyRolePolicy:
+  AiProxyRolePolicy:
     Type: 'AWS::IAM::Policy'
     Properties:
       PolicyName: !Sub "${AWS::StackName}-codebuild-policy"
@@ -217,17 +217,17 @@ Resources:
             Resource:
               - !Sub arn:aws:codebuild:us-east-1:165336972514:report-group/${AWS::StackName}-${GitHubBranch}-pr-build
       Roles:
-        - !ImportValue OpenAiProxyCodeBuildRoleName
+        - !ImportValue AiProxyCodeBuildRoleName
 
   Pipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties: 
       Name: !Ref AWS::StackName
-      RoleArn: !ImportValue OpenAiProxyCodeBuildRoleArn
+      RoleArn: !ImportValue AiProxyCodeBuildRoleArn
       RestartExecutionOnUpdate: true
       ArtifactStore: 
         Type: S3 
-        Location: !ImportValue OpenAiProxyCodeBuildArtifactBucket
+        Location: !ImportValue AiProxyCodeBuildArtifactBucket
         EncryptionKey:
           Id: !Ref EncryptionKey
           Type: KMS
@@ -275,14 +275,14 @@ Resources:
                 InputArtifacts:
                   - Name: appBuildResults
                 Configuration:
-                  StackName: !Sub "openaiproxy-dev-${GitHubBranch}"
+                  StackName: !Sub "aiproxy-dev-${GitHubBranch}"
                   ActionMode: CREATE_UPDATE
                   TemplatePath: appBuildResults::packaged-app-template.yml
-                  TemplateConfiguration: appBuildResults::cicd/3-app/openaiproxy/dev.config.json
+                  TemplateConfiguration: appBuildResults::cicd/3-app/aiproxy/dev.config.json
                   ParameterOverrides: !Join
                       - ''
                       - - '{ "SubdomainName": "'
-                        - !Sub "openaiproxy-dev-${GitHubBranch}"
+                        - !Sub "aiproxy-dev-${GitHubBranch}"
                         - '" }'
                   Capabilities: CAPABILITY_AUTO_EXPAND,CAPABILITY_IAM
                   RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/admin/CloudFormationService
@@ -301,14 +301,14 @@ Resources:
                 InputArtifacts:
                   - Name: appBuildResults
                 Configuration:
-                  StackName: !If [TargetsMainBranch, "openaiproxy-test", !Sub "openaiproxy-${GitHubBranch}-test"]
+                  StackName: !If [TargetsMainBranch, "aiproxy-test", !Sub "aiproxy-${GitHubBranch}-test"]
                   ActionMode: CREATE_UPDATE
                   TemplatePath: appBuildResults::packaged-app-template.yml
-                  TemplateConfiguration: appBuildResults::cicd/3-app/openaiproxy/test.config.json
+                  TemplateConfiguration: appBuildResults::cicd/3-app/aiproxy/test.config.json
                   ParameterOverrides: !Join
                       - ''
                       - - '{ "SubdomainName": "'
-                        - !If [ TargetsMainBranch, 'openaiproxy-test', !Sub 'openaiproxy-${GitHubBranch}-test' ]
+                        - !If [ TargetsMainBranch, 'aiproxy-test', !Sub 'aiproxy-${GitHubBranch}-test' ]
                         - '" }'
                   Capabilities: CAPABILITY_AUTO_EXPAND,CAPABILITY_IAM
                   RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/admin/CloudFormationService
@@ -331,7 +331,7 @@ Resources:
                   EnvironmentVariables: !Sub
                     - '[{"name":"APP_SUBDOMAIN","value":"${SUBDOMAIN}","type":"PLAINTEXT"},{"name":"APP_BASE_DOMAIN","value":"${BASE_DOMAIN}","type":"PLAINTEXT"}]'
                     - BASE_DOMAIN: code.org
-                      SUBDOMAIN: !If [TargetsMainBranch, "openaiproxy-test", !Sub "openaiproxy-${GitHubBranch}-test"]
+                      SUBDOMAIN: !If [TargetsMainBranch, "aiproxy-test", !Sub "aiproxy-${GitHubBranch}-test"]
                 OutputArtifacts:
                   - Name: integrationTestResultsPOC
           - !Ref AWS::NoValue
@@ -350,14 +350,14 @@ Resources:
                   - Name: appBuildResults
                 # The value of `Configuration` must be an object with String (or simple type) properties
                 Configuration:
-                  StackName: !If [TargetsMainBranch, "openaiproxy", !Sub "openaiproxy-${GitHubBranch}"]
+                  StackName: !If [TargetsMainBranch, "aiproxy", !Sub "aiproxy-${GitHubBranch}"]
                   ActionMode: CREATE_UPDATE
                   TemplatePath: appBuildResults::packaged-app-template.yml
-                  TemplateConfiguration: appBuildResults::cicd/3-app/openaiproxy/production.config.json
+                  TemplateConfiguration: appBuildResults::cicd/3-app/aiproxy/production.config.json
                   ParameterOverrides: !Join
                     - ''
                     - - '{ "SubdomainName": "'
-                      - !If [ TargetsMainBranch, 'openaiproxy', !Sub 'openaiproxy-${GitHubBranch}' ]
+                      - !If [ TargetsMainBranch, 'aiproxy', !Sub 'aiproxy-${GitHubBranch}' ]
                       - '" }'
                   Capabilities: CAPABILITY_AUTO_EXPAND,CAPABILITY_IAM
                   RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/admin/CloudFormationService
@@ -380,7 +380,7 @@ Resources:
                   EnvironmentVariables: !Sub
                     - '[{"name":"APP_SUBDOMAIN","value":"${SUBDOMAIN}","type":"PLAINTEXT"},{"name":"APP_BASE_DOMAIN","value":"${BASE_DOMAIN}","type":"PLAINTEXT"}]'
                     - BASE_DOMAIN: code.org
-                      SUBDOMAIN: !If [TargetsMainBranch, "openaiproxy", !Sub "openaiproxy-${GitHubBranch}"]
+                      SUBDOMAIN: !If [TargetsMainBranch, "aiproxy", !Sub "aiproxy-${GitHubBranch}"]
                 OutputArtifacts:
                   - Name: smokeTestResults
           - !Ref AWS::NoValue

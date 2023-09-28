@@ -1,8 +1,10 @@
 #!/bin/bash
 
-echo Deploying OpenAiProxy CICD Dependencies
+set -e
 
-# Create/Update the OpenAiProxy setup/dependencies stack. This is manually created and maintained, and does not require elevated permissions
+echo Deploying AiProxy CICD Dependencies
+
+# Create/Update the AiProxy setup/dependencies stack. This is manually created and maintained, and does not require elevated permissions
 
 TEMPLATE_FILE=cicd/1-setup/cicd-dependencies.template.yml
 
@@ -18,7 +20,7 @@ if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]
 then
   echo Updating cloudformation stack...
   aws cloudformation deploy \
-    --stack-name openaiproxy-cicd-deps \
+    --stack-name aiproxy-cicd-deps \
     --template-file ${TEMPLATE_FILE} \
     --capabilities CAPABILITY_IAM \
     --tags EnvType=infrastructure \

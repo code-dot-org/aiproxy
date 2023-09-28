@@ -2,7 +2,7 @@
 
 set -e
 
-dir=cicd/3-app/openaiproxy
+dir=cicd/3-app/aiproxy
 
 # loop over config files
 for i in $(ls "${dir}/config" | egrep -i '.*\.config\.json' ); do

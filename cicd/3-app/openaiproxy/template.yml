@@ -27,6 +27,6 @@ Resources:
 
 
 Outputs:
-  OpenAiProxyURL:
+  AiProxyURL:
     Value:
       !Ref Domain

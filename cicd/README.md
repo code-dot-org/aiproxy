@@ -1,4 +1,4 @@
-# OpenAiProxy CI/CD
+# AiProxy CI/CD
 ## CI/CD Implementation Overview
 
 There are three phases of the CI/CD configuration. They are best explained in reverse order from the way they flow in practice.
@@ -9,8 +9,8 @@ All of the application resources are defined in a CloudFormation template. We co
 
 We also keep some CodeBuild configuration here, as this code tends to be more coupled to current application code, than the CI/CD code in the next section.
 
-* **openaiproxy/**
-  * "template.yml" - AWS resources for the openaiproxy application
+* **aiproxy/**
+  * "template.yml" - AWS resources for the aiproxy application
   * "buildspec.yml" - Main build/verify instructions, used during pipeline builds
   * "pr-buildspec.yml" - Similar build/verify instructions, used during PR verification
   * "integration-test-buildspec.yml" - Instructions for integration tests run against a deployed environment
@@ -77,7 +77,7 @@ TARGET_BRANCH=mybranch cicd/2-cicd/deploy-cicd.sh
 
 ### Debugging `template.yml.erb`
 
-If you are are updating the template file and don't want to wait for a full deploy cycle to validate the syntax, you can do the following from `cicd/3-app/openaiproxy`:
+If you are are updating the template file and don't want to wait for a full deploy cycle to validate the syntax, you can do the following from `cicd/3-app/aiproxy`:
 
 ```
 erb -T - template.yml.erb > app-template-test.yml
