@@ -13,16 +13,12 @@ phases:
 
       - echo "This is where I would run python tests, if I had any tests"
 
-      - cd $CODEBUILD_SRC_DIR
-      - pwd
-      - ls
+      - cd $CODEBUILD_SRC_DIR/cicd/3-app/aiproxy
       - cfn-lint template.yml
       - cat template.yml
       
       - cicd/3-app/aiproxy/config/create-environment-config.sh
       
       - aws cloudformation package --template-file template.yml --s3-bucket $ARTIFACT_STORE --s3-prefix package --output-template-file packaged-app-template.yml
-      
-      - ls cicd/3-app/aiproxy
 artifacts:
   files: '**/*'
