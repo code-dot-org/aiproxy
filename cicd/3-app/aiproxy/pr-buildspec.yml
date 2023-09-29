@@ -10,17 +10,24 @@ phases:
     # This should be moved to a shell script if it gets more complicated.
     commands:
       - set -e
+
       - BRANCH_NAME=${CODEBUILD_WEBHOOK_HEAD_REF#"refs/heads/"}
       - ARTIFACT_PATH=branch/$BRANCH_NAME/$CODEBUILD_BUILD_NUMBER
 
+      - cd $CODEBUILD_SRC_DIR
+
+      - echo "Validating Cloudformation Templates..."
       - cfn-lint cicd/1-setup/*.template.yml
       - cfn-lint cicd/2-cicd/*.template.yml
+      - cfn-lint cicd/3-app/aiproxy/template.yml
 
-      - echo "This is where I would test my python code, if I had any tests"
+      - echo "Running Unit Tests..."
+      - python -m unittest test_app.py
 
-      - cd $CODEBUILD_SRC_DIR
-      - cp cicd/3-app/aiproxy/template.yml ./template.yml
-      - cfn-lint template.yml
-      - aws cloudformation package --template-file template.yml --output-template-file cloudformation-output.yml --s3-bucket $ARTIFACT_STORE --s3-prefix "$ARTIFACT_PATH/cloudformation-package"
-      - aws s3 cp cloudformation-output.yml "s3://${ARTIFACT_STORE}/${ARTIFACT_PATH}/"
-      - echo "Artifacts uploaded to S3, view them at https://console.aws.amazon.com/s3/buckets/${ARTIFACT_STORE}?region=us-east-1&prefix=${ARTIFACT_PATH}/"
+      - echo "Building Docker Image..."
+      - IMAGE_NAME=aiproxy
+      - IMAGE_TAG=$(git rev-parse --short HEAD)
+      - docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+
+      - echo "Pushing Docker Image to ECR..."
+      - echo "This is where I would push the docker image to ECR, when I get around to it"
