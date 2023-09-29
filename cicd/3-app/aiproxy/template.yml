@@ -26,7 +26,6 @@ Resources:
       ResourceRecords:
       - 8.8.8.8
 
-
 Outputs:
   AiProxyURL:
     Value:
