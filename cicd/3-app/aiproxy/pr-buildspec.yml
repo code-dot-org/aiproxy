@@ -12,7 +12,7 @@ phases:
     commands:
       - pip install cfn-lint
 
-  pre-build:
+  pre_build:
     commands:
       - echo Logging in to Docker Hub...
       - docker login -u $DOCKER_HUB_USERNAME -p $DOCKER_HUB_PASSWORD
