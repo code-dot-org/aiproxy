@@ -21,6 +21,7 @@ phases:
       - cd $CODEBUILD_SRC_DIR
       - cp cicd/3-app/aiproxy/template.yml ./template.yml
       - cfn-lint template.yml
+      
       - aws cloudformation package --template-file template.yml --output-template-file cloudformation-output.yml --s3-bucket $ARTIFACT_STORE --s3-prefix "$ARTIFACT_PATH/cloudformation-package"
       - aws s3 cp cloudformation-output.yml "s3://${ARTIFACT_STORE}/${ARTIFACT_PATH}/"
       - echo "Artifacts uploaded to S3, view them at https://console.aws.amazon.com/s3/buckets/${ARTIFACT_STORE}?region=us-east-1&prefix=${ARTIFACT_PATH}/"
