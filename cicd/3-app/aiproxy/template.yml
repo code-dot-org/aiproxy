@@ -25,7 +25,6 @@ Resources:
       TTL: 300
       ResourceRecords:
       - 8.8.8.8
-      ThisIsInvalid: true
 
 Outputs:
   AiProxyURL:
