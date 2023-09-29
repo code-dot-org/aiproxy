@@ -21,13 +21,13 @@ phases:
       - cfn-lint cicd/2-cicd/*.template.yml
       - cfn-lint cicd/3-app/aiproxy/template.yml
 
-      - echo "Running Unit Tests..."
-      - python -m unittest test_app.py
-
       - echo "Building Docker Image..."
       - IMAGE_NAME=aiproxy
       - IMAGE_TAG=$(git rev-parse --short HEAD)
       - docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+
+      - echo "Running Unit Tests..."
+      - docker run --rm ${IMAGE_NAME}:${IMAGE_TAG} python -m unittest test_app.py
 
       - echo "Pushing Docker Image to ECR..."
       - echo "This is where I would push the docker image to ECR, when I get around to it"
