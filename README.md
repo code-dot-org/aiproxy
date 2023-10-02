@@ -24,17 +24,17 @@ deploying the service.
 
 All of our server code is written using [Flask](https://flask.palletsprojects.com/en/2.3.x/).
 
-The Flask web service exists within "`/src`". The `__init__.py` is the
+The Flask web service exists within `/src`. The `__init__.py` is the
 entry point for the app. The other files provide the routes.
 
-Other related Python code that implement features are within "`/lib`".
+Other related Python code that implement features are within `/lib`.
 
 To build the app, use `docker compose build`.
 You will need to rebuild when you change the source.
 
 To run the app locally, use `docker compose up` from the repo root.
 
-This will run a webserver accessible at [[http://localhost:5000]].
+This will run a webserver accessible at <http://localhost:5000>.
 
 **Note**: You need to provide the API keys in the `config.txt` file
 before the service runs. See the above "Configuration" section.
