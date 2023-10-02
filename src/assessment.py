@@ -7,7 +7,7 @@ import os
 import openai
 
 # Our assessment code
-from lib import assess
+from lib.assessment import assess
 
 assessment_routes = Blueprint('assessment_routes', __name__)
 
