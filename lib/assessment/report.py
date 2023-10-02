@@ -3,7 +3,7 @@ import csv
 import io
 import json
 from typing import List, Dict, Any
-from lib.config import VALID_GRADES
+from lib.assessment.config import VALID_GRADES
 
 class Report:
     def __init__(self):

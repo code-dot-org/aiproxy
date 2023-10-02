@@ -6,10 +6,10 @@ import io
 import json
 
 # Import our support classes
-from lib.config import SUPPORTED_MODELS, VALID_GRADES
-from lib.grade import Grade
-from lib.report import Report
-from lib.rubric_tester import (
+from lib.assessment.config import SUPPORTED_MODELS, VALID_GRADES
+from lib.assessment.grade import Grade
+from lib.assessment.report import Report
+from lib.assessment.rubric_tester import (
     read_inputs,
     get_expected_grades,
     get_examples,

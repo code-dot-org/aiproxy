@@ -10,9 +10,9 @@ from multiprocessing import Pool
 import concurrent.futures
 import io
 
-from lib.config import SUPPORTED_MODELS, VALID_GRADES
-from lib.grade import Grade
-from lib.report import Report
+from lib.assessment.config import SUPPORTED_MODELS, VALID_GRADES
+from lib.assessment.grade import Grade
+from lib.assessment.report import Report
 
 
 def command_line_options():

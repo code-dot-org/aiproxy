@@ -5,7 +5,7 @@ import time
 import requests
 
 from typing import List, Dict, Any
-from lib.config import VALID_GRADES
+from lib.assessment.config import VALID_GRADES
 
 from io import StringIO
 
