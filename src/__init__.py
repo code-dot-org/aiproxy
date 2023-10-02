@@ -1,9 +1,6 @@
 # Main imports
 import os
 
-# Our assessment code
-from lib import assess
-
 # Our modules
 from src.test import test_routes
 from src.openai import openai_routes
