@@ -48,7 +48,7 @@ def post_assessment():
     except openai.error.InvalidRequestError as e:
         return str(e), 400
 
-    if not isinstance(grades, list):
+    if not isinstance(grades, dict) and isinstance(grades.get("data"), list):
         return "response from AI or service not valid", 400
 
     return grades
@@ -84,7 +84,7 @@ def test_assessment():
     except openai.error.InvalidRequestError as e:
         return str(e), 400
 
-    if not isinstance(grades, list):
+    if not isinstance(grades, dict) and isinstance(grades.get("data"), list):
         return "response from AI or service not valid", 400
 
     return grades

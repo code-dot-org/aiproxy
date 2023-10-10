@@ -23,20 +23,38 @@
 * `num-passing-grades`: The number of grades to consider 'passing'. Defaults: 2 (pass fail)
 * `temperature`: The 'temperature' value for ChatGPT LLMs.
 
-* **Response**: `application/json`: A list of key concepts, assessment values, and reasons. Example below.
+* **Response**: `application/json`: Data and metadata related to the response. The `data` is the list of key concepts, assessment values, and reasons. The `metadata` is the input to the AI and some usage information. `n` is the number of responses asked for in the input. Example below.
 
 ```
-[{
-  "Key Concept": "Program Development 2",
-  "Observations": "The program uses whitespace  good nami [... snipped for brevity ...]. The code is easily readable.",
-  "Grade": "Extensive Evidence",
-  "Reason": "The program code effectively uses whitespace, good naming conventions, indentation and comments to make the code easily readable."
-}, {
-  "Key Concept": "Algorithms and Control Structures",
-  "Observations": "Sprite interactions occur at lines 48-50 (player touches burger), 52 (sw[... snipped for brevity ...]",
-  "Grade": "Extensive Evidence",
-  "Reason": "The game includes multiple different interactions between sprites, responds to multiple types of user input (e.g. different arrow keys)."
-}]
+{
+  "metadata": {
+    "time": 39.43,
+    "student_id": 1553633,
+    "usage": {
+      "prompt_tokens": 454,
+      "completion_tokens": 1886,
+      "total_tokens": 2340
+    },
+    "request": {
+      "model": "gpt4",
+      "temperature": 0.2,
+      "messages": [ ... ],
+      "n": 3
+    }
+  },
+  "data": [
+    {
+      "Key Concept": "Program Development 2",
+      "Observations": "The program uses whitespace  good nami [... snipped for brevity ...]. The code is easily readable.",
+      "Grade": "Extensive Evidence",
+      "Reason": "The program code effectively uses whitespace, good naming conventions, indentation and comments to make the code easily readable."
+    }, {
+      "Key Concept": "Algorithms and Control Structures",
+      "Observations": "Sprite interactions occur at lines 48-50 (player touches burger), 52 (sw[... snipped for brevity ...]",
+      "Grade": "Extensive Evidence",
+      "Reason": "The game includes multiple different interactions between sprites, responds to multiple types of user input (e.g. different arrow keys)."
+    }
+  ]
 ```
 
 `(GET|POST) /test/assessment`: Issue a test rubric assessment to the AI agent and wait for a response.
@@ -48,4 +66,4 @@
 * `num-passing-grades`: The number of grades to consider 'passing'. Defaults: 2 (pass fail)
 * `temperature`: The 'temperature' value for ChatGPT LLMs.
 
-* **Response**: `application/json`: A list of key concepts, assessment values, and reasons. See above.
+* **Response**: `application/json`: A set of data and metadata where `data` is a list of key concepts, assessment values, and reasons. See above.

@@ -50,10 +50,12 @@ class Grade:
             print(f"{student_id} Response body: {response.text}")
             return None
 
-        tokens = response.json()['usage']['total_tokens']
-        print(f"{student_id} request succeeded in {(time.time() - start_time):.0f} seconds. {tokens} tokens used.")
+        info = response.json()
+        tokens = info['usage']['total_tokens']
+        elapsed = time.time() - start_time
+        print(f"{student_id} request succeeded in {elapsed:.0f} seconds. {tokens} tokens used.")
 
-        tsv_data_choices = [self.get_tsv_data_if_valid(choice['message']['content'], rubric, student_id, choice_index=index) for index, choice in enumerate(response.json()['choices']) if choice['message']['content']]
+        tsv_data_choices = [self.get_tsv_data_if_valid(choice['message']['content'], rubric, student_id, choice_index=index) for index, choice in enumerate(info['choices']) if choice['message']['content']]
         tsv_data_choices = [choice for choice in tsv_data_choices if choice]
 
         if len(tsv_data_choices) == 0:
@@ -68,7 +70,15 @@ class Grade:
             with open(f"cached_responses/{student_id}.json", 'w') as f:
                 json.dump(tsv_data, f, indent=4)
 
-        return tsv_data
+        return {
+            'metadata': {
+              'time': elapsed,
+              'student_id': student_id,
+              'usage': info['usage'],
+              'request': data,
+            },
+            'data': tsv_data,
+        }
 
     def sanitize_code(self, student_code, remove_comments=False):
         # Remove comments
