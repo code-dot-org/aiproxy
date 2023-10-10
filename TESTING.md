@@ -3,6 +3,21 @@
 This assumes you have built and are running the container as depicted in the main `README.md`.
 In that case, you have a running server on port 5000.
 
+## Scripted
+
+You can run the provided Ruby script to issue a request to the server on your native machine.
+To do so, if you have some system Ruby installed, you can invoke this command (at the root
+of this repository):
+
+```
+ruby test/assessment-test.rb
+```
+
+This will ping the running server's `/assessment` route building out the appropriate `POST`
+request with the test data in the `test` path of the repository.
+
+## Curl
+
 You can issue a "test" rubric assessment using hard-coded content that is found in the
 `test/data` path by using the `/test/assessment` URL. Here, I'm using `curl` to show
 me the headers and send a `POST` to that route (may take 30 to 50 seconds):
