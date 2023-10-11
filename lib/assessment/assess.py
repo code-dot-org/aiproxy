@@ -22,7 +22,7 @@ from lib.assessment.rubric_tester import (
     compute_accuracy
 )
 
-def grade(code, prompt, rubric, api_key='', llm_model='gpt-4', num_responses=1, temperature=0.2, num_passing_grades=2, remove_comments=False):
+def grade(code, prompt, rubric, examples=[], api_key='', llm_model='gpt-4', num_responses=1, temperature=0.2, num_passing_grades=2, remove_comments=False):
   OPENAI_API_KEY = api_key
 
   # Set the key
@@ -36,7 +36,8 @@ def grade(code, prompt, rubric, api_key='', llm_model='gpt-4', num_responses=1, 
 
   grade = Grade()
   return grade.grade_student_work(
-      prompt, rubric, code, "student", [],
+      prompt, rubric, code, "student",
+      examples=examples,
       use_cached=False,
       write_cached=False,
       num_responses=num_responses,

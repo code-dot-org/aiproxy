@@ -5,6 +5,7 @@ from flask import Blueprint, request
 
 import os
 import openai
+import json
 
 # Our assessment code
 from lib.assessment import assess
@@ -31,11 +32,14 @@ def post_assessment():
     if request.values.get("rubric", None) == None:
         return "`rubric` is required", 400
 
+    examples = json.loads(request.values.get("examples", "[]"))
+
     try:
         grades = assess.grade(
             code=request.values.get("code", ""),
             prompt=request.values.get("prompt", ""),
             rubric=request.values.get("rubric", ""),
+            examples=examples,
             api_key=request.values.get("api-key", openai.api_key),
             llm_model=request.values.get("model", "gpt-4"),
             remove_comments=(request.values.get("remove-comments", "0") != "0"),

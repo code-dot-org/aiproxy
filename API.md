@@ -18,6 +18,7 @@
 * `code`: The code to assess. Required.
 * `prompt`: The system prompt. Required.
 * `rubric`: The rubric, as a CSV. Required.
+* `examples`: Array of pairs of code (js) and openai response (tsv).
 * `remove-comments`: When `1`, attempts to strip comments out of the code before assessment. Default: 0
 * `num-responses`: The number of times it should ask the AI model. It votes on the final answer. Default: 1
 * `num-passing-grades`: The number of grades to consider 'passing'. Defaults: 2 (pass fail)
