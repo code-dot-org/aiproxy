@@ -20,6 +20,11 @@ starting point. Then set the `OPENAI_API_KEY` variable to a valid OpenAI API key
 enable that service. Or, otherwise set that variable the appropriate way when
 deploying the service.
 
+To control the logging information, use the `LOG_LEVEL` configuration parameter. Set
+to `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`. The `DEBUG` setting is the
+most permissive and shows all logging text. The `CRITICAL` prevents most logging
+from happening. Most logging happens at `INFO`, which is the default setting.
+
 ## Local Development
 
 All of our server code is written using [Flask](https://flask.palletsprojects.com/en/2.3.x/).

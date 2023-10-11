@@ -3,6 +3,7 @@ import json
 import csv
 import time
 import requests
+import logging
 
 from typing import List, Dict, Any
 from lib.assessment.config import VALID_GRADES
@@ -42,18 +43,18 @@ class Grade:
         try:
             response = requests.post(api_url, headers=headers, json=data, timeout=120)
         except requests.exceptions.ReadTimeout:
-            print(f"{student_id} request timed out in {(time.time() - start_time):.0f} seconds.")
+            logging.error(f"{student_id} request timed out in {(time.time() - start_time):.0f} seconds.")
             return None
 
         if response.status_code != 200:
-            print(f"{student_id} Error calling the API: {response.status_code}")
-            print(f"{student_id} Response body: {response.text}")
+            logging.error(f"{student_id} Error calling the API: {response.status_code}")
+            logging.info(f"{student_id} Response body: {response.text}")
             return None
 
         info = response.json()
         tokens = info['usage']['total_tokens']
         elapsed = time.time() - start_time
-        print(f"{student_id} request succeeded in {elapsed:.0f} seconds. {tokens} tokens used.")
+        logging.info(f"{student_id} request succeeded in {elapsed:.0f} seconds. {tokens} tokens used.")
 
         tsv_data_choices = [self.get_tsv_data_if_valid(choice['message']['content'], rubric, student_id, choice_index=index) for index, choice in enumerate(info['choices']) if choice['message']['content']]
         tsv_data_choices = [choice for choice in tsv_data_choices if choice]
@@ -107,7 +108,7 @@ class Grade:
     def get_tsv_data_if_valid(self, response_text, rubric, student_id, choice_index=None):
         choice_text = f"Choice {choice_index}: " if choice_index is not None else ''
         if not response_text:
-            print(f"{student_id} {choice_text} Invalid response: empty response")
+            logging.error(f"{student_id} {choice_text} Invalid response: empty response")
             return None
         text = response_text.strip()
 
@@ -131,12 +132,12 @@ class Grade:
                 lines = text.split('\n')
                 lines = list(filter(lambda x: "---" not in x, lines))
                 text = "\n".join(lines)
-                print("response was markdown and not tsv, delimiting by '|'")
+                logging.info("response was markdown and not tsv, delimiting by '|'")
 
                 tsv_data = list(csv.DictReader(StringIO(text), delimiter='|'))
             else:
                 # Let's assume it is CSV
-                print("response had no tabs so is not tsv, delimiting by ','")
+                logging.info("response had no tabs so is not tsv, delimiting by ','")
                 tsv_data = list(csv.DictReader(StringIO(text), delimiter=','))
         else:
             # Let's assume it is TSV
@@ -147,7 +148,7 @@ class Grade:
             self.validate_server_response(tsv_data, rubric)
             return [row for row in tsv_data]
         except InvalidResponseError as e:
-            print(f"{student_id} {choice_text} Invalid response: {str(e)}\n{response_text}")
+            logging.error(f"{student_id} {choice_text} Invalid response: {str(e)}\n{response_text}")
             return None
 
     def parse_tsv(self, tsv_text):
@@ -210,7 +211,7 @@ class Grade:
             majority_grade = Counter(grades).most_common(1)[0][0]
             key_concept_to_majority_grade[key_concept] = majority_grade
             if majority_grade != grades[0]:
-                print(f"outvoted {student_id} Key Concept: {key_concept} first grade: {grades[0]} majority grade: {majority_grade}")
+                logging.info(f"outvoted {student_id} Key Concept: {key_concept} first grade: {grades[0]} majority grade: {majority_grade}")
 
         key_concept_to_observations = {}
         key_concept_to_reason = {}

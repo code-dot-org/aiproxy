@@ -4,6 +4,7 @@ from multiprocessing import Pool
 import concurrent.futures
 import io
 import json
+import logging
 
 # Import our support classes
 from lib.assessment.config import SUPPORTED_MODELS, VALID_GRADES
@@ -32,10 +33,10 @@ def grade(code, prompt, rubric, api_key='', llm_model='gpt-4', num_responses=1, 
   if OPENAI_API_KEY:
     os.environ['OPENAI_API_KEY'] = OPENAI_API_KEY
   elif not 'OPENAI_API_KEY' in os.environ:
-    print("Must set OPENAI_API_KEY!")
+    logging.error("Must set OPENAI_API_KEY!")
     return {}
   else:
-    print("Using set OPENAI_API_KEY")
+    logging.info("Using set OPENAI_API_KEY")
 
   grade = Grade()
   return grade.grade_student_work(

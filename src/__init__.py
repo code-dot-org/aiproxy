@@ -1,5 +1,8 @@
 # Main imports
-import os
+import os, sys
+
+# Logging
+import logging
 
 # Our modules
 from src.test import test_routes
@@ -32,6 +35,12 @@ def create_app(test_config=None):
         os.makedirs(app.instance_path)
     except OSError:
         pass
+
+    # Set up logging
+    log_level = os.getenv('LOG_LEVEL', 'INFO')
+    logging.basicConfig(format='%(asctime)s: %(name)s:%(message)s', level=log_level)
+    logging.log(100, f"Setting up application. Logging level={log_level}")
+    logging.basicConfig(format='%(asctime)s: %(levelname)s:%(name)s:%(message)s', level=log_level)
 
     # Index (a simple HTML response that will always succeed)
     @app.route('/')

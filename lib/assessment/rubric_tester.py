@@ -9,6 +9,7 @@ import os
 from multiprocessing import Pool
 import concurrent.futures
 import io
+import logging
 
 from lib.assessment.config import SUPPORTED_MODELS, VALID_GRADES
 from lib.assessment.grade import Grade
@@ -194,7 +195,7 @@ def main():
     report.generate_html_output(
         output_file, prompt, rubric, overall_accuracy, actual_grades, expected_grades, options.passing_grades, accuracy_by_criteria, errors, command_line
     )
-    print(f"main finished in {int(time.time() - main_start_time)} seconds")
+    logging.info(f"main finished in {int(time.time() - main_start_time)} seconds")
 
     os.system(f"open {output_file}")
 
