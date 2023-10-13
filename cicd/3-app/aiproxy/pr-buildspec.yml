@@ -35,7 +35,7 @@ phases:
 
       - echo "Building Docker Image..."
       - IMAGE_NAME=aiproxy
-      - IMAGE_TAG=$(git rev-parse --short HEAD)
+      - IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION:0:7}
       - docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
 
       - echo "Running Unit Tests..."
