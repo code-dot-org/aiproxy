@@ -45,7 +45,9 @@ phases:
       - echo "This is where I would run my unit tests"
 
       - echo "Pushing Docker Image to ECR..."
+      - ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
       - AWS_REGION=us-east-1
+      - ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
       - aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
       - docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${ECR_REPOSITORY}
       - docker push ${ECR_REPOSITORY}
