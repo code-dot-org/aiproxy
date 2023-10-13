@@ -11,11 +11,46 @@ To Do:
 * [ ] create [application cloudformation template](cicd/3-app/aiproxy/template.yml)
 * [ ] authentication
 
+## Configuration
+
+The configuration is done via environment variables stored in the `config.txt` file.
+
+For local development, copy the `config.txt.sample` file to `config.txt` to have a
+starting point. Then set the `OPENAI_API_KEY` variable to a valid OpenAI API key to
+enable that service. Or, otherwise set that variable the appropriate way when
+deploying the service.
+
+To control the logging information, use the `LOG_LEVEL` configuration parameter. Set
+to `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`. The `DEBUG` setting is the
+most permissive and shows all logging text. The `CRITICAL` prevents most logging
+from happening. Most logging happens at `INFO`, which is the default setting.
+
 ## Local Development
 
-The Python app exists within "/src"
+All of our server code is written using [Flask](https://flask.palletsprojects.com/en/2.3.x/).
+
+The Flask web service exists within `/src`. The `__init__.py` is the
+entry point for the app. The other files provide the routes.
+
+Other related Python code that implement features are within `/lib`.
+
+To build the app, use `docker compose build`.
+You will need to rebuild when you change the source.
 
 To run the app locally, use `docker compose up` from the repo root.
+
+This will run a webserver accessible at <http://localhost:5000>.
+
+**Note**: You need to provide the API keys in the `config.txt` file
+before the service runs. See the above "Configuration" section.
+
+## API
+
+For information about the API, see the [API documentation](API.md).
+
+## Testing
+
+For information about testing the service, see the [Testing documentation](TESTING.md).
 
 ## CICD
 

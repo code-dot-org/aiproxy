@@ -2,5 +2,6 @@ version: '3'
 services:
   python-proxy:
     build: .
+    env_file: "config.txt"
     ports:
       - "5000:5000"
