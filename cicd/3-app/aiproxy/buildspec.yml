@@ -42,7 +42,7 @@ phases:
 
       - echo "Pushing Docker Image to ECR..."
       - ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-      - AWS_REGION=$(aws configure get region)
+      - AWS_REGION=us-east-1
       - ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
       - ECR_REPO_NAME="aiproxy-${BRANCH_NAME}"
       - FULL_IMAGE_NAME="${ECR_REGISTRY}/${ECR_REPO_NAME}:${IMAGE_TAG}"
