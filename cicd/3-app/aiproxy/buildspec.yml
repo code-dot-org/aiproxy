@@ -24,6 +24,8 @@ phases:
     commands:
       - set -e
       - BRANCH_NAME=${CODEBUILD_WEBHOOK_HEAD_REF#"refs/heads/"}
+      - echo CODEBUILD_WEBHOOK_HEAD_REF: $CODEBUILD_WEBHOOK_HEAD_REF
+
 
       - cd $CODEBUILD_SRC_DIR
 
