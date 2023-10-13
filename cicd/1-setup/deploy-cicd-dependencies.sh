@@ -19,6 +19,7 @@ read -r -p "Would you like to deploy this template to AWS account $ACCOUNT? [y/N
 if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]
 then
   echo Updating cloudformation stack...
+  echo "Follow along at https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks?filteringText=aiproxy-cicd-deps&filteringStatus=active&viewNested=true&hideStacks=false"
   aws cloudformation deploy \
     --stack-name aiproxy-cicd-deps \
     --template-file ${TEMPLATE_FILE} \

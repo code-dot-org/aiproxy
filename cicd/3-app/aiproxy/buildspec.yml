@@ -6,20 +6,51 @@ phases:
     commands:
       - pip install cfn-lint
   build:
-    # This should be moved to a shell script if it gets more complicated.
+    # This will build and push the docker image to ECR and package the
+    # Cloudformation template to be passed as an Artifact to future pipeline
+    # steps. It will also run unit tests and linting.
     commands:
       - set -e
       - BRANCH_NAME=${CODEBUILD_WEBHOOK_HEAD_REF#"refs/heads/"}
 
-      - echo "This is where I would run python tests, if I had any tests"
+      - cd $CODEBUILD_SRC_DIR
 
+      - echo "Validating Cloudformation Templates..."
+      - cfn-lint cicd/1-setup/*.template.yml
+      - cfn-lint cicd/2-cicd/*.template.yml
+      - cfn-lint cicd/3-app/aiproxy/template.yml
+
+      - echo "Building Docker Image..."
+      - IMAGE_NAME=aiproxy
+      - IMAGE_TAG=$(git rev-parse --short HEAD)
+      - docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+
+      - echo "Running Unit Tests..."
+      - echo "This is where I would run my unit tests"
+
+      - echo "Pushing Docker Image to ECR..."
+      - ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+      - AWS_REGION=$(aws configure get region)
+      - ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+      - ECR_REPO_NAME="aiproxy-${BRANCH_NAME}"
+      - FULL_IMAGE_NAME="${ECR_REGISTRY}/${ECR_REPO_NAME}:${IMAGE_TAG}"
+      - aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+      - docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${FULL_IMAGE_NAME}
+      - docker push ${FULL_IMAGE_NAME}
+
+      - echo "Linting cloudformation..."
       - cd $CODEBUILD_SRC_DIR
       - cp cicd/3-app/aiproxy/template.yml ./template.yml
       - cfn-lint template.yml
       - cat template.yml
       
+      - echo "Creating environment config..."
       - cicd/3-app/aiproxy/config/create-environment-config.sh
       
+      - echo "Packaging Cloudformation Template..."
       - aws cloudformation package --template-file template.yml --s3-bucket $ARTIFACT_STORE --s3-prefix package --output-template-file packaged-app-template.yml
+
+      - echo "Running ls command..."
+      - ls
 artifacts:
   files: '**/*'
