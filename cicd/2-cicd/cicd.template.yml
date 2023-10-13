@@ -170,6 +170,8 @@ Resources:
             Value: !ImportValue AiProxyCodeBuildArtifactBucket
           - Name: ECR_REPOSITORY
             Value: !GetAtt EcrRepository.RepositoryUri
+          - Name: BRANCH
+            Value: !Ref GitHubBranch
       Source:
         Type: CODEPIPELINE
         BuildSpec: cicd/3-app/aiproxy/buildspec.yml
