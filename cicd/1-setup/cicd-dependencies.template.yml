@@ -72,6 +72,14 @@ Resources:
                 Action: codestar-connections:UseConnection
                 Resource:
                   - !Sub arn:aws:codestar-connections:us-east-1:${AWS::AccountId}:connection/*
+        - PolicyName: CodeBuildSecretsAccess
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "secretsmanager:GetSecretValue"
+                Resource:
+                  - !Sub arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:cicd/*
 
 Outputs:
   AiProxyCodeBuildArtifactBucket:

@@ -10,4 +10,4 @@ phases:
     commands:
       - set -e
 
-      - echo "This is where I would run my integration tests, if I had any tests"
+      - echo "This is where I would run my tests against the Test environment, if I had any tests"

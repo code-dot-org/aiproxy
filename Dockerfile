@@ -1,5 +1,7 @@
 FROM python:3.11-slim
 
+RUN pip install Flask
+
 WORKDIR /app
 COPY requirements.txt .
 
