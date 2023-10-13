@@ -68,6 +68,11 @@ Resources:
                   - s3:GetObjectVersion
                 Resource:
                   - !Sub arn:aws:s3:::${ArtifactStore}/*
+              # TODO: Scope to specific ECR Repos?
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                Resource: '*'
               - Effect: Allow
                 Action: codestar-connections:UseConnection
                 Resource:
