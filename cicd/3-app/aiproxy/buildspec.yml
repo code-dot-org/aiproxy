@@ -1,10 +1,22 @@
 version: 0.2
+
+env:
+  secrets-manager:
+    DOCKER_HUB_USERNAME: cicd/docker-hub/username
+    DOCKER_HUB_PAT: cicd/docker-hub/pat
+
 phases:
   install:
     runtime-versions:
       python: 3.11
     commands:
       - pip install cfn-lint
+  
+  pre_build:
+    commands:
+      - echo Logging in to Docker Hub...
+      - echo $DOCKER_HUB_PAT | docker login -u $DOCKER_HUB_USERNAME --password-stdin
+  
   build:
     # This will build and push the docker image to ECR and package the
     # Cloudformation template to be passed as an Artifact to future pipeline

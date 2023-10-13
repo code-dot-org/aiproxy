@@ -3,7 +3,7 @@ version: 0.2
 env:
   secrets-manager:
     DOCKER_HUB_USERNAME: cicd/docker-hub/username
-    DOCKER_HUB_PASSWORD: cicd/docker-hub/password
+    DOCKER_HUB_PAT: cicd/docker-hub/pat
 
 phases:
   install:
@@ -15,7 +15,8 @@ phases:
   pre_build:
     commands:
       - echo Logging in to Docker Hub...
-      - docker login -u $DOCKER_HUB_USERNAME -p $DOCKER_HUB_PASSWORD
+      - echo $DOCKER_HUB_PAT | docker login -u $DOCKER_HUB_USERNAME --password-stdin
+
   
   build:
     # This should be moved to a shell script if it gets more complicated.
