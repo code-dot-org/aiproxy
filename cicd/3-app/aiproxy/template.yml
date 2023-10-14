@@ -28,6 +28,36 @@ Resources:
       TTL: 300
       ResourceRecords:
       - 8.8.8.8
+  
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: MyLoadBalancer
+      # TODO configure this more intentionally
+      LoadBalancerAttributes:
+        - Key: idle_timeout.timeout_seconds
+          Value: '60'
+      Subnets:
+        # TODO: This copies geocoder, but we should probably have a separate subnet for this service.
+        - !ImportValue VPC-SubnetB
+        - !ImportValue VPC-SubnetC
+      Scheme: internet-facing
+
+  LoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      # TODO configure this more intentionally
+      DefaultActions:
+        - Type: fixed-response
+          FixedResponseConfig:
+            StatusCode: 200
+            ContentType: text/plain
+            MessageBody: OK
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: HTTP
+      TargetGroupArn: !Ref ECSTargetGroup
+
 
   ECSCluster:
     Type: "AWS::ECS::Cluster"
@@ -63,7 +93,7 @@ Resources:
   ECSTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      Port: 80
+      Port: 5000
       Protocol: HTTP
       # TODO: This copies geocoder, but we should probably have a separate VPC for this service.
       VpcId: !ImportValue VPC
@@ -86,7 +116,7 @@ Resources:
           Essential: true
           PortMappings:
             - ContainerPort: 5000
-              HostPort: 80
+              HostPort: 5000
           LogConfiguration:
             LogDriver: awslogs
             Options:
