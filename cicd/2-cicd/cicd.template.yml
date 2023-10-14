@@ -307,10 +307,11 @@ Resources:
                   ActionMode: CREATE_UPDATE
                   TemplatePath: appBuildResults::packaged-app-template.yml
                   TemplateConfiguration: appBuildResults::cicd/3-app/aiproxy/test.config.json
-                  ParameterOverrides: !Sub |
-                    {
-                      "SubdomainName": "aiproxy-dev-${GitHubBranch}"
-                    }
+                  ParameterOverrides: !Join
+                    - ''
+                    - - '{ "SubdomainName": "'
+                      - !If [ TargetsMainBranch, 'aiproxy-test', !Sub 'aiproxy-test-${GitHubBranch}' ]
+                      - '" }'
                   Capabilities: CAPABILITY_AUTO_EXPAND,CAPABILITY_IAM
                   RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/admin/CloudFormationService
           - !Ref AWS::NoValue
