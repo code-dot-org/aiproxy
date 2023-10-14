@@ -11,6 +11,9 @@ Parameters:
   SubdomainName:
     Type: String
     Description: Subdomain name for javabuilder service (e.g. 'javabuilder' in 'javabuilder.code.org').
+  AppImageUri:
+    Type: String
+    Description: URI of the Docker image in ECR.
 
 # Conditions:
 #   IsDevCondition: !Equals [!Ref BaseDomainName, "dev-code.org"]
@@ -25,6 +28,29 @@ Resources:
       TTL: 300
       ResourceRecords:
       - 8.8.8.8
+
+  ECSTaskDefinition:
+    Type: "AWS::ECS::TaskDefinition"
+    Properties:
+      Family: ExampleFamily
+      Cpu: '256'
+      Memory: '512'
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/ecsTaskExecutionRole
+      ContainerDefinitions:
+        - Name: ExampleContainer
+          Image: !Ref AppImageUri
+          Memory: 512
+          Cpu: 256
+          Essential: true
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref AWS::StackName
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
 
 Outputs:
   AiProxyURL:

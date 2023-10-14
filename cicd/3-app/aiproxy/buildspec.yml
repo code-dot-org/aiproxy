@@ -23,9 +23,7 @@ phases:
     # steps. It will also run unit tests and linting.
     commands:
       - set -e
-      - BRANCH_NAME=${CODEBUILD_WEBHOOK_HEAD_REF#"refs/heads/"}
-      - echo BRANCH_NAME=$BRANCH_NAME
-      - echo CODEBUILD_WEBHOOK_HEAD_REF=$CODEBUILD_WEBHOOK_HEAD_REF
+
       - echo ECR_REPOSITORY=$ECR_REPOSITORY
       - echo BRANCH=$BRANCH
 
@@ -38,7 +36,7 @@ phases:
 
       - echo "Building Docker Image..."
       - IMAGE_NAME=aiproxy
-      - IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION:0:7}
+      - IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION:0:7} # short commit hash
       - docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
 
       - echo "Running Unit Tests..."
@@ -48,9 +46,13 @@ phases:
       - ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
       - AWS_REGION=us-east-1
       - ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+      - IMAGE_URI="${ECR_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"  # Constructing Image URI
       - aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
-      - docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${ECR_REPOSITORY}
-      - docker push ${ECR_REPOSITORY}
+
+      - docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${ECR_REPOSITORY}:${IMAGE_TAG}
+      - docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${ECR_REPOSITORY}:latest
+      - docker push ${ECR_REPOSITORY}:${IMAGE_TAG}
+      - docker push ${ECR_REPOSITORY}:latest
 
       - echo "Linting cloudformation..."
       - cd $CODEBUILD_SRC_DIR
