@@ -32,41 +32,41 @@ Resources:
   ECSCluster:
     Type: "AWS::ECS::Cluster"
 
-  # ECSService:
-  #   Type: "AWS::ECS::Service"
-  #   Properties:
-  #     Cluster: !Ref ECSCluster
-  #     DesiredCount: 2
-  #     LaunchType: FARGATE
-  #     TaskDefinition: !Ref ECSTaskDefinition
-  #     NetworkConfiguration:
-  #       AwsvpcConfiguration:
-  #         AssignPublicIp: ENABLED
-  #         SecurityGroups: 
-  #           - !Ref ECSSecurityGroup
-  #         Subnets:
-  #           # TODO: This copies geocoder, but we should probably have a separate subnet for this service.
-  #           - !ImportValue VPC-SubnetB
-  #           - !ImportValue VPC-SubnetC
-  #     LoadBalancers:
-  #       - ContainerName: webserver
-  #         ContainerPort: 80
-  #         TargetGroupArn: !Ref ECSTargetGroup
+  ECSService:
+    Type: "AWS::ECS::Service"
+    Properties:
+      Cluster: !Ref ECSCluster
+      DesiredCount: 2
+      LaunchType: FARGATE
+      TaskDefinition: !Ref ECSTaskDefinition
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups: 
+            - !Ref ECSSecurityGroup
+          Subnets:
+            # TODO: This copies geocoder, but we should probably have a separate subnet for this service.
+            - !ImportValue VPC-SubnetB
+            - !ImportValue VPC-SubnetC
+      LoadBalancers:
+        - ContainerName: webserver
+          ContainerPort: 5000
+          TargetGroupArn: !Ref ECSTargetGroup
 
-  # ECSSecurityGroup:
-  #   Type: AWS::EC2::SecurityGroup
-  #   Properties: 
-  #     GroupDescription: Security Group for ECS Service
-  #     # TODO: This copies geocoder, but we should probably have a separate VPC for this service.
-  #     VpcId: !ImportValue VPC
+  ECSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: Security Group for ECS Service
+      # TODO: This copies geocoder, but we should probably have a separate VPC for this service.
+      VpcId: !ImportValue VPC
 
-  # ECSTargetGroup:
-  #   Type: AWS::ElasticLoadBalancingV2::TargetGroup
-  #   Properties:
-  #     Port: 80
-  #     Protocol: HTTP
-  #     # TODO: This copies geocoder, but we should probably have a separate VPC for this service.
-  #     VpcId: !ImportValue VPC
+  ECSTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Port: 80
+      Protocol: HTTP
+      # TODO: This copies geocoder, but we should probably have a separate VPC for this service.
+      VpcId: !ImportValue VPC
 
   ECSTaskDefinition:
     Type: "AWS::ECS::TaskDefinition"
@@ -84,6 +84,9 @@ Resources:
           Memory: 512
           Cpu: 256
           Essential: true
+          PortMappings:
+            - ContainerPort: 5000
+              HostPort: 80
           LogConfiguration:
             LogDriver: awslogs
             Options:
