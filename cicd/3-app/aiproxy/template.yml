@@ -19,15 +19,14 @@ Parameters:
 #   IsDevCondition: !Equals [!Ref BaseDomainName, "dev-code.org"]
 
 Resources:
-  Domain:
-    Type: AWS::Route53::RecordSet
-    Properties:
-      HostedZoneName: !Sub "${BaseDomainName}."
-      Name: !Sub "${SubdomainName}.${BaseDomainName}"
-      Type: A
-      AliasTarget:
-        DNSName: !GetAtt LoadBalancer.DNSName  # Reference the DNS name of the load balancer
-        HostedZoneId: Z2FDTNDATAQYW2  # The hosted zone ID for Elastic Load Balancer in us-east-1
+  # Domain:
+  #   Type: AWS::Route53::RecordSet
+  #   Properties:
+  #     HostedZoneName: !Sub "${BaseDomainName}."
+  #     Name: !Sub "${SubdomainName}.${BaseDomainName}"
+  #     Type: A
+  #     AliasTarget:
+  #       DNSName: !GetAtt LoadBalancer.DNSName  # Reference the DNS name of the load balancer
   
   LoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
@@ -48,10 +47,19 @@ Resources:
     Properties:
       DefaultActions:
         - Type: forward
-          TargetGroupArn: !Ref ECSTargetGroup  # Now within a forward configuration
+          TargetGroupArn: !Ref ECSTargetGroup
       LoadBalancerArn: !Ref LoadBalancer
       Port: 80
       Protocol: HTTP
+
+  ECSTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Port: 5000
+      Protocol: HTTP
+      TargetType: ip
+      # TODO: This copies geocoder, but we should probably have a separate VPC for this service.
+      VpcId: !ImportValue VPC
 
   ECSCluster:
     Type: "AWS::ECS::Cluster"
@@ -82,15 +90,6 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties: 
       GroupDescription: Security Group for ECS Service
-      # TODO: This copies geocoder, but we should probably have a separate VPC for this service.
-      VpcId: !ImportValue VPC
-
-  ECSTargetGroup:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
-    Properties:
-      Port: 5000
-      Protocol: HTTP
-      TargetType: ip
       # TODO: This copies geocoder, but we should probably have a separate VPC for this service.
       VpcId: !ImportValue VPC
 
