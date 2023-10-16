@@ -38,11 +38,7 @@ Resources:
   LoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Name: MyLoadBalancer
-      # TODO configure this more intentionally
-      LoadBalancerAttributes:
-        - Key: idle_timeout.timeout_seconds
-          Value: '60'
+      # TODO: add a security group?
       Subnets:
         # TODO: This copies geocoder, but we should probably have a separate subnet for this service.
         - !ImportValue VPC-SubnetB
@@ -67,6 +63,12 @@ Resources:
       TargetType: ip
       # TODO: This copies geocoder, but we should probably have a separate VPC for this service.
       VpcId: !ImportValue VPC
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPath: /test
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 2
 
   ECSCluster:
     Type: "AWS::ECS::Cluster"
@@ -118,7 +120,6 @@ Resources:
           Essential: true
           PortMappings:
             - ContainerPort: 5000
-              HostPort: 5000
           LogConfiguration:
             LogDriver: awslogs
             Options:
