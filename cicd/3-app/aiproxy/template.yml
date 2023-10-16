@@ -8,9 +8,9 @@ Parameters:
   # BaseDomainNameHostedZonedID:
   #   Type: String
   #   Description: AWS Route53 Hosted Zone ID for base domain name.
-  SubdomainName:
-    Type: String
-    Description: Subdomain name for javabuilder service (e.g. 'javabuilder' in 'javabuilder.code.org').
+  # SubdomainName:
+  #   Type: String
+  #   Description: Subdomain name for javabuilder service (e.g. 'javabuilder' in 'javabuilder.code.org').
   AppImageUri:
     Type: String
     Description: URI of the Docker image in ECR.
@@ -119,7 +119,7 @@ Resources:
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: ecs
 
-Outputs:
-  AiProxyURL:
-    Value:
-      !Ref Domain
+# Outputs:
+#   AiProxyURL:
+#     Value:
+#       !Ref Domain
