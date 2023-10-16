@@ -2,9 +2,9 @@ AWSTemplateFormatVersion: 2010-09-09
 Transform: AWS::Serverless-2016-10-31
 Description: Provision an instance of the Javabuilder service. Empty the ContentBucket before deleting this Stack.
 Parameters:
-  BaseDomainName:
-    Type: String
-    Description: Base domain name (e.g. 'code.org' in 'javabuilder.code.org').
+  # BaseDomainName:
+  #   Type: String
+  #   Description: Base domain name (e.g. 'code.org' in 'aiproxy.code.org').
   # BaseDomainNameHostedZonedID:
   #   Type: String
   #   Description: AWS Route53 Hosted Zone ID for base domain name.
