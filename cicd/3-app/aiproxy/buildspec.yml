@@ -46,7 +46,6 @@ phases:
       - ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
       - AWS_REGION=us-east-1
       - ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-      - IMAGE_URI="${ECR_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"  # Constructing Image URI
       - aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
 
       - docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${ECR_REPOSITORY}:${IMAGE_TAG}
@@ -61,6 +60,7 @@ phases:
       - cat template.yml
       
       - echo "Creating environment config..."
+      - IMAGE_URI="${ECR_REPOSITORY}:${IMAGE_TAG}"
       - cicd/3-app/aiproxy/config/create-environment-config.sh
       
       - echo "Packaging Cloudformation Template..."
