@@ -67,7 +67,7 @@ Resources:
 
   ECSService:
     Type: "AWS::ECS::Service"
-    DependsOn: LoadBalancer
+    DependsOn: LoadBalancerListener
     Properties:
       Cluster: !Ref ECSCluster
       DesiredCount: 2
