@@ -2,15 +2,15 @@ AWSTemplateFormatVersion: 2010-09-09
 Transform: AWS::Serverless-2016-10-31
 Description: Provision an instance of the Javabuilder service. Empty the ContentBucket before deleting this Stack.
 Parameters:
-  # BaseDomainName:
-  #   Type: String
-  #   Description: Base domain name (e.g. 'code.org' in 'aiproxy.code.org').
+  BaseDomainName:
+    Type: String
+    Description: Base domain name (e.g. 'code.org' in 'aiproxy.code.org').
   # BaseDomainNameHostedZonedID:
   #   Type: String
   #   Description: AWS Route53 Hosted Zone ID for base domain name.
-  # SubdomainName:
-  #   Type: String
-  #   Description: Subdomain name for javabuilder service (e.g. 'javabuilder' in 'javabuilder.code.org').
+  SubdomainName:
+    Type: String
+    Description: Subdomain name for javabuilder service (e.g. 'javabuilder' in 'javabuilder.code.org').
   AppImageUri:
     Type: String
     Description: URI of the Docker image in ECR.
@@ -19,14 +19,15 @@ Parameters:
 #   IsDevCondition: !Equals [!Ref BaseDomainName, "dev-code.org"]
 
 Resources:
-  # Domain:
-  #   Type: AWS::Route53::RecordSet
-  #   Properties:
-  #     HostedZoneName: !Sub "${BaseDomainName}."
-  #     Name: !Sub "${SubdomainName}.${BaseDomainName}"
-  #     Type: A
-  #     AliasTarget:
-  #       DNSName: !GetAtt LoadBalancer.DNSName  # Reference the DNS name of the load balancer
+  Domain:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneName: !Sub "${BaseDomainName}."
+      Name: !Sub "${SubdomainName}.${BaseDomainName}"
+      Type: A
+      TTL: 300
+      ResourceRecords:
+        - 8.8.8.8
   
   LoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
@@ -119,7 +120,7 @@ Resources:
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: ecs
 
-# Outputs:
-#   AiProxyURL:
-#     Value:
-#       !Ref Domain
+Outputs:
+  AiProxyURL:
+    Value:
+      !Ref Domain
