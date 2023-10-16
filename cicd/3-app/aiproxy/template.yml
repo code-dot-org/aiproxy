@@ -89,6 +89,7 @@ Resources:
     Properties:
       Port: 5000
       Protocol: HTTP
+      TargetType: ip
       # TODO: This copies geocoder, but we should probably have a separate VPC for this service.
       VpcId: !ImportValue VPC
 
