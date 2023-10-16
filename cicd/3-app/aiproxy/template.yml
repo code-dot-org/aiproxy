@@ -19,6 +19,12 @@ Parameters:
 #   IsDevCondition: !Equals [!Ref BaseDomainName, "dev-code.org"]
 
 Resources:
+
+  HostedZone:
+    Type: AWS::Route53::HostedZone
+    Properties:
+      Name: !Sub "${SubdomainName}.${BaseDomainName}."
+
   Domain:
     Type: AWS::Route53::RecordSet
     Properties:
