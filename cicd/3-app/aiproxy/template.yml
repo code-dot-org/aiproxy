@@ -103,7 +103,7 @@ Resources:
   ECSTaskDefinition:
     Type: "AWS::ECS::TaskDefinition"
     Properties:
-      Family: webserver
+      Family: aiproxy
       Cpu: '256'
       Memory: '512'
       NetworkMode: awsvpc
@@ -111,7 +111,7 @@ Resources:
         - FARGATE
       ExecutionRoleArn: !ImportValue AiProxyECSTaskExecutionRoleArn
       ContainerDefinitions:
-        - Name: webserver
+        - Name: aiproxy
           Image: !Ref AppImageUri
           Memory: 512
           Cpu: 256
