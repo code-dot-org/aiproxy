@@ -26,8 +26,9 @@ Resources:
       Name: !Sub "${SubdomainName}.${BaseDomainName}"
       Type: A
       TTL: 300
-      ResourceRecords:
-        - !GetAtt LoadBalancer.DNSName
+      AliasTarget:
+        DNSName: !GetAtt LoadBalancer.DNSName  # Reference the DNS name of the load balancer
+        HostedZoneId: Z2FDTNDATAQYW2  # The hosted zone ID for Elastic Load Balancer in us-east-1
   
   LoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
