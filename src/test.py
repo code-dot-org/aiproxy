@@ -6,6 +6,7 @@ from flask import Blueprint, request
 test_routes = Blueprint('test_routes', __name__)
 
 # A simple JSON response that always succeeds
+@test_routes.route('/')
 @test_routes.route('/test')
 def test():
     return {}
