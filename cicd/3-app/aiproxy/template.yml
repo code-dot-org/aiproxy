@@ -27,7 +27,7 @@ Resources:
       Type: A
       TTL: 300
       ResourceRecords:
-      - 8.8.8.8
+        - !GetAtt LoadBalancer.DNSName
   
   LoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
@@ -46,18 +46,12 @@ Resources:
   LoadBalancerListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
-      # TODO configure this more intentionally
       DefaultActions:
-        - Type: fixed-response
-          FixedResponseConfig:
-            StatusCode: 200
-            ContentType: text/plain
-            MessageBody: OK
+        - Type: forward
+          TargetGroupArn: !Ref ECSTargetGroup  # Now within a forward configuration
       LoadBalancerArn: !Ref LoadBalancer
       Port: 80
       Protocol: HTTP
-      TargetGroupArn: !Ref ECSTargetGroup
-
 
   ECSCluster:
     Type: "AWS::ECS::Cluster"
