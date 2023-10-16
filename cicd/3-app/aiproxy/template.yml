@@ -89,7 +89,7 @@ Resources:
             - !ImportValue VPC-SubnetB
             - !ImportValue VPC-SubnetC
       LoadBalancers:
-        - ContainerName: webserver
+        - ContainerName: aiproxy
           ContainerPort: 5000
           TargetGroupArn: !Ref ECSTargetGroup
 
