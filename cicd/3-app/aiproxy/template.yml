@@ -41,10 +41,11 @@ Resources:
       SecurityGroups:
         - !ImportValue VPC-ELBSecurityGroup
       Subnets:
-        # TODO: This copies geocoder, but we should probably have a separate subnet for this service.
+        # TODO: This copies geocoder and the code.org load balancer, but we may prefer something unique
         - !ImportValue VPC-SubnetB
         - !ImportValue VPC-SubnetC
-      Scheme: internet-facing
+        - !ImportValue VPC-SubnetD
+        - !ImportValue VPC-SubnetE
 
   LoadBalancerListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
