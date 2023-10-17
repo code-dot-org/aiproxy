@@ -101,6 +101,11 @@ Resources:
       GroupDescription: Security Group for ECS Service
       # TODO: This copies geocoder, but we should probably have a separate VPC for this service.
       VpcId: !ImportValue VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
 
   ECSTaskDefinition:
     Type: "AWS::ECS::TaskDefinition"
