@@ -39,23 +39,12 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
       SecurityGroups:
-        - !Ref LoadBalancerSecurityGroup
+        - !ImportValue VPC-ELBSecurityGroup
       Subnets:
         # TODO: This copies geocoder, but we should probably have a separate subnet for this service.
         - !ImportValue VPC-SubnetB
         - !ImportValue VPC-SubnetC
       Scheme: internet-facing
-
-  LoadBalancerSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: ELB Allowed Ports
-      VpcId: !ImportValue VPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          CidrIp: 0.0.0.0/0
 
   LoadBalancerListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
