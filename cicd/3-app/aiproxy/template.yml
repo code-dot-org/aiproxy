@@ -64,7 +64,7 @@ Resources:
       TargetType: ip
       Protocol: HTTP
       HealthCheckIntervalSeconds: 30
-      HealthCheckPath: /test
+      HealthCheckPath: /
       HealthCheckProtocol: HTTP
       HealthCheckTimeoutSeconds: 5
       HealthyThresholdCount: 2
