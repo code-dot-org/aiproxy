@@ -78,12 +78,12 @@ Resources:
     DependsOn: LoadBalancerListener
     Properties:
       Cluster: !Ref ECSCluster
-      DesiredCount: 2
+      DesiredCount: 1
       LaunchType: FARGATE
       TaskDefinition: !Ref ECSTaskDefinition
       NetworkConfiguration:
         AwsvpcConfiguration:
-          AssignPublicIp: ENABLED
+          AssignPublicIp: DISABLED
           SecurityGroups: 
             - !Ref ECSSecurityGroup
           Subnets:
@@ -106,12 +106,12 @@ Resources:
     Type: "AWS::ECS::TaskDefinition"
     Properties:
       Family: aiproxy
-      Cpu: '256'
-      Memory: '512'
-      NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
+      NetworkMode: awsvpc
       ExecutionRoleArn: !ImportValue AiProxyECSTaskExecutionRoleArn
+      Cpu: 256
+      Memory: 512
       ContainerDefinitions:
         - Name: aiproxy
           Image: !Ref AppImageUri
