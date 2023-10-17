@@ -92,7 +92,7 @@ Resources:
             - !ImportValue VPC-SubnetC
       LoadBalancers:
         - ContainerName: aiproxy
-          ContainerPort: 5000
+          ContainerPort: 80
           TargetGroupArn: !Ref ECSTargetGroup
 
   ECSSecurityGroup:
@@ -119,7 +119,7 @@ Resources:
           Cpu: 256
           Essential: true
           PortMappings:
-            - ContainerPort: 5000
+            - ContainerPort: 80
           LogConfiguration:
             LogDriver: awslogs
             Options:

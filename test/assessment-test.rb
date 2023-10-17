@@ -5,7 +5,7 @@ require 'uri'
 # standard one in Ruby, but we wanted this test to work with
 # a stock install for the sake of quick testing.
 
-uri = URI('http://localhost:5000')
+uri = URI('http://localhost:80')
 uri.path = '/assessment'
 
 code = File.read('test/data/u3l23_01.js')

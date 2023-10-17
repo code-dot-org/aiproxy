@@ -4,4 +4,4 @@ services:
     build: .
     env_file: "config.txt"
     ports:
-      - "5000:5000"
+      - "80:80"
