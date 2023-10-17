@@ -58,11 +58,11 @@ Resources:
   ECSTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      Port: 5000
-      Protocol: HTTP
-      TargetType: ip
       # TODO: This copies geocoder, but we should probably have a separate VPC for this service.
       VpcId: !ImportValue VPC
+      Port: 80
+      TargetType: ip
+      Protocol: HTTP
       HealthCheckIntervalSeconds: 30
       HealthCheckPath: /test
       HealthCheckProtocol: HTTP
