@@ -28,17 +28,17 @@ Resources:
       Name: !Sub "${SubdomainName}.${BaseDomainName}."
 
   # Make the Hosted Zone the authoritative DNS server for this subdomain
-  NSRecordSet:
+  NSRecord:
     Type: AWS::Route53::RecordSet
     Properties:
-      HostedZone: code.org
+      HostedZoneName: code.org
       Name: !Sub "${SubdomainName}.${BaseDomainName}."
       Type: NS
       TTL: 300
       ResourceRecords:
         - !GetAtt HostedZone.NameServers
 
-  Domain:
+  DNSRecord:
     Type: AWS::Route53::RecordSet
     Properties:
       HostedZoneId: !Ref HostedZone
