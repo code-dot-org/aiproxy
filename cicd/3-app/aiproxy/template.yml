@@ -47,37 +47,37 @@ Resources:
         - !ImportValue VPC-PublicSubnetD
         - !ImportValue VPC-PublicSubnetE
 
-  # LoadBalancerListener:
-  #   Type: AWS::ElasticLoadBalancingV2::Listener
-  #   Properties:
-  #     DefaultActions:
-  #       - Type: forward
-  #         TargetGroupArn: !Ref ECSTargetGroup
-  #     LoadBalancerArn: !Ref LoadBalancer
-  #     Port: 80
-  #     Protocol: HTTP
+  LoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ECSTargetGroup
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: HTTP
 
-  # ECSTargetGroup:
-  #   Type: AWS::ElasticLoadBalancingV2::TargetGroup
-  #   Properties:
-  #     # TODO: This copies geocoder, but we should probably have a separate VPC for this service.
-  #     VpcId: !ImportValue VPC
-  #     Port: 80
-  #     TargetType: ip
-  #     Protocol: HTTP
-  #     HealthCheckIntervalSeconds: 30
-  #     HealthCheckPath: /
-  #     HealthCheckProtocol: HTTP
-  #     HealthCheckTimeoutSeconds: 5
-  #     HealthyThresholdCount: 2
-  #     UnhealthyThresholdCount: 2
+  ECSTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      # TODO: This copies geocoder, but we should probably have a separate VPC for this service.
+      VpcId: !ImportValue VPC
+      Port: 80
+      TargetType: ip
+      Protocol: HTTP
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 2
 
   ECSCluster:
     Type: "AWS::ECS::Cluster"
 
   ECSService:
     Type: "AWS::ECS::Service"
-    # DependsOn: LoadBalancerListener
+    DependsOn: LoadBalancerListener
     Properties:
       Cluster: !Ref ECSCluster
       DesiredCount: 1
@@ -92,10 +92,10 @@ Resources:
             # TODO: This copies geocoder, but we should probably have a separate subnet for this service.
             - !ImportValue VPC-SubnetB
             - !ImportValue VPC-SubnetC
-      # LoadBalancers:
-      #   - ContainerName: aiproxy
-      #     ContainerPort: 80
-      #     TargetGroupArn: !Ref ECSTargetGroup
+      LoadBalancers:
+        - ContainerName: aiproxy
+          ContainerPort: 80
+          TargetGroupArn: !Ref ECSTargetGroup
 
   ECSSecurityGroup:
     Type: AWS::EC2::SecurityGroup
