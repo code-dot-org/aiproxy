@@ -1,16 +1,13 @@
 AWSTemplateFormatVersion: 2010-09-09
 Transform: AWS::Serverless-2016-10-31
-Description: Provision an instance of the Javabuilder service. Empty the ContentBucket before deleting this Stack.
+Description: Provision an instance of the AI Proxy service.
 Parameters:
   BaseDomainName:
     Type: String
     Description: Base domain name (e.g. 'code.org' in 'aiproxy.code.org').
-  # BaseDomainNameHostedZonedID:
-  #   Type: String
-  #   Description: AWS Route53 Hosted Zone ID for base domain name.
   SubdomainName:
     Type: String
-    Description: Subdomain name for javabuilder service (e.g. 'javabuilder' in 'javabuilder.code.org').
+    Description: Subdomain name for aiproxy service (e.g. 'aiproxy' in 'aiproxy.code.org').
   AppImageUri:
     Type: String
     Description: URI of the Docker image in ECR.
@@ -20,10 +17,26 @@ Parameters:
 
 Resources:
 
+  # ------------------
+  #        DNS
+  # ------------------
+
+  # Create a dedicated Hosted Zone for this environment
   HostedZone:
     Type: AWS::Route53::HostedZone
     Properties:
       Name: !Sub "${SubdomainName}.${BaseDomainName}."
+
+  # Make the Hosted Zone the authoritative DNS server for this subdomain
+  NSRecordSet:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZone: code.org
+      Name: !Sub "${SubdomainName}.${BaseDomainName}."
+      Type: NS
+      TTL: 300
+      ResourceRecords:
+        - !GetAtt HostedZone.NameServers
 
   Domain:
     Type: AWS::Route53::RecordSet
@@ -35,6 +48,10 @@ Resources:
         DNSName: !GetAtt LoadBalancer.DNSName
         HostedZoneId: !GetAtt LoadBalancer.CanonicalHostedZoneID
   
+  # ------------------
+  #   Load Balancer
+  # ------------------
+
   LoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
@@ -47,20 +64,19 @@ Resources:
         - !ImportValue VPC-PublicSubnetD
         - !ImportValue VPC-PublicSubnetE
 
-  LoadBalancerListener:
+  Listener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
       DefaultActions:
         - Type: forward
-          TargetGroupArn: !Ref ECSTargetGroup
+          TargetGroupArn: !Ref TargetGroup
       LoadBalancerArn: !Ref LoadBalancer
       Port: 80
       Protocol: HTTP
 
-  ECSTargetGroup:
+  TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      # TODO: This copies geocoder, but we should probably have a separate VPC for this service.
       VpcId: !ImportValue VPC
       Port: 80
       TargetType: ip
@@ -72,12 +88,16 @@ Resources:
       HealthyThresholdCount: 2
       UnhealthyThresholdCount: 2
 
+  # ------------------
+  #    ECS Service
+  # ------------------
+
   ECSCluster:
     Type: "AWS::ECS::Cluster"
 
   ECSService:
     Type: "AWS::ECS::Service"
-    DependsOn: LoadBalancerListener
+    DependsOn: Listener
     Properties:
       Cluster: !Ref ECSCluster
       DesiredCount: 1
@@ -95,7 +115,7 @@ Resources:
       LoadBalancers:
         - ContainerName: aiproxy
           ContainerPort: 80
-          TargetGroupArn: !Ref ECSTargetGroup
+          TargetGroupArn: !Ref TargetGroup
 
   ECSSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -134,12 +154,17 @@ Resources:
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: ecs
 
+  # ------------------
+  #  Logging & Alerts
+  # ------------------
+
   LogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub "${AWS::StackName}"
 
 Outputs:
-  AiProxyURL:
-    Value:
-      !Ref Domain
+  URL:
+    Value: !Ref Domain
+    Export:
+      Name: !Sub "${AWS::StackName}-URL"
