@@ -35,8 +35,7 @@ Resources:
       Name: !Sub "${SubdomainName}.${BaseDomainName}."
       Type: NS
       TTL: 300
-      ResourceRecords:
-        - !GetAtt HostedZone.NameServers
+      ResourceRecords: !GetAtt HostedZone.NameServers
 
   DNSRecord:
     Type: AWS::Route53::RecordSet
