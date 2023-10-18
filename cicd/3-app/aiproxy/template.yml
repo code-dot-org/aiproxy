@@ -165,6 +165,6 @@ Resources:
 
 Outputs:
   URL:
-    Value: !Ref Domain
+    Value: !Ref DNSRecord
     Export:
       Name: !Sub "${AWS::StackName}-URL"
