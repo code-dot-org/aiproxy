@@ -5,6 +5,9 @@ Parameters:
   BaseDomainName:
     Type: String
     Description: Base domain name (e.g. 'code.org' in 'aiproxy.code.org').
+  BaseDomainNameHostedZonedID:
+    Type: String
+    Description: AWS Route53 Hosted Zone ID for base domain name.
   SubdomainName:
     Type: String
     Description: Subdomain name for aiproxy service (e.g. 'aiproxy' in 'aiproxy.code.org').
@@ -31,7 +34,7 @@ Resources:
   NSRecord:
     Type: AWS::Route53::RecordSet
     Properties:
-      HostedZoneName: code.org
+      HostedZoneId: !Ref BaseDomainNameHostedZonedID
       Name: !Sub "${SubdomainName}.${BaseDomainName}."
       Type: NS
       TTL: 300
