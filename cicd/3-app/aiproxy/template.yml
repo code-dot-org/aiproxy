@@ -167,6 +167,10 @@ Resources:
 
 Outputs:
   URL:
+    Description: URL for this service
     Value: !Ref DNSRecord
     Export:
       Name: !Sub "${AWS::StackName}-URL"
+  LogGroupUrl:
+    Description: URL to view logs for this service
+    Value: !Sub "https://console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#logsV2:log-groups/log-group/${LogGroup}"
