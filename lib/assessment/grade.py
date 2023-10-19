@@ -17,20 +17,44 @@ class Grade:
     def __init__(self):
         pass
 
-    def grade_student_work(self, prompt, rubric, student_code, student_id, examples=[], use_cached=False, write_cached=True, num_responses=0, temperature=0.0, llm_model="", remove_comments=False):
-        if use_cached and os.path.exists(f"cached_responses/{student_id}.json"):
-            with open(f"cached_responses/{student_id}.json", 'r') as f:
-                return json.load(f)
+    # This will take a rubric and student code and it will perform static checks on the code.
+    #
+    # For instance, it will determine a blank project should receive a No Evidence score for
+    # all items in the rubric.
+    def statically_grade_student_work(self, rubric, student_code, student_id, examples=[]):
+        rubric_key_concepts = list(set(row['Key Concept'] for row in csv.DictReader(rubric.splitlines())))
 
+        if student_code.strip() == "":
+            # Blank code should return No Evidence
+            return {
+                'metadata': {
+                    'agent': 'static',
+                },
+                'data': list(
+                    map(
+                        lambda key_concept: {
+                            "Grade": "No Evidence",
+                            "Key Concept": key_concept,
+                            "Observations": "The program is empty.",
+                            "Reason": "The program is empty.",
+                        },
+                        rubric_key_concepts
+                    )
+                )
+            }
+
+        # We can't assess this statically
+        return None
+
+    def ai_grade_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model=""):
+        # Determine the OpenAI URL and headers
         api_url = 'https://api.openai.com/v1/chat/completions'
         headers = {
             'Content-Type': 'application/json',
             'Authorization': f"Bearer {os.getenv('OPENAI_API_KEY')}"
         }
 
-        # Sanitize student code
-        student_code = self.sanitize_code(student_code, remove_comments=remove_comments)
-
+        # Compute the input we are giving to OpenAI
         messages = self.compute_messages(prompt, rubric, student_code, examples=examples)
         data = {
             'model': llm_model,
@@ -39,7 +63,7 @@ class Grade:
             'n': num_responses,
         }
 
-        start_time = time.time()
+        # Post to the AI service
         try:
             response = requests.post(api_url, headers=headers, json=data, timeout=120)
         except requests.exceptions.ReadTimeout:
@@ -52,9 +76,6 @@ class Grade:
             return None
 
         info = response.json()
-        tokens = info['usage']['total_tokens']
-        elapsed = time.time() - start_time
-        logging.info(f"{student_id} request succeeded in {elapsed:.0f} seconds. {tokens} tokens used.")
 
         tsv_data_choices = [self.get_tsv_data_if_valid(choice['message']['content'], rubric, student_id, choice_index=index) for index, choice in enumerate(info['choices']) if choice['message']['content']]
         tsv_data_choices = [choice for choice in tsv_data_choices if choice]
@@ -66,20 +87,60 @@ class Grade:
         else:
             tsv_data = self.get_consensus_response(tsv_data_choices, student_id)
 
+        return {
+            'metadata': {
+                'agent': 'openai',
+                'usage': info['usage'],
+                'request': data,
+            },
+            'data': tsv_data,
+        }
+
+    def grade_student_work(self, prompt, rubric, student_code, student_id, examples=[], use_cached=False, write_cached=True, num_responses=0, temperature=0.0, llm_model="", remove_comments=False):
+        if use_cached and os.path.exists(f"cached_responses/{student_id}.json"):
+            with open(f"cached_responses/{student_id}.json", 'r') as f:
+                return json.load(f)
+
+        # We will record the time it takes to perform the assessment
+        start_time = time.time()
+
+        # Sanitize student code
+        student_code = self.sanitize_code(student_code, remove_comments=remove_comments)
+
+        # Try static analysis options (before invoking AI)
+        result = self.statically_grade_student_work(rubric, student_code, student_id, examples=examples)
+
+        # If it gives back a grade with high confidence, we do not perform AI assessment
+        if result is not None:
+            pass
+
+        # We try the AI for assessment
+        if result is None:
+            result = self.ai_grade_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
+
+        # No assessment was possible
+        if result is None:
+            raise Exception("AI assessment failed.")
+
+        elapsed = time.time() - start_time
+        tokens = result.get('metadata', {}).get('usage', {}).get('total_tokens', 0)
+        logging.info(f"{student_id} request succeeded in {elapsed:.0f} seconds. {tokens} tokens used.")
+
         # only write to cache if the response is valid
         if write_cached and tsv_data:
             with open(f"cached_responses/{student_id}.json", 'w') as f:
                 json.dump(tsv_data, f, indent=4)
 
-        return {
+        # Craft the response dictionary
+        response = {
             'metadata': {
-              'time': elapsed,
-              'student_id': student_id,
-              'usage': info['usage'],
-              'request': data,
+                'time': elapsed,
+                'student_id': student_id,
             },
-            'data': tsv_data,
+            'data': result.get('data', []),
         }
+        response['metadata'].update(result.get('metadata', {})),
+        return response
 
     def sanitize_code(self, student_code, remove_comments=False):
         # Remove comments
