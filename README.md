@@ -5,10 +5,10 @@ Python-based API layer for LLM API's, implemented as an HTTP API in ECS Fargate.
 To Do:
 * [x] validate cicd infra (using placeholder app template)
 * [x] validate pr validation
-* [ ] create python flask app
+* [x] create python flask app
 * [ ] add test steps for cicd
-* [ ] add build & push-to-ecr steps for cicd
-* [ ] create [application cloudformation template](cicd/3-app/aiproxy/template.yml)
+* [x] add build & push-to-ecr steps for cicd
+* [x] create [application cloudformation template](cicd/3-app/aiproxy/template.yml)
 * [ ] authentication
 
 ## Configuration
