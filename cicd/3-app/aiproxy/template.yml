@@ -120,7 +120,9 @@ Resources:
 
   ECSService:
     Type: "AWS::ECS::Service"
-    DependsOn: Listener
+    DependsOn:
+      - HttpListener
+      - HttpsListener
     Properties:
       Cluster: !Ref ECSCluster
       DesiredCount: 1
