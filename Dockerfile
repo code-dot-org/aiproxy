@@ -1,11 +1,9 @@
 FROM python:3.11-slim
 
-RUN pip install Flask
-
 WORKDIR /app
 COPY requirements.txt .
 
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY ./test /app/test
 COPY ./lib /app/lib
