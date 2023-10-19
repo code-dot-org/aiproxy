@@ -1,6 +1,9 @@
 AWSTemplateFormatVersion: 2010-09-09
 Transform: AWS::Serverless-2016-10-31
 Description: Provision an instance of the AI Proxy service.
+
+# Dependencies: This template has dependencies, look for !ImportValue in the Resources section.
+
 Parameters:
   BaseDomainName:
     Type: String
