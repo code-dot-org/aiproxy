@@ -68,15 +68,15 @@ Resources:
         - !ImportValue VPC-PublicSubnetD
         - !ImportValue VPC-PublicSubnetE
 
-  # HttpListener:
-  #   Type: AWS::ElasticLoadBalancingV2::Listener
-  #   Properties:
-  #     DefaultActions:
-  #       - Type: forward
-  #         TargetGroupArn: !Ref TargetGroup
-  #     LoadBalancerArn: !Ref LoadBalancer
-  #     Port: 80
-  #     Protocol: HTTP
+  HttpListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: HTTP
 
   HttpsListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -123,7 +123,7 @@ Resources:
   ECSService:
     Type: "AWS::ECS::Service"
     DependsOn:
-      # - HttpListener
+      - HttpListener
       - HttpsListener
     Properties:
       Cluster: !Ref ECSCluster
