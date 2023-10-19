@@ -76,11 +76,6 @@ Resources:
       Port: 80
       Protocol: HTTP
 
-  SomeNonsense:
-    Type: AWS::NotReal::Resource
-    Properties:
-      SomeProperty: SomeValue
-
   HttpsListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
