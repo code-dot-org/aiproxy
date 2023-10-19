@@ -17,29 +17,15 @@ phases:
       - echo Logging in to Docker Hub...
       - echo $DOCKER_HUB_PAT | docker login -u $DOCKER_HUB_USERNAME --password-stdin
 
-  
   build:
-    # This should be moved to a shell script if it gets more complicated.
     commands:
       - set -e
 
       - BRANCH_NAME=${CODEBUILD_WEBHOOK_HEAD_REF#"refs/heads/"}
       - ARTIFACT_PATH=branch/$BRANCH_NAME/$CODEBUILD_BUILD_NUMBER
+      - COMMIT_HASH=${CODEBUILD_RESOLVED_SOURCE_VERSION:0:7}
 
       - cd $CODEBUILD_SRC_DIR
 
-      - echo "Validating Cloudformation Templates..."
-      - cfn-lint cicd/1-setup/*.template.yml
-      - cfn-lint cicd/2-cicd/*.template.yml
-      - cfn-lint cicd/3-app/aiproxy/template.yml
-
-      - echo "Building Docker Image..."
-      - IMAGE_NAME=aiproxy
-      - IMAGE_TAG=$(git rev-parse --short HEAD)
-      - docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
-
-      - echo "Running Unit Tests..."
-      - docker run --rm ${IMAGE_NAME}:${IMAGE_TAG} python -m unittest test_app.py
-
-      - echo "Pushing Docker Image to ECR..."
-      - echo "This is where I would push the docker image to ECR, when I get around to it"
+      - ./ci-lint.sh
+      - ./ci-build.sh

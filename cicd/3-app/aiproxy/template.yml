@@ -1,32 +1,212 @@
 AWSTemplateFormatVersion: 2010-09-09
 Transform: AWS::Serverless-2016-10-31
-Description: Provision an instance of the Javabuilder service. Empty the ContentBucket before deleting this Stack.
+Description: Provision an instance of the AI Proxy service.
+
+# Dependencies: This template has dependencies, look for !ImportValue in the Resources section.
+
 Parameters:
   BaseDomainName:
     Type: String
-    Description: Base domain name (e.g. 'code.org' in 'javabuilder.code.org').
-  # BaseDomainNameHostedZonedID:
-  #   Type: String
-  #   Description: AWS Route53 Hosted Zone ID for base domain name.
+    Description: Base domain name (e.g. 'code.org' in 'aiproxy.code.org').
+  BaseDomainNameHostedZonedID:
+    Type: String
+    Description: AWS Route53 Hosted Zone ID for base domain name.
   SubdomainName:
     Type: String
-    Description: Subdomain name for javabuilder service (e.g. 'javabuilder' in 'javabuilder.code.org').
+    Description: Subdomain name for aiproxy service (e.g. 'aiproxy' in 'aiproxy.code.org').
+  AppImageUri:
+    Type: String
+    Description: URI of the Docker image in ECR.
 
 # Conditions:
 #   IsDevCondition: !Equals [!Ref BaseDomainName, "dev-code.org"]
 
 Resources:
-  Domain:
+
+  # ------------------
+  #        DNS
+  # ------------------
+
+  # Create a dedicated Hosted Zone for this environment
+  HostedZone:
+    Type: AWS::Route53::HostedZone
+    Properties:
+      Name: !Sub "${SubdomainName}.${BaseDomainName}."
+
+  # Make the Hosted Zone the authoritative DNS server for this subdomain
+  NSRecord:
     Type: AWS::Route53::RecordSet
     Properties:
-      HostedZoneName: !Sub "${BaseDomainName}."
+      HostedZoneId: !Ref BaseDomainNameHostedZonedID
+      Name: !Sub "${SubdomainName}.${BaseDomainName}."
+      Type: NS
+      TTL: 300
+      ResourceRecords: !GetAtt HostedZone.NameServers
+
+  DNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZone
       Name: !Sub "${SubdomainName}.${BaseDomainName}"
       Type: A
-      TTL: 300
-      ResourceRecords:
-      - 8.8.8.8
+      AliasTarget:
+        DNSName: !GetAtt LoadBalancer.DNSName
+        HostedZoneId: !GetAtt LoadBalancer.CanonicalHostedZoneID
+  
+  # ------------------
+  #   Load Balancer
+  # ------------------
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      SecurityGroups:
+        - !ImportValue VPC-ELBSecurityGroup
+      Subnets:
+        # Place load balancer in public subnets, so it's accessible from the internet.
+        # We may want to move this to the private subnets, so only internal resources
+        # can access it, but this is very convenient for local development.
+        - !ImportValue VPC-PublicSubnetB
+        - !ImportValue VPC-PublicSubnetC
+        - !ImportValue VPC-PublicSubnetD
+        - !ImportValue VPC-PublicSubnetE
+
+  HttpListener:
+   Type: AWS::ElasticLoadBalancingV2::Listener
+   Properties:
+     Port: 80
+     Protocol: HTTP
+     DefaultActions:
+       - Type: redirect
+         RedirectConfig:
+           Protocol: HTTPS
+           Port: 443
+           Host: "#{host}"
+           Path: "/#{path}"
+           Query: "#{query}"
+           StatusCode: HTTP_301
+     LoadBalancerArn: !Ref LoadBalancer
+
+  HttpsListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      Port: 443
+      Protocol: HTTPS
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+      LoadBalancerArn: !Ref LoadBalancer
+      Certificates:
+        - CertificateArn: !Ref HttpsCertificate
+
+  HttpsCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Sub "${SubdomainName}.${BaseDomainName}"
+      DomainValidationOptions:
+        - DomainName: !Sub "${SubdomainName}.${BaseDomainName}"
+          HostedZoneId: !Ref HostedZone
+      ValidationMethod: DNS
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      VpcId: !ImportValue VPC
+      Port: 80
+      TargetType: ip
+      Protocol: HTTP
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 2
+
+  # ------------------
+  #    ECS Service
+  # ------------------
+
+  ECSCluster:
+    Type: "AWS::ECS::Cluster"
+
+  ECSService:
+    Type: "AWS::ECS::Service"
+    DependsOn:
+      - HttpListener
+      - HttpsListener
+    Properties:
+      Cluster: !Ref ECSCluster
+      DesiredCount: 1
+      LaunchType: FARGATE
+      TaskDefinition: !Ref ECSTaskDefinition
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups: 
+            - !Ref ECSSecurityGroup
+          Subnets:
+            # Place ECS Service in private subnets, but traffic should use the LoadBalancer.
+            - !ImportValue VPC-SubnetB
+            - !ImportValue VPC-SubnetC
+            - !ImportValue VPC-SubnetD
+            - !ImportValue VPC-SubnetE
+      LoadBalancers:
+        - ContainerName: aiproxy
+          ContainerPort: 80
+          TargetGroupArn: !Ref TargetGroup
+
+  ECSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: Security Group for ECS Service
+      # TODO: This copies geocoder, but we should probably have a separate VPC for this service.
+      VpcId: !ImportValue VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+  ECSTaskDefinition:
+    Type: "AWS::ECS::TaskDefinition"
+    Properties:
+      Family: aiproxy
+      RequiresCompatibilities:
+        - FARGATE
+      NetworkMode: awsvpc
+      ExecutionRoleArn: !ImportValue AiProxyECSTaskExecutionRoleArn
+      Cpu: 256
+      Memory: 512
+      ContainerDefinitions:
+        - Name: aiproxy
+          Image: !Ref AppImageUri
+          Memory: 512
+          Cpu: 256
+          Essential: true
+          PortMappings:
+            - ContainerPort: 80
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  # ------------------
+  #  Logging & Alerts
+  # ------------------
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "${AWS::StackName}"
 
 Outputs:
-  AiProxyURL:
-    Value:
-      !Ref Domain
+  URL:
+    Description: URL for this service
+    Value: !Ref DNSRecord
+    Export:
+      Name: !Sub "${AWS::StackName}-URL"
+  LogGroupUrl:
+    Description: URL to view logs for this service
+    Value: !Sub "https://console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#logsV2:log-groups/log-group/${LogGroup}"

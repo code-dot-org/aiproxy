@@ -16,6 +16,12 @@ phases:
     commands:
       - echo Logging in to Docker Hub...
       - echo $DOCKER_HUB_PAT | docker login -u $DOCKER_HUB_USERNAME --password-stdin
+
+      - echo "Logging in to AWS ECR..."
+      - ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+      - AWS_REGION=us-east-1
+      - ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+      - aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
   
   build:
     # This will build and push the docker image to ECR and package the
@@ -23,32 +29,27 @@ phases:
     # steps. It will also run unit tests and linting.
     commands:
       - set -e
-      - BRANCH_NAME=${CODEBUILD_WEBHOOK_HEAD_REF#"refs/heads/"}
+
+      - echo ECR_REPOSITORY=$ECR_REPOSITORY
+      - echo BRANCH=$BRANCH
 
       - cd $CODEBUILD_SRC_DIR
 
-      - echo "Validating Cloudformation Templates..."
-      - cfn-lint cicd/1-setup/*.template.yml
-      - cfn-lint cicd/2-cicd/*.template.yml
-      - cfn-lint cicd/3-app/aiproxy/template.yml
-
-      - echo "Building Docker Image..."
-      - IMAGE_NAME=aiproxy
-      - IMAGE_TAG=$(git rev-parse --short HEAD)
-      - docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+      - ./ci-lint.sh
 
       - echo "Running Unit Tests..."
       - echo "This is where I would run my unit tests"
 
+      - echo "Building Docker Image..."
+      - IMAGE_NAME=aiproxy
+      - IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION:0:7} # short commit hash
+      - docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+
       - echo "Pushing Docker Image to ECR..."
-      - ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-      - AWS_REGION=$(aws configure get region)
-      - ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-      - ECR_REPO_NAME="aiproxy-${BRANCH_NAME}"
-      - FULL_IMAGE_NAME="${ECR_REGISTRY}/${ECR_REPO_NAME}:${IMAGE_TAG}"
-      - aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
-      - docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${FULL_IMAGE_NAME}
-      - docker push ${FULL_IMAGE_NAME}
+      - docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${ECR_REPOSITORY}:${IMAGE_TAG}
+      - docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${ECR_REPOSITORY}:latest
+      - docker push ${ECR_REPOSITORY}:${IMAGE_TAG}
+      - docker push ${ECR_REPOSITORY}:latest
 
       - echo "Linting cloudformation..."
       - cd $CODEBUILD_SRC_DIR
@@ -57,6 +58,7 @@ phases:
       - cat template.yml
       
       - echo "Creating environment config..."
+      - IMAGE_URI="${ECR_REPOSITORY}:${IMAGE_TAG}"
       - cicd/3-app/aiproxy/config/create-environment-config.sh
       
       - echo "Packaging Cloudformation Template..."

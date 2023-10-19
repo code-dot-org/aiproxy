@@ -16,6 +16,10 @@ from flask import Flask
 import openai
 
 def create_app(test_config=None):
+
+    # divide by zero LOL
+    print(1/0)
+
     # create and configure the app
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_mapping(

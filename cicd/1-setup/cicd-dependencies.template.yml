@@ -14,7 +14,7 @@ Resources:
   # the common policy rules required. Since we may want to create multiple
   # codebuild projects for different branches, we can append policies when those
   # stack resources are created (in "2-cicd/cicd.template.yml")
-  AiProxyCodeBuildRole:
+  CodeBuildRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -68,6 +68,11 @@ Resources:
                   - s3:GetObjectVersion
                 Resource:
                   - !Sub arn:aws:s3:::${ArtifactStore}/*
+              # TODO: Scope to specific ECR Repos?
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                Resource: '*'
               - Effect: Allow
                 Action: codestar-connections:UseConnection
                 Resource:
@@ -81,16 +86,59 @@ Resources:
                 Resource:
                   - !Sub arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:cicd/*
 
+  # This would ideally be defined in 3-app/aiproxy/template.yml, but we do
+  # not allow the CloudFormationServiceRole permission to CreateRole, so we
+  # have to define it here. TODO: Tweak permissions for the role used to create
+  # the cloudformation stack.
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: ECRPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                Resource: "*"
+        - PolicyName: LogsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+
 Outputs:
-  AiProxyCodeBuildArtifactBucket:
+  CodeBuildArtifactBucket:
     Description: AiProxy CodeBuild Artifact Bucket Name
     Value: !Ref ArtifactStore
     Export: {Name: AiProxyCodeBuildArtifactBucket}
-  AiProxyCodeBuildRoleArn:
+  CodeBuildRoleArn:
     Description: AiProxy CodeBuild Role ARN
-    Value: !GetAtt AiProxyCodeBuildRole.Arn
+    Value: !GetAtt CodeBuildRole.Arn
     Export: {Name: AiProxyCodeBuildRoleArn}
-  AiProxyCodeBuildRoleName:
+  CodeBuildRoleName:
     Description: AiProxy CodeBuild Role Name
-    Value: !Ref AiProxyCodeBuildRole
+    Value: !Ref CodeBuildRole
     Export: {Name: AiProxyCodeBuildRoleName}
+  ECSTaskExecutionRoleArn:
+    Description: AiProxy ECS Task Execution Role ARN
+    Value: !GetAtt ECSTaskExecutionRole.Arn
+    Export: {Name: AiProxyECSTaskExecutionRoleArn}

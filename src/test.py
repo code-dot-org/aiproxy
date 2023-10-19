@@ -1,9 +1,16 @@
 # This houses generic tests of supplemental libraries and health
 # of the service.
 
+import logging
+
 from flask import Blueprint, request
 
 test_routes = Blueprint('test_routes', __name__)
+
+@test_routes.route('/')
+def index():
+    logging.info("Index route called.")
+    return "Hello, World!"
 
 # A simple JSON response that always succeeds
 @test_routes.route('/test')
