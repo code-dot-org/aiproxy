@@ -71,7 +71,7 @@ Resources:
         - !ImportValue VPC-PublicSubnetD
         - !ImportValue VPC-PublicSubnetE
 
-  HttpListner:
+  HttpListener:
    Type: AWS::ElasticLoadBalancingV2::Listener
    Properties:
      Port: 80
