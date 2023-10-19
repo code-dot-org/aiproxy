@@ -16,6 +16,12 @@ phases:
     commands:
       - echo Logging in to Docker Hub...
       - echo $DOCKER_HUB_PAT | docker login -u $DOCKER_HUB_USERNAME --password-stdin
+
+      - echo "Logging in to AWS ECR..."
+      - ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+      - AWS_REGION=us-east-1
+      - ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+      - aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
   
   build:
     # This will build and push the docker image to ECR and package the
@@ -29,25 +35,17 @@ phases:
 
       - cd $CODEBUILD_SRC_DIR
 
-      - echo "Validating Cloudformation Templates..."
-      - cfn-lint cicd/1-setup/*.template.yml
-      - cfn-lint cicd/2-cicd/*.template.yml
-      - cfn-lint cicd/3-app/aiproxy/template.yml
+      - ./ci-lint.sh
+
+      - echo "Running Unit Tests..."
+      - echo "This is where I would run my unit tests"
 
       - echo "Building Docker Image..."
       - IMAGE_NAME=aiproxy
       - IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION:0:7} # short commit hash
       - docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
 
-      - echo "Running Unit Tests..."
-      - echo "This is where I would run my unit tests"
-
       - echo "Pushing Docker Image to ECR..."
-      - ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-      - AWS_REGION=us-east-1
-      - ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-      - aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
-
       - docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${ECR_REPOSITORY}:${IMAGE_TAG}
       - docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${ECR_REPOSITORY}:latest
       - docker push ${ECR_REPOSITORY}:${IMAGE_TAG}
