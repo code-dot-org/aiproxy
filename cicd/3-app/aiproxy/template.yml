@@ -1,6 +1,9 @@
 AWSTemplateFormatVersion: 2010-09-09
 Transform: AWS::Serverless-2016-10-31
 Description: Provision an instance of the AI Proxy service.
+
+# Dependencies: This template has dependencies, look for !ImportValue in the Resources section.
+
 Parameters:
   BaseDomainName:
     Type: String
@@ -60,7 +63,9 @@ Resources:
       SecurityGroups:
         - !ImportValue VPC-ELBSecurityGroup
       Subnets:
-        # TODO: This copies geocoder and the code.org load balancer, but we may prefer something unique
+        # Place load balancer in public subnets, so it's accessible from the internet.
+        # We may want to move this to the private subnets, so only internal resources
+        # can access it, but this is very convenient for local development.
         - !ImportValue VPC-PublicSubnetB
         - !ImportValue VPC-PublicSubnetC
         - !ImportValue VPC-PublicSubnetD
@@ -120,7 +125,9 @@ Resources:
 
   ECSService:
     Type: "AWS::ECS::Service"
-    DependsOn: Listener
+    DependsOn:
+      - HttpListener
+      - HttpsListener
     Properties:
       Cluster: !Ref ECSCluster
       DesiredCount: 1
@@ -132,9 +139,11 @@ Resources:
           SecurityGroups: 
             - !Ref ECSSecurityGroup
           Subnets:
-            # TODO: This copies geocoder, but we should probably have a separate subnet for this service.
+            # Place ECS Service in private subnets, but traffic should use the LoadBalancer.
             - !ImportValue VPC-SubnetB
             - !ImportValue VPC-SubnetC
+            - !ImportValue VPC-SubnetD
+            - !ImportValue VPC-SubnetE
       LoadBalancers:
         - ContainerName: aiproxy
           ContainerPort: 80
