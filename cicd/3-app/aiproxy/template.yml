@@ -66,7 +66,7 @@ Resources:
         - !ImportValue VPC-PublicSubnetD
         - !ImportValue VPC-PublicSubnetE
 
-  Listener:
+  HttpListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
       DefaultActions:
@@ -75,6 +75,27 @@ Resources:
       LoadBalancerArn: !Ref LoadBalancer
       Port: 80
       Protocol: HTTP
+
+  HttpsListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref HttpsCertificate
+
+  HttpsCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Sub "${SubdomainName}.${BaseDomainName}"
+      DomainValidationOptions:
+        - DomainName: !Sub "${SubdomainName}.${BaseDomainName}"
+          HostedZoneId: !Ref HostedZone
+      ValidationMethod: DNS
 
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
