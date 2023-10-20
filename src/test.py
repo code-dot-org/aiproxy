@@ -17,6 +17,24 @@ def index():
 def test():
     return {}
 
+# A simple failing request
+@test_routes.route('/test/exception')
+def test_exception():
+    raise Exception("This is a test")
+    return {}
+
+# A simple post of an error message.
+@test_routes.route('/test/error')
+def test_error():
+    logging.error("This is an error log.")
+    return {}
+
+# A simple post of a critical message.
+@test_routes.route('/test/critical')
+def test_critical():
+    logging.critical("This is a critical log.")
+    return {}
+
 # Test numpy integration
 @test_routes.route('/test/numpy')
 def test_numpy():

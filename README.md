@@ -25,6 +25,11 @@ to `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`. The `DEBUG` setting is th
 most permissive and shows all logging text. The `CRITICAL` prevents most logging
 from happening. Most logging happens at `INFO`, which is the default setting.
 
+To enable Honeybadger reporting for events in the application, provide the
+`HONEYBADGER_API_KEY` within the configuration or as an environment variable. When
+enabled, the application will notify on Exceptions raised and any `error` or `critical`
+logs.
+
 ## Local Development
 
 All of our server code is written using [Flask](https://flask.palletsprojects.com/en/2.3.x/).
