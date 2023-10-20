@@ -9,6 +9,9 @@ from src.test import test_routes
 from src.openai import openai_routes
 from src.assessment import assessment_routes
 
+# AWS
+import boto3
+
 # Flask
 from flask import Flask
 
@@ -43,9 +46,11 @@ def create_app(test_config=None):
     logging.basicConfig(format='%(asctime)s: %(name)s:%(message)s', level=log_level)
     logging.log(100, f"Setting up application. Logging level={log_level}")
     logging.basicConfig(format='%(asctime)s: %(levelname)s:%(name)s:%(message)s', level=log_level)
-
-    # Add Honeybadger support
-    if os.getenv('HONEYBADGER_API_KEY'):
+  
+    
+    honeybadger_api_key = get_secret('honeybadger_api_key')
+    if honeybadger_api_key:
+        # Add Honeybadger support
         logging.info('Setting up Honeybadger configuration')
 
         # I need to patch Flask in order for Honeybadger to load
@@ -56,7 +61,7 @@ def create_app(test_config=None):
         setattr(signals, 'signals_available', True)
 
         # Log exceptions to Honeybadger
-        app.config['HONEYBADGER_API_KEY'] = os.getenv('HONEYBADGER_API_KEY')
+        app.config['HONEYBADGER_API_KEY'] = honeybadger_api_key
         app.config['HONEYBADGER_PARAMS_FILTERS'] = 'password, secret, openai_api_key, api_key'
         app.config['HONEYBADGER_ENVIRONMENT'] = os.getenv('FLASK_ENV')
         FlaskHoneybadger(app, report_exceptions=True)
@@ -67,7 +72,7 @@ def create_app(test_config=None):
                 # But ignore Python logging exceptions on 'ERROR'
                 return not record.getMessage().startswith('Exception on ')
 
-        hb_handler = HoneybadgerHandler(api_key=os.getenv('HONEYBADGER_API_KEY'))
+        hb_handler = HoneybadgerHandler(api_key=honeybadger_api_key)
         hb_handler.setLevel(logging.ERROR)
         hb_handler.addFilter(NoExceptionErrorFilter())
         logger = logging.getLogger()
@@ -83,3 +88,23 @@ def create_app(test_config=None):
     app.register_blueprint(assessment_routes)
 
     return app
+
+# Get a secret from AWS Secrets Manager or local ENV
+def get_secret(secret_name):
+    local_env_var_name = secret_name.upper()
+    # AWS Secrets are named like `production/aiproxy.code.org/secret_name}`
+    aws_secret_id = '/'.join([os.getenv('ENVIRONMENT'), os.getenv('ENVIRONMENT_TYPE'), secret_name])
+
+    secret = ''
+    if os.getenv(local_env_var_name):
+        secret = os.getenv(local_env_var_name)
+        logging.info(f'Retrieved secret "{secret_name}" from local ENV')
+    else:
+        try:
+            client = boto3.client('secretsmanager')
+            logging.info(f'Retrieved secret "{secret_name}" from AWS Secrets Manager')
+            secret = client.get_secret_value(SecretId=aws_secret_id)
+        except Exception as e:
+            logging.error(f'Error getting "{secret_name}" from AWS Secrets Manager: {e}')
+
+    return secret

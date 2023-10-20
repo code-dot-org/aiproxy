@@ -189,6 +189,8 @@ Resources:
             # The most unique identifier for the environment is the DNS record.
             - Name: ENVIRONMENT
               Value: !Ref DNSRecord
+            - Name: ENVIRONMENT_TYPE
+              Value: !Ref EnvironmentType
           LogConfiguration:
             LogDriver: awslogs
             Options:
