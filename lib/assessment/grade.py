@@ -110,11 +110,9 @@ class Grade:
         # Try static analysis options (before invoking AI)
         result = self.statically_grade_student_work(rubric, student_code, student_id, examples=examples)
 
-        # If it gives back a grade with high confidence, we do not perform AI assessment
-        if result is not None:
-            pass
-
-        # We try the AI for assessment
+        # If it gives back a response, right now assume it is complete and do not perform an AI analysis
+        # We may want to, in the future, gauge how many of the concepts it has graded and let AI fill in the blanks
+        # Right now, however, only if there is no result, we try the AI for assessment
         if result is None:
             result = self.ai_grade_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
 
