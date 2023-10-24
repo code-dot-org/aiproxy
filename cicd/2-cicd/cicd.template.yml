@@ -25,7 +25,7 @@ Parameters:
   CodeStarConnectionResourceId:
     Type: String
     Description: The Resource Id component of the CodeStar connection ARN for the code-dot-org GitHub
-    Default: 9e27ebd6-de25-495c-9a2d-b24077376de8
+    Default: 8ec605d9-574e-4f33-9fca-86831566791c
   EnvironmentType:
     Type: String
     Description: A 'production' cicd stack includes automated tests in the pipeline and deploys 'test' and 'production' environments. Whereas a 'development' type will only deploy a development environment.
