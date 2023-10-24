@@ -186,11 +186,15 @@ class Grade:
             raise InvalidResponseError('invalid format')
 
         if not all((set(row.keys()) & set(expected_columns)) == set(expected_columns) for row in tsv_data):
-            raise InvalidResponseError('incorrect column names')
+            unexpected_columns = set(row.keys()) - set(expected_columns)
+            missing_columns = set(expected_columns) - set(row.keys())
+            raise InvalidResponseError('incorrect column names. unexpected: {unexpected_columns} missing: {missing_columns}')
 
         key_concepts_from_response = list(set(row["Key Concept"] for row in tsv_data))
         if sorted(rubric_key_concepts) != sorted(key_concepts_from_response):
-            raise InvalidResponseError('invalid or missing key concept')
+            unexpected_concepts = set(key_concepts_from_response) - set(rubric_key_concepts)
+            missing_concepts = set(rubric_key_concepts) - set(key_concepts_from_response)
+            raise InvalidResponseError(f'unexpected or missing key concept. unexpected: {unexpected_concepts} missing: {missing_concepts}')
 
         for row in tsv_data:
             if row["Grade"] not in VALID_GRADES:
