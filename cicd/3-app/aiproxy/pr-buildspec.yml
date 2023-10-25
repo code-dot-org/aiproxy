@@ -1,9 +1,17 @@
 version: 0.2
 
+# WARNING!
+# This buildspec.yml file is used to verify Pull Requests, and Pull
+# Requests can be submitted by any GitHub user. When executed, CodeBuild will
+# use the version of this file that exists within the Pull Request.
+#
+# This script will execute with limited permissions, and should not be granted
+# additional permissions without careful consideration.
+
 env:
   secrets-manager:
     DOCKER_HUB_USERNAME: cicd/docker-hub/username
-    DOCKER_HUB_PAT: cicd/docker-hub/pat
+    DOCKER_HUB_TOKEN: cicd/docker-hub/read-only-token
 
 phases:
   install:
@@ -15,7 +23,7 @@ phases:
   pre_build:
     commands:
       - echo Logging in to Docker Hub...
-      - echo $DOCKER_HUB_PAT | docker login -u $DOCKER_HUB_USERNAME --password-stdin
+      - echo $DOCKER_HUB_TOKEN | docker login -u $DOCKER_HUB_USERNAME --password-stdin
 
 
   build:
