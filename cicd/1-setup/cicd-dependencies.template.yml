@@ -59,7 +59,7 @@ Resources:
                   - s3:GetBucketAcl
                   - s3:GetBucketLocation
                 Resource:
-                  - !Sub arn:aws:s3:::${ArtifactStore}
+                  - !GetAtt ArtifactStore.Arn
               - Effect: Allow
                 Action:
                   - s3:PutObject
@@ -67,7 +67,7 @@ Resources:
                   - s3:GetObject
                   - s3:GetObjectVersion
                 Resource:
-                  - !Sub arn:aws:s3:::${ArtifactStore}/*
+                  - !Sub ${ArtifactStore.Arn}/*
               # TODO: Scope to specific ECR Repos?
               - Effect: Allow
                 Action:
@@ -77,6 +77,44 @@ Resources:
                 Action: codestar-connections:UseConnection
                 Resource:
                   - !Sub arn:aws:codestar-connections:us-east-1:${AWS::AccountId}:connection/*
+        - PolicyName: CodeBuildSecretsAccess
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "secretsmanager:GetSecretValue"
+                Resource:
+                  - !Sub arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:cicd/*
+  
+  # This role will be used by CodeBuild to verify pull requests. As such it has
+  # very limited permissions, as any GitHub user can create a Pull Requests.
+  # Since we may want to create multiple codebuild projects for different
+  # branches, we can append policies when those stack resources are created
+  # (in "2-cicd/cicd.template.yml")
+  PullRequestCodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: ['sts:AssumeRole']
+            Effect: Allow
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+        Version: '2012-10-17'
+      Path: /service-role/
+      PermissionsBoundary: !ImportValue IAM-DevPermissions
+      Policies:
+        - PolicyName: CodeBuildResourcesAccess
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*"
         - PolicyName: CodeBuildSecretsAccess
           PolicyDocument:
             Statement:

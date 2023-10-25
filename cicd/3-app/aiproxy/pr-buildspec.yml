@@ -17,12 +17,12 @@ phases:
       - echo Logging in to Docker Hub...
       - echo $DOCKER_HUB_PAT | docker login -u $DOCKER_HUB_USERNAME --password-stdin
 
+
   build:
     commands:
       - set -e
 
       - BRANCH_NAME=${CODEBUILD_WEBHOOK_HEAD_REF#"refs/heads/"}
-      - ARTIFACT_PATH=branch/$BRANCH_NAME/$CODEBUILD_BUILD_NUMBER
       - COMMIT_HASH=${CODEBUILD_RESOLVED_SOURCE_VERSION:0:7}
 
       - cd $CODEBUILD_SRC_DIR
