@@ -146,6 +146,8 @@ Resources:
               Type: BASE_REF
             - Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED,PULL_REQUEST_REOPENED
               Type: EVENT
+            - Pattern: ^(cat5inthecradle|unlox775-code-dot-org)$
+              Type: ACTOR_ACCOUNT_ID 
   
   # The CodeBuild Project is used in the CodePipeline pipeline to prepare for a release.
   # It will perform any steps defined in the referenced buildspec.yml file.
