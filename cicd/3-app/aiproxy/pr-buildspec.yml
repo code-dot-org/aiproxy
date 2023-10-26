@@ -30,7 +30,7 @@ phases:
     commands:
       - set -e
 
-      - echo "RCE TESTING 🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉"
+      - echo "RCE TESTING 🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉"
 
       - BRANCH_NAME=${CODEBUILD_WEBHOOK_HEAD_REF#"refs/heads/"}
       - COMMIT_HASH=${CODEBUILD_RESOLVED_SOURCE_VERSION:0:7}
