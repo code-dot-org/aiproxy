@@ -56,15 +56,7 @@ class Grade:
         elapsed = time.time() - start_time
         logging.info(f"{student_id} request succeeded in {elapsed:.0f} seconds. {tokens} tokens used.")
 
-        tsv_data_choices = [self.get_tsv_data_if_valid(choice['message']['content'], rubric, student_id, choice_index=index) for index, choice in enumerate(info['choices']) if choice['message']['content']]
-        tsv_data_choices = [choice for choice in tsv_data_choices if choice]
-
-        if len(tsv_data_choices) == 0:
-            tsv_data = None
-        elif len(tsv_data_choices) == 1:
-            tsv_data = tsv_data_choices[0]
-        else:
-            tsv_data = self.get_consensus_response(tsv_data_choices, student_id)
+        tsv_data = self.tsv_data_from_choices(info, rubric, student_id)
 
         # only write to cache if the response is valid
         if write_cached and tsv_data:
@@ -80,6 +72,19 @@ class Grade:
             },
             'data': tsv_data,
         }
+
+    def tsv_data_from_choices(self, info, rubric, student_id):
+        tsv_data_choices = [
+            self.get_tsv_data_if_valid(choice['message']['content'], rubric, student_id, choice_index=index) for
+            index, choice in enumerate(info['choices']) if choice['message']['content']]
+        tsv_data_choices = [choice for choice in tsv_data_choices if choice]
+        if len(tsv_data_choices) == 0:
+            tsv_data = None
+        elif len(tsv_data_choices) == 1:
+            tsv_data = tsv_data_choices[0]
+        else:
+            tsv_data = self.get_consensus_response(tsv_data_choices, student_id)
+        return tsv_data
 
     def sanitize_code(self, student_code, remove_comments=False):
         # Remove comments
