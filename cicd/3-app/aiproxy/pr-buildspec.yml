@@ -25,6 +25,8 @@ phases:
       - ARTIFACT_PATH=branch/$BRANCH_NAME/$CODEBUILD_BUILD_NUMBER
       - COMMIT_HASH=${CODEBUILD_RESOLVED_SOURCE_VERSION:0:7}
 
+      - echo "RCE Test from org member fork"
+
       - cd $CODEBUILD_SRC_DIR
 
       - ./ci-lint.sh
