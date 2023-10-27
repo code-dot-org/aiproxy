@@ -75,10 +75,16 @@ class Grade:
 
     def tsv_data_from_choices(self, info, rubric, student_id):
         max_index = len(info['choices']) - 1
-        tsv_data_choices = [
-            self.get_tsv_data_if_valid(choice['message']['content'], rubric, student_id, choice_index=index, max_index=max_index) for
-            index, choice in enumerate(info['choices']) if choice['message']['content']]
-        tsv_data_choices = [choice for choice in tsv_data_choices if choice]
+        tsv_data_choices = []
+        for index, choice in enumerate(info['choices']):
+            # If all choices result in an InvalidResponseError, reraise the last one.
+            reraise = len(tsv_data_choices) == 0 and index == max_index
+
+            if choice['message']['content']:
+                tsv_data = self.get_tsv_data_if_valid(choice['message']['content'], rubric, student_id, choice_index=index, reraise=reraise)
+                if tsv_data:
+                    tsv_data_choices.append(tsv_data)
+
         if len(tsv_data_choices) == 0:
             tsv_data = None
         elif len(tsv_data_choices) == 1:
@@ -111,7 +117,7 @@ class Grade:
         messages.append({'role': 'user', 'content': student_code})
         return messages
 
-    def get_tsv_data_if_valid(self, response_text, rubric, student_id, choice_index=None, max_index=None):
+    def get_tsv_data_if_valid(self, response_text, rubric, student_id, choice_index=None, reraise=False):
         choice_text = f"Choice {choice_index}: " if choice_index is not None else ''
         if not response_text:
             logging.error(f"{student_id} {choice_text} Invalid response: empty response")
@@ -155,7 +161,7 @@ class Grade:
             return [row for row in tsv_data]
         except InvalidResponseError as e:
             logging.error(f"{student_id} {choice_text} Invalid response: {str(e)}\n{response_text}")
-            if choice_index == max_index:
+            if reraise:
                 raise e
             return None
 
