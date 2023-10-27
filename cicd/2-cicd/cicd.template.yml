@@ -156,7 +156,7 @@ Resources:
               Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED,PULL_REQUEST_REOPENED
             - Type: FILE_PATH
               ExcludeMatchedPattern: true
-              Pattern: ^cicd/.*$
+              Pattern: ^(cicd/.*|Dockerfile)$
   
   # The CodeBuild Project is used in the CodePipeline pipeline to prepare for a release.
   # It will perform any steps defined in the referenced buildspec.yml file.
