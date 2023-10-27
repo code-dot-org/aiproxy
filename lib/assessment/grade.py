@@ -86,7 +86,7 @@ class Grade:
                     tsv_data_choices.append(tsv_data)
 
         if len(tsv_data_choices) == 0:
-            tsv_data = None
+            raise "No valid responses. An InvalidResponseError should have been raised earlier."
         elif len(tsv_data_choices) == 1:
             tsv_data = tsv_data_choices[0]
         else:
@@ -207,7 +207,9 @@ class Grade:
         key_concepts_from_response = list(set(row["Key Concept"] for row in tsv_data))
         if sorted(rubric_key_concepts) != sorted(key_concepts_from_response):
             unexpected_concepts = set(key_concepts_from_response) - set(rubric_key_concepts)
+            unexpected_concepts = None if len(unexpected_concepts) == 0 else unexpected_concepts
             missing_concepts = set(rubric_key_concepts) - set(key_concepts_from_response)
+            missing_concepts = None if len(missing_concepts) == 0 else missing_concepts
             raise InvalidResponseError(f'unexpected or missing key concept. unexpected: {unexpected_concepts} missing: {missing_concepts}')
 
         for row in tsv_data:
