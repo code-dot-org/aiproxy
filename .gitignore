@@ -3,3 +3,7 @@ __pycache__
 
 # Ignore local Ruby config necessary for our custom AWS auth solution
 .ruby-version
+
+# Local editor settings
+.vscode
+.idea

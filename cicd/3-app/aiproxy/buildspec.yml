@@ -3,7 +3,7 @@ version: 0.2
 env:
   secrets-manager:
     DOCKER_HUB_USERNAME: cicd/docker-hub/username
-    DOCKER_HUB_PAT: cicd/docker-hub/pat
+    DOCKER_HUB_TOKEN: cicd/docker-hub/admin-token
 
 phases:
   install:
@@ -15,7 +15,7 @@ phases:
   pre_build:
     commands:
       - echo Logging in to Docker Hub...
-      - echo $DOCKER_HUB_PAT | docker login -u $DOCKER_HUB_USERNAME --password-stdin
+      - echo $DOCKER_HUB_TOKEN | docker login -u $DOCKER_HUB_USERNAME --password-stdin
 
       - echo "Logging in to AWS ECR..."
       - ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
