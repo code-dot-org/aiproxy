@@ -73,6 +73,20 @@ class Grade:
             'data': tsv_data,
         }
 
+    def sanitize_code(self, student_code, remove_comments=False):
+        # Remove comments
+        if remove_comments:
+            student_code = "\n".join(
+                list(
+                    map(lambda x:
+                        x[0:x.index("//")] if "//" in x else x,
+                        student_code.split('\n')
+                    )
+                )
+            )
+
+        return student_code
+
     def tsv_data_from_choices(self, info, rubric, student_id):
         max_index = len(info['choices']) - 1
         tsv_data_choices = []
@@ -92,20 +106,6 @@ class Grade:
         else:
             tsv_data = self.get_consensus_response(tsv_data_choices, student_id)
         return tsv_data
-
-    def sanitize_code(self, student_code, remove_comments=False):
-        # Remove comments
-        if remove_comments:
-            student_code = "\n".join(
-                list(
-                    map(lambda x:
-                        x[0:x.index("//")] if "//" in x else x,
-                        student_code.split('\n')
-                    )
-                )
-            )
-
-        return student_code
 
     def compute_messages(self, prompt, rubric, student_code, examples=[]):
         messages = [
