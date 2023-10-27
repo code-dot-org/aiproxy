@@ -74,8 +74,9 @@ class Grade:
         }
 
     def tsv_data_from_choices(self, info, rubric, student_id):
+        max_index = len(info['choices']) - 1
         tsv_data_choices = [
-            self.get_tsv_data_if_valid(choice['message']['content'], rubric, student_id, choice_index=index) for
+            self.get_tsv_data_if_valid(choice['message']['content'], rubric, student_id, choice_index=index, max_index=max_index) for
             index, choice in enumerate(info['choices']) if choice['message']['content']]
         tsv_data_choices = [choice for choice in tsv_data_choices if choice]
         if len(tsv_data_choices) == 0:
@@ -110,7 +111,7 @@ class Grade:
         messages.append({'role': 'user', 'content': student_code})
         return messages
 
-    def get_tsv_data_if_valid(self, response_text, rubric, student_id, choice_index=None):
+    def get_tsv_data_if_valid(self, response_text, rubric, student_id, choice_index=None, max_index=None):
         choice_text = f"Choice {choice_index}: " if choice_index is not None else ''
         if not response_text:
             logging.error(f"{student_id} {choice_text} Invalid response: empty response")
@@ -154,6 +155,8 @@ class Grade:
             return [row for row in tsv_data]
         except InvalidResponseError as e:
             logging.error(f"{student_id} {choice_text} Invalid response: {str(e)}\n{response_text}")
+            if choice_index == max_index:
+                raise e
             return None
 
     def parse_tsv(self, tsv_text):

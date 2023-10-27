@@ -9,6 +9,7 @@ import json
 
 # Our assessment code
 from lib.assessment import assess
+from lib.assessment.grade import InvalidResponseError
 
 assessment_routes = Blueprint('assessment_routes', __name__)
 
@@ -50,6 +51,8 @@ def post_assessment():
     except ValueError:
         return "One of the arguments is not parseable as a number", 400
     except openai.error.InvalidRequestError as e:
+        return str(e), 400
+    except InvalidResponseError as e:
         return str(e), 400
 
     if not isinstance(grades, dict) and isinstance(grades.get("data"), list):
