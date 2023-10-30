@@ -56,15 +56,7 @@ class Grade:
         elapsed = time.time() - start_time
         logging.info(f"{student_id} request succeeded in {elapsed:.0f} seconds. {tokens} tokens used.")
 
-        tsv_data_choices = [self.get_tsv_data_if_valid(choice['message']['content'], rubric, student_id, choice_index=index) for index, choice in enumerate(info['choices']) if choice['message']['content']]
-        tsv_data_choices = [choice for choice in tsv_data_choices if choice]
-
-        if len(tsv_data_choices) == 0:
-            tsv_data = None
-        elif len(tsv_data_choices) == 1:
-            tsv_data = tsv_data_choices[0]
-        else:
-            tsv_data = self.get_consensus_response(tsv_data_choices, student_id)
+        tsv_data = self.tsv_data_from_choices(info, rubric, student_id)
 
         # only write to cache if the response is valid
         if write_cached and tsv_data:
@@ -95,6 +87,26 @@ class Grade:
 
         return student_code
 
+    def tsv_data_from_choices(self, info, rubric, student_id):
+        max_index = len(info['choices']) - 1
+        tsv_data_choices = []
+        for index, choice in enumerate(info['choices']):
+            # If all choices result in an InvalidResponseError, reraise the last one.
+            reraise = len(tsv_data_choices) == 0 and index == max_index
+
+            if choice['message']['content']:
+                tsv_data = self.get_tsv_data_if_valid(choice['message']['content'], rubric, student_id, choice_index=index, reraise=reraise)
+                if tsv_data:
+                    tsv_data_choices.append(tsv_data)
+
+        if len(tsv_data_choices) == 0:
+            raise "No valid responses. An InvalidResponseError should have been raised earlier."
+        elif len(tsv_data_choices) == 1:
+            tsv_data = tsv_data_choices[0]
+        else:
+            tsv_data = self.get_consensus_response(tsv_data_choices, student_id)
+        return tsv_data
+
     def compute_messages(self, prompt, rubric, student_code, examples=[]):
         messages = [
             {'role': 'system', 'content': f"{prompt}\n\nRubric:\n{rubric}"}
@@ -105,7 +117,7 @@ class Grade:
         messages.append({'role': 'user', 'content': student_code})
         return messages
 
-    def get_tsv_data_if_valid(self, response_text, rubric, student_id, choice_index=None):
+    def get_tsv_data_if_valid(self, response_text, rubric, student_id, choice_index=None, reraise=False):
         choice_text = f"Choice {choice_index}: " if choice_index is not None else ''
         if not response_text:
             logging.error(f"{student_id} {choice_text} Invalid response: empty response")
@@ -149,6 +161,8 @@ class Grade:
             return [row for row in tsv_data]
         except InvalidResponseError as e:
             logging.error(f"{student_id} {choice_text} Invalid response: {str(e)}\n{response_text}")
+            if reraise:
+                raise e
             return None
 
     def parse_tsv(self, tsv_text):
@@ -186,11 +200,17 @@ class Grade:
             raise InvalidResponseError('invalid format')
 
         if not all((set(row.keys()) & set(expected_columns)) == set(expected_columns) for row in tsv_data):
-            raise InvalidResponseError('incorrect column names')
+            unexpected_columns = set(row.keys()) - set(expected_columns)
+            missing_columns = set(expected_columns) - set(row.keys())
+            raise InvalidResponseError('incorrect column names. unexpected: {unexpected_columns} missing: {missing_columns}')
 
         key_concepts_from_response = list(set(row["Key Concept"] for row in tsv_data))
         if sorted(rubric_key_concepts) != sorted(key_concepts_from_response):
-            raise InvalidResponseError('invalid or missing key concept')
+            unexpected_concepts = set(key_concepts_from_response) - set(rubric_key_concepts)
+            unexpected_concepts = None if len(unexpected_concepts) == 0 else unexpected_concepts
+            missing_concepts = set(rubric_key_concepts) - set(key_concepts_from_response)
+            missing_concepts = None if len(missing_concepts) == 0 else missing_concepts
+            raise InvalidResponseError(f'unexpected or missing key concept. unexpected: {unexpected_concepts} missing: {missing_concepts}')
 
         for row in tsv_data:
             if row["Grade"] not in VALID_GRADES:
