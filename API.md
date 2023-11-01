@@ -21,7 +21,6 @@
 * `examples`: Array of pairs of code (js) and openai response (tsv).
 * `remove-comments`: When `1`, attempts to strip comments out of the code before assessment. Default: 0
 * `num-responses`: The number of times it should ask the AI model. It votes on the final answer. Default: 1
-* `num-passing-grades`: The number of grades to consider 'passing'. Defaults: 2 (pass fail)
 * `temperature`: The 'temperature' value for ChatGPT LLMs.
 
 * **Response**: `application/json`: Data and metadata related to the response. The `data` is the list of key concepts, assessment values, and reasons. The `metadata` is the input to the AI and some usage information. `n` is the number of responses asked for in the input. The `metadata`'s `agent` parameter tells you what performed the assessment. Currently this is either `static`, for a simple static check, and `openai` for ChatGPT. Based on the agent, different metadata might be available. For instance, the `static` agent does not report `usage` info. Example below.
@@ -65,7 +64,6 @@
 * `api-key`: The API key associated with the model. Default: the configured key
 * `remove-comments`: When `1`, attempts to strip comments out of the code before assessment. Default: 0
 * `num-responses`: The number of times it should ask the AI model. It votes on the final answer. Default: 1
-* `num-passing-grades`: The number of grades to consider 'passing'. Defaults: 2 (pass fail)
 * `temperature`: The 'temperature' value for ChatGPT LLMs.
 
 * **Response**: `application/json`: A set of data and metadata where `data` is a list of key concepts, assessment values, and reasons. See above.

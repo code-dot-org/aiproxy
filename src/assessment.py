@@ -12,12 +12,6 @@ from lib.assessment import assess
 
 assessment_routes = Blueprint('assessment_routes', __name__)
 
-# Get the status of a rubric assessment
-@assessment_routes.route('/assessment', methods=['GET'])
-def get_assessment():
-    # So far, we don't persist the results in any memory store, here.
-    return {}
-
 # Submit a rubric assessment
 @assessment_routes.route('/assessment', methods=['POST'])
 def post_assessment():
@@ -45,14 +39,13 @@ def post_assessment():
             remove_comments=(request.values.get("remove-comments", "0") != "0"),
             num_responses=int(request.values.get("num-responses", "1")),
             temperature=float(request.values.get("temperature", "0.2")),
-            num_passing_grades=int(request.values.get("num-passing-grades", "2")),
         )
     except ValueError:
         return "One of the arguments is not parseable as a number", 400
     except openai.error.InvalidRequestError as e:
         return str(e), 400
 
-    if not isinstance(grades, dict) and isinstance(grades.get("data"), list):
+    if not isinstance(grades, dict) or not isinstance(grades.get("data"), list):
         return "response from AI or service not valid", 400
 
     return grades
@@ -81,14 +74,13 @@ def test_assessment():
             remove_comments=(request.values.get("remove-comments", "0") != "0"),
             num_responses=int(request.values.get("num-responses", "1")),
             temperature=float(request.values.get("temperature", "0.2")),
-            num_passing_grades=int(request.values.get("num-passing-grades", "2")),
         )
     except ValueError:
         return "One of the arguments is not parseable as a number", 400
     except openai.error.InvalidRequestError as e:
         return str(e), 400
 
-    if not isinstance(grades, dict) and isinstance(grades.get("data"), list):
+    if not isinstance(grades, dict) or not isinstance(grades.get("data"), list):
         return "response from AI or service not valid", 400
 
     return grades
@@ -116,14 +108,13 @@ def test_assessment_blank():
             remove_comments=(request.values.get("remove-comments", "0") != "0"),
             num_responses=int(request.values.get("num-responses", "1")),
             temperature=float(request.values.get("temperature", "0.2")),
-            num_passing_grades=int(request.values.get("num-passing-grades", "2")),
         )
     except ValueError:
         return "One of the arguments is not parseable as a number", 400
     except openai.error.InvalidRequestError as e:
         return str(e), 400
 
-    if not isinstance(grades, dict) and isinstance(grades.get("data"), list):
+    if not isinstance(grades, dict) or not isinstance(grades.get("data"), list):
         return "response from AI or service not valid", 400
 
     return grades

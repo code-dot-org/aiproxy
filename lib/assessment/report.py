@@ -6,9 +6,6 @@ from typing import List, Dict, Any
 from lib.assessment.config import VALID_GRADES
 
 class Report:
-    def __init__(self):
-        pass
-
     def _compute_pass_fail_cell_color(self, expected, actual, passing_grades):
         if Report.accurate(expected, actual, passing_grades):
             return 'green'
@@ -72,7 +69,7 @@ class Report:
     def generate_html_output(self, output_file, prompt, rubric, accuracy, actual_grades, expected_grades, passing_grades, accuracy_by_criteria, errors, command_line):
         link_base_url = f'file://{os.getcwd()}/sample_code'
 
-        with open(output_file, 'w') as file:
+        with open(output_file, 'w+') as file:
             file.write('<!DOCTYPE html>\n')
             file.write('<html lang="en">\n')
             file.write('<head>\n')

@@ -1,5 +1,6 @@
 import os
 import json
+import re
 import csv
 import time
 import requests
@@ -64,11 +65,7 @@ class Grade:
         }
 
         # Post to the AI service
-        try:
-            response = requests.post(api_url, headers=headers, json=data, timeout=120)
-        except requests.exceptions.ReadTimeout:
-            logging.error(f"{student_id} request timed out in {(time.time() - start_time):.0f} seconds.")
-            return None
+        response = requests.post(api_url, headers=headers, json=data, timeout=120)
 
         if response.status_code != 200:
             logging.error(f"{student_id} Error calling the API: {response.status_code}")
@@ -114,7 +111,11 @@ class Grade:
         # We may want to, in the future, gauge how many of the concepts it has graded and let AI fill in the blanks
         # Right now, however, only if there is no result, we try the AI for assessment
         if result is None:
-            result = self.ai_grade_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
+            try:
+                result = self.ai_grade_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
+            except requests.exceptions.ReadTimeout:
+                logging.error(f"{student_id} request timed out in {(time.time() - start_time):.0f} seconds.")
+                result = None
 
         # No assessment was possible
         if result is None:
@@ -125,9 +126,9 @@ class Grade:
         logging.info(f"{student_id} request succeeded in {elapsed:.0f} seconds. {tokens} tokens used.")
 
         # only write to cache if the response is valid
-        if write_cached and tsv_data:
-            with open(f"cached_responses/{student_id}.json", 'w') as f:
-                json.dump(tsv_data, f, indent=4)
+        if write_cached and result:
+            with open(f"cached_responses/{student_id}.json", 'w+') as f:
+                json.dump(result, f, indent=4)
 
         # Craft the response dictionary
         response = {
@@ -140,17 +141,27 @@ class Grade:
         response['metadata'].update(result.get('metadata', {})),
         return response
 
+    def remove_js_comments(self, code):
+        # This regex pattern captures three groups:
+        # 1) Single or double quoted strings
+        # 2) Multi-line comments
+        # 3) Single-line comments
+        pattern = r'(".*?[^\\]"|\'.*?[^\\]\'|/\*.*?\*/|//.*?$)'
+
+        def replacer(match):
+            # If the match is a string, return it unchanged
+            if match.group(0).startswith(("'", '"')):
+                return match.group(0)
+
+            # Otherwise, it's a comment, so remove it
+            return ''
+
+        return re.sub(pattern, replacer, code, flags=re.DOTALL | re.MULTILINE)
+
     def sanitize_code(self, student_code, remove_comments=False):
         # Remove comments
         if remove_comments:
-            student_code = "\n".join(
-                list(
-                    map(lambda x:
-                        x[0:x.index("//")] if "//" in x else x,
-                        student_code.split('\n')
-                    )
-                )
-            )
+            student_code = self.remove_js_comments(student_code)
 
         return student_code
 
@@ -203,22 +214,14 @@ class Grade:
             tsv_data = list(csv.DictReader(StringIO(text), delimiter='\t'))
 
         try:
-            self.sanitize_server_response(tsv_data)
-            self.validate_server_response(tsv_data, rubric)
+            self._sanitize_server_response(tsv_data)
+            self._validate_server_response(tsv_data, rubric)
             return [row for row in tsv_data]
         except InvalidResponseError as e:
             logging.error(f"{student_id} {choice_text} Invalid response: {str(e)}\n{response_text}")
             return None
 
-    def parse_tsv(self, tsv_text):
-        rows = tsv_text.split("\n")
-        header = rows.pop(0).split("\t")
-        return [dict(zip(header, row.split("\t"))) for row in rows]
-
-    def sanitize_server_response(self, tsv_data):
-        if not isinstance(tsv_data, list):
-            return
-
+    def _sanitize_server_response(self, tsv_data):
         # Strip whitespace and quotes from fields
         for row in tsv_data:
             for key in list(row.keys()):
@@ -236,13 +239,10 @@ class Grade:
                 if not row["Key Concept"][0:1].isalnum():
                     tsv_data.remove(row)
 
-    def validate_server_response(self, tsv_data, rubric):
+    def _validate_server_response(self, tsv_data, rubric):
         expected_columns = ["Key Concept", "Observations", "Grade", "Reason"]
 
         rubric_key_concepts = list(set(row['Key Concept'] for row in csv.DictReader(rubric.splitlines())))
-
-        if not isinstance(tsv_data, list):
-            raise InvalidResponseError('invalid format')
 
         if not all((set(row.keys()) & set(expected_columns)) == set(expected_columns) for row in tsv_data):
             raise InvalidResponseError('incorrect column names')

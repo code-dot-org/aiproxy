@@ -2,3 +2,7 @@ numpy
 openai
 flask
 waitress
+pytest
+pytest-mock
+requests-mock
+coverage

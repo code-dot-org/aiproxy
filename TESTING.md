@@ -1,22 +1,51 @@
 # Testing
 
-This assumes you have built and are running the container as depicted in the main `README.md`.
-In that case, you have a running server on port 5000.
+## Unit Tests
+
+The `./tests` directory contains two categories of test:
+
+* `unit`: Unit tests for library functions in the `./lib` path.
+* `routes`: Tests routes and their helpers in the `./src` as a unit.
+
+All tests are using [pytest](https://docs.pytest.org/en/7.4.x/).
+
+To run the test suite, you can run: `./bin/test` to build and run the
+docker container and invoke pytest. You can pass any arguments to pytest
+via the command. For instance, the `-k` argument can filter tests by name:
+
+```
+# Run only tests with 'grade' in the name:
+./bin/test.sh -k grade
+```
+
+This will run a container without starting the server itself. You can also
+just run `pytest` within a running container's shell session by using the
+`pytest` command within the `/app` directory in the container:
+
+```
+PYTHONPATH=/app pytest
+```
 
 ## Scripted
+
+This assumes you have built and are running the container as depicted in the main `README.md`.
+In that case, you have a running server on port 5000 (or 80).
 
 You can run the provided Ruby script to issue a request to the server on your native machine.
 To do so, if you have some system Ruby installed, you can invoke this command (at the root
 of this repository):
 
 ```
-ruby test/assessment-test.rb
+ruby ./bin/assessment-test.rb
 ```
 
 This will ping the running server's `/assessment` route building out the appropriate `POST`
 request with the test data in the `test` path of the repository.
 
 ## Curl
+
+This assumes you have built and are running the container as depicted in the main `README.md`.
+In that case, you have a running server on port 5000 (or 80).
 
 You can issue a "test" rubric assessment using hard-coded content that is found in the
 `test/data` path by using the `/test/assessment` URL. Here, I'm using `curl` to show

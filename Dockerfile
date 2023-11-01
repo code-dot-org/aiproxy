@@ -5,7 +5,7 @@ COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY ./test /app/test
+COPY ./tests /app/tests
 COPY ./lib /app/lib
 COPY ./src /app/src
 
