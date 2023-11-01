@@ -24,11 +24,12 @@
 * `num-passing-grades`: The number of grades to consider 'passing'. Defaults: 2 (pass fail)
 * `temperature`: The 'temperature' value for ChatGPT LLMs.
 
-* **Response**: `application/json`: Data and metadata related to the response. The `data` is the list of key concepts, assessment values, and reasons. The `metadata` is the input to the AI and some usage information. `n` is the number of responses asked for in the input. Example below.
+* **Response**: `application/json`: Data and metadata related to the response. The `data` is the list of key concepts, assessment values, and reasons. The `metadata` is the input to the AI and some usage information. `n` is the number of responses asked for in the input. The `metadata`'s `agent` parameter tells you what performed the assessment. Currently this is either `static`, for a simple static check, and `openai` for ChatGPT. Based on the agent, different metadata might be available. For instance, the `static` agent does not report `usage` info. Example below.
 
 ```
 {
   "metadata": {
+    "agent": "openai",
     "time": 39.43,
     "student_id": 1553633,
     "usage": {

@@ -95,3 +95,38 @@ def test_assessment():
         return "response from AI or service not valid", 400
 
     return grades
+
+# Submit a test rubric assessment for a blank project
+@assessment_routes.route('/test/assessment/blank', methods=['GET','POST'])
+def test_assessment_blank():
+    openai.api_key = os.getenv('OPENAI_API_KEY')
+
+    code = ""
+
+    with open('test/data/u3l23.txt', 'r') as f:
+        prompt = f.read()
+
+    with open('test/data/u3l23.csv', 'r') as f:
+        rubric = f.read()
+
+    try:
+        grades = assess.grade(
+            code=code,
+            prompt=prompt,
+            rubric=rubric,
+            api_key=request.values.get("api-key", openai.api_key),
+            llm_model=request.values.get("model", "gpt-4"),
+            remove_comments=(request.values.get("remove-comments", "0") != "0"),
+            num_responses=int(request.values.get("num-responses", "1")),
+            temperature=float(request.values.get("temperature", "0.2")),
+            num_passing_grades=int(request.values.get("num-passing-grades", "2")),
+        )
+    except ValueError:
+        return "One of the arguments is not parseable as a number", 400
+    except openai.error.InvalidRequestError as e:
+        return str(e), 400
+
+    if not isinstance(grades, dict) and isinstance(grades.get("data"), list):
+        return "response from AI or service not valid", 400
+
+    return grades
