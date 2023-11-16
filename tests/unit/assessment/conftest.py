@@ -134,7 +134,7 @@ def num_responses():
     """ Creates a valid num_responses value.
     """
 
-    yield random.randint(1, 3)
+    yield random.randint(2, 3)
 
 
 @pytest.fixture

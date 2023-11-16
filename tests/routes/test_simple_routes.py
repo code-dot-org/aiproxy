@@ -19,6 +19,13 @@ def test_json(client):
     assert response.status_code == 200
     assert response.json == {}
 
+def test_429(client):
+    """ Tests the test route '/test/429' that returns the too many requests response
+    """
+
+    response = client.get('/test/429')
+    assert response.status_code == 429
+
 def test_numpy(client):
     """ Tests that numpy works via the '/numpy' route.
 
