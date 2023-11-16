@@ -312,7 +312,7 @@ class TestAiGradeStudentWork:
     def test_should_return_data_as_none_when_ai_result_is_empty(self, requests_mock, mocker, openai_gpt_response, grade, prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model):
         mock_gpt_response = openai_gpt_response(
             rubric=rubric,
-            num_responses=3
+            num_responses=num_responses
         )
 
         requests_mock.post(
@@ -330,7 +330,6 @@ class TestAiGradeStudentWork:
         assert result['data'] is None
         
     def test_should_return_the_choice_when_only_requesting_one_response(self, requests_mock, mocker, openai_gpt_response, grade, prompt, rubric, code, student_id, examples, temperature, llm_model):
-
         num_responses = 1
 
         mock_gpt_response = openai_gpt_response(
