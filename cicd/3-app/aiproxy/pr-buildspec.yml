@@ -37,3 +37,4 @@ phases:
 
       - ./ci-lint.sh
       - ./ci-build.sh
+      - ./ci-test.sh

@@ -75,6 +75,9 @@ For information about the API, see the [API documentation](API.md).
 
 ## Testing
 
+To run the test suite against the container, invoke the `./bin/test.sh` script. This will
+build and run the container against the Python tests.
+
 For information about testing the service, see the [Testing documentation](TESTING.md).
 
 ## CICD

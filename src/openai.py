@@ -10,6 +10,7 @@ import openai
 
 openai_routes = Blueprint('openai_routes', __name__)
 
+
 # Just report the models from OpenAI
 @openai_routes.route('/openai/models')
 def get_openai_models():
