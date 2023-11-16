@@ -37,13 +37,13 @@ phases:
 
       - ./ci-lint.sh
 
-      - echo "Running Unit Tests..."
-      - echo "This is where I would run my unit tests"
-
       - echo "Building Docker Image..."
       - IMAGE_NAME=aiproxy
       - IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION:0:7} # short commit hash
       - docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+
+      - echo "Running Unit Tests..."
+      - docker run -e PYTHONPATH=/app --rm ${IMAGE_NAME}:${IMAGE_TAG} /bin/bash -c "coverage run -m pytest $@ && coverage report -m"
 
       - echo "Pushing Docker Image to ECR..."
       - docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${ECR_REPOSITORY}:${IMAGE_TAG}
