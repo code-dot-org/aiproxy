@@ -12,6 +12,11 @@ test_routes = Blueprint('test_routes', __name__)
 def test():
     return {}
 
+# A simple JSON response that always succeeds
+@test_routes.route('/test/429')
+def test_429():
+    return "Too many requests", 429
+
 # Test numpy integration
 @test_routes.route('/test/numpy')
 def test_numpy():

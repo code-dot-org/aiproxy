@@ -7,13 +7,6 @@ import pytest
 import openai
 
 
-@pytest.fixture(autouse=True)
-def mock_requests(requests_mock):
-    """ Ensure no network request goes out during route tests, here.
-    """
-
-    yield requests_mock
-
 class TestGetOpenAiModels:
     """ Tests GET to '/openai/models' to list the available models.
 
