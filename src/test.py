@@ -12,7 +12,25 @@ test_routes = Blueprint('test_routes', __name__)
 def test():
     return {}
 
-# A simple JSON response that always succeeds
+# A simple failing request
+@test_routes.route('/test/exception')
+def test_exception():
+    raise Exception("This is a test")
+    return {}
+
+# A simple post of an error message.
+@test_routes.route('/test/error')
+def test_error():
+    logging.error("This is an error log.")
+    return {}
+
+# A simple post of a critical message.
+@test_routes.route('/test/critical')
+def test_critical():
+    logging.critical("This is a critical log.")
+    return {}
+
+# A simple 429 failing request.
 @test_routes.route('/test/429')
 def test_429():
     return "Too many requests", 429
