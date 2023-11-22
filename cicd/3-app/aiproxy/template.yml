@@ -60,6 +60,9 @@ Resources:
   LoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
+      LoadBalancerAttributes:
+        - Key: idle_timeout.timeout_seconds
+          Value: 180
       SecurityGroups:
         - !ImportValue VPC-ELBSecurityGroup
       Subnets:

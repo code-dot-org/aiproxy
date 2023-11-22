@@ -7,11 +7,6 @@ from flask import Blueprint, request
 
 test_routes = Blueprint('test_routes', __name__)
 
-@test_routes.route('/')
-def index():
-    logging.info("Index route called.")
-    return "Hello, World!"
-
 # A simple JSON response that always succeeds
 @test_routes.route('/test')
 def test():
@@ -34,6 +29,11 @@ def test_error():
 def test_critical():
     logging.critical("This is a critical log.")
     return {}
+
+# A simple 429 failing request.
+@test_routes.route('/test/429')
+def test_429():
+    return "Too many requests", 429
 
 # Test numpy integration
 @test_routes.route('/test/numpy')

@@ -1,3 +1,5 @@
+#!/bin/env ruby
+
 require 'net/http'
 require 'uri'
 
@@ -8,9 +10,9 @@ require 'uri'
 uri = URI('http://localhost:80')
 uri.path = '/assessment'
 
-code = File.read('test/data/u3l23_01.js')
-prompt = File.read('test/data/u3l23.txt')
-rubric = File.read('test/data/u3l23.csv')
+code = File.read('tests/data/u3l23_01.js')
+prompt = File.read('tests/data/u3l23.txt')
+rubric = File.read('tests/data/u3l23.csv')
 
 form_data = [
   ['model', 'gpt-4-0613'],

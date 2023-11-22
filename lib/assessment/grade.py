@@ -1,5 +1,6 @@
 import os
 import json
+import re
 import csv
 import time
 import requests
@@ -17,20 +18,44 @@ class Grade:
     def __init__(self):
         pass
 
-    def grade_student_work(self, prompt, rubric, student_code, student_id, examples=[], use_cached=False, write_cached=True, num_responses=0, temperature=0.0, llm_model="", remove_comments=False):
-        if use_cached and os.path.exists(f"cached_responses/{student_id}.json"):
-            with open(f"cached_responses/{student_id}.json", 'r') as f:
-                return json.load(f)
+    # This will take a rubric and student code and it will perform static checks on the code.
+    #
+    # For instance, it will determine a blank project should receive a No Evidence score for
+    # all items in the rubric.
+    def statically_grade_student_work(self, rubric, student_code, student_id, examples=[]):
+        rubric_key_concepts = list(set(row['Key Concept'] for row in csv.DictReader(rubric.splitlines())))
 
+        if student_code.strip() == "":
+            # Blank code should return No Evidence
+            return {
+                'metadata': {
+                    'agent': 'static',
+                },
+                'data': list(
+                    map(
+                        lambda key_concept: {
+                            "Grade": "No Evidence",
+                            "Key Concept": key_concept,
+                            "Observations": "The program is empty.",
+                            "Reason": "The program is empty.",
+                        },
+                        rubric_key_concepts
+                    )
+                )
+            }
+
+        # We can't assess this statically
+        return None
+
+    def ai_grade_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model=""):
+        # Determine the OpenAI URL and headers
         api_url = 'https://api.openai.com/v1/chat/completions'
         headers = {
             'Content-Type': 'application/json',
             'Authorization': f"Bearer {os.getenv('OPENAI_API_KEY')}"
         }
 
-        # Sanitize student code
-        student_code = self.sanitize_code(student_code, remove_comments=remove_comments)
-
+        # Compute the input we are giving to OpenAI
         messages = self.compute_messages(prompt, rubric, student_code, examples=examples)
         data = {
             'model': llm_model,
@@ -39,12 +64,8 @@ class Grade:
             'n': num_responses,
         }
 
-        start_time = time.time()
-        try:
-            response = requests.post(api_url, headers=headers, json=data, timeout=120)
-        except requests.exceptions.ReadTimeout:
-            logging.error(f"{student_id} request timed out in {(time.time() - start_time):.0f} seconds.")
-            return None
+        # Post to the AI service
+        response = requests.post(api_url, headers=headers, json=data, timeout=120)
 
         if response.status_code != 200:
             logging.error(f"{student_id} Error calling the API: {response.status_code}")
@@ -52,48 +73,109 @@ class Grade:
             return None
 
         info = response.json()
-        tokens = info['usage']['total_tokens']
-        elapsed = time.time() - start_time
-        logging.info(f"{student_id} request succeeded in {elapsed:.0f} seconds. {tokens} tokens used.")
 
-        tsv_data_choices = [self.get_tsv_data_if_valid(choice['message']['content'], rubric, student_id, choice_index=index) for index, choice in enumerate(info['choices']) if choice['message']['content']]
-        tsv_data_choices = [choice for choice in tsv_data_choices if choice]
-
-        if len(tsv_data_choices) == 0:
-            tsv_data = None
-        elif len(tsv_data_choices) == 1:
-            tsv_data = tsv_data_choices[0]
-        else:
-            tsv_data = self.get_consensus_response(tsv_data_choices, student_id)
-
-        # only write to cache if the response is valid
-        if write_cached and tsv_data:
-            with open(f"cached_responses/{student_id}.json", 'w') as f:
-                json.dump(tsv_data, f, indent=4)
+        tsv_data = self.tsv_data_from_choices(info, rubric, student_id)
 
         return {
             'metadata': {
-              'time': elapsed,
-              'student_id': student_id,
-              'usage': info['usage'],
-              'request': data,
+                'agent': 'openai',
+                'usage': info['usage'],
+                'request': data,
             },
             'data': tsv_data,
         }
 
+    def grade_student_work(self, prompt, rubric, student_code, student_id, examples=[], use_cached=False, write_cached=True, num_responses=0, temperature=0.0, llm_model="", remove_comments=False):
+        if use_cached and os.path.exists(f"cached_responses/{student_id}.json"):
+            with open(f"cached_responses/{student_id}.json", 'r') as f:
+                return json.load(f)
+
+        # We will record the time it takes to perform the assessment
+        start_time = time.time()
+
+        # Sanitize student code
+        student_code = self.sanitize_code(student_code, remove_comments=remove_comments)
+
+        # Try static analysis options (before invoking AI)
+        result = self.statically_grade_student_work(rubric, student_code, student_id, examples=examples)
+
+        # If it gives back a response, right now assume it is complete and do not perform an AI analysis
+        # We may want to, in the future, gauge how many of the concepts it has graded and let AI fill in the blanks
+        # Right now, however, only if there is no result, we try the AI for assessment
+        if result is None:
+            try:
+                result = self.ai_grade_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
+            except requests.exceptions.ReadTimeout:
+                logging.error(f"{student_id} request timed out in {(time.time() - start_time):.0f} seconds.")
+                result = None
+
+        # No assessment was possible
+        if result is None:
+            raise Exception("AI assessment failed.")
+
+        elapsed = time.time() - start_time
+        tokens = result.get('metadata', {}).get('usage', {}).get('total_tokens', 0)
+        logging.info(f"{student_id} request succeeded in {elapsed:.0f} seconds. {tokens} tokens used.")
+
+        # only write to cache if the response is valid
+        if write_cached and result:
+            with open(f"cached_responses/{student_id}.json", 'w+') as f:
+                json.dump(result, f, indent=4)
+
+        # Craft the response dictionary
+        response = {
+            'metadata': {
+                'time': elapsed,
+                'student_id': student_id,
+            },
+            'data': result.get('data', []),
+        }
+        response['metadata'].update(result.get('metadata', {})),
+        return response
+
+    def remove_js_comments(self, code):
+        # This regex pattern captures three groups:
+        # 1) Single or double quoted strings
+        # 2) Multi-line comments
+        # 3) Single-line comments
+        pattern = r'(".*?[^\\]"|\'.*?[^\\]\'|/\*.*?\*/|//.*?$)'
+
+        def replacer(match):
+            # If the match is a string, return it unchanged
+            if match.group(0).startswith(("'", '"')):
+                return match.group(0)
+
+            # Otherwise, it's a comment, so remove it
+            return ''
+
+        return re.sub(pattern, replacer, code, flags=re.DOTALL | re.MULTILINE)
+
     def sanitize_code(self, student_code, remove_comments=False):
         # Remove comments
         if remove_comments:
-            student_code = "\n".join(
-                list(
-                    map(lambda x:
-                        x[0:x.index("//")] if "//" in x else x,
-                        student_code.split('\n')
-                    )
-                )
-            )
+            student_code = self.remove_js_comments(student_code)
 
         return student_code
+
+    def tsv_data_from_choices(self, info, rubric, student_id):
+        max_index = len(info['choices']) - 1
+        tsv_data_choices = []
+        for index, choice in enumerate(info['choices']):
+            # If all choices result in an InvalidResponseError, reraise the last one.
+            reraise = len(tsv_data_choices) == 0 and index == max_index
+
+            if choice['message']['content']:
+                tsv_data = self.get_tsv_data_if_valid(choice['message']['content'], rubric, student_id, choice_index=index, reraise=reraise)
+                if tsv_data:
+                    tsv_data_choices.append(tsv_data)
+
+        if len(tsv_data_choices) == 0:
+            raise "No valid responses. An InvalidResponseError should have been raised earlier."
+        elif len(tsv_data_choices) == 1:
+            tsv_data = tsv_data_choices[0]
+        else:
+            tsv_data = self.get_consensus_response(tsv_data_choices, student_id)
+        return tsv_data
 
     def compute_messages(self, prompt, rubric, student_code, examples=[]):
         messages = [
@@ -105,7 +187,7 @@ class Grade:
         messages.append({'role': 'user', 'content': student_code})
         return messages
 
-    def get_tsv_data_if_valid(self, response_text, rubric, student_id, choice_index=None):
+    def get_tsv_data_if_valid(self, response_text, rubric, student_id, choice_index=None, reraise=False):
         choice_text = f"Choice {choice_index}: " if choice_index is not None else ''
         if not response_text:
             logging.error(f"{student_id} {choice_text} Invalid response: empty response")
@@ -144,22 +226,16 @@ class Grade:
             tsv_data = list(csv.DictReader(StringIO(text), delimiter='\t'))
 
         try:
-            self.sanitize_server_response(tsv_data)
-            self.validate_server_response(tsv_data, rubric)
+            self._sanitize_server_response(tsv_data)
+            self._validate_server_response(tsv_data, rubric)
             return [row for row in tsv_data]
         except InvalidResponseError as e:
             logging.error(f"{student_id} {choice_text} Invalid response: {str(e)}\n{response_text}")
+            if reraise:
+                raise e
             return None
 
-    def parse_tsv(self, tsv_text):
-        rows = tsv_text.split("\n")
-        header = rows.pop(0).split("\t")
-        return [dict(zip(header, row.split("\t"))) for row in rows]
-
-    def sanitize_server_response(self, tsv_data):
-        if not isinstance(tsv_data, list):
-            return
-
+    def _sanitize_server_response(self, tsv_data):
         # Strip whitespace and quotes from fields
         for row in tsv_data:
             for key in list(row.keys()):
@@ -177,20 +253,23 @@ class Grade:
                 if not row["Key Concept"][0:1].isalnum():
                     tsv_data.remove(row)
 
-    def validate_server_response(self, tsv_data, rubric):
+    def _validate_server_response(self, tsv_data, rubric):
         expected_columns = ["Key Concept", "Observations", "Grade", "Reason"]
 
         rubric_key_concepts = list(set(row['Key Concept'] for row in csv.DictReader(rubric.splitlines())))
 
-        if not isinstance(tsv_data, list):
-            raise InvalidResponseError('invalid format')
-
         if not all((set(row.keys()) & set(expected_columns)) == set(expected_columns) for row in tsv_data):
-            raise InvalidResponseError('incorrect column names')
+            unexpected_columns = set(row.keys()) - set(expected_columns)
+            missing_columns = set(expected_columns) - set(row.keys())
+            raise InvalidResponseError('incorrect column names. unexpected: {unexpected_columns} missing: {missing_columns}')
 
         key_concepts_from_response = list(set(row["Key Concept"] for row in tsv_data))
         if sorted(rubric_key_concepts) != sorted(key_concepts_from_response):
-            raise InvalidResponseError('invalid or missing key concept')
+            unexpected_concepts = set(key_concepts_from_response) - set(rubric_key_concepts)
+            unexpected_concepts = None if len(unexpected_concepts) == 0 else unexpected_concepts
+            missing_concepts = set(rubric_key_concepts) - set(key_concepts_from_response)
+            missing_concepts = None if len(missing_concepts) == 0 else missing_concepts
+            raise InvalidResponseError(f'unexpected or missing key concept. unexpected: {unexpected_concepts} missing: {missing_concepts}')
 
         for row in tsv_data:
             if row["Grade"] not in VALID_GRADES:

@@ -3,7 +3,7 @@ version: 0.2
 env:
   secrets-manager:
     DOCKER_HUB_USERNAME: cicd/docker-hub/username
-    DOCKER_HUB_PAT: cicd/docker-hub/pat
+    DOCKER_HUB_TOKEN: cicd/docker-hub/admin-token
 
 phases:
   install:
@@ -15,7 +15,7 @@ phases:
   pre_build:
     commands:
       - echo Logging in to Docker Hub...
-      - echo $DOCKER_HUB_PAT | docker login -u $DOCKER_HUB_USERNAME --password-stdin
+      - echo $DOCKER_HUB_TOKEN | docker login -u $DOCKER_HUB_USERNAME --password-stdin
 
       - echo "Logging in to AWS ECR..."
       - ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
@@ -37,13 +37,13 @@ phases:
 
       - ./ci-lint.sh
 
-      - echo "Running Unit Tests..."
-      - echo "This is where I would run my unit tests"
-
       - echo "Building Docker Image..."
       - IMAGE_NAME=aiproxy
       - IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION:0:7} # short commit hash
       - docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+
+      - echo "Running Unit Tests..."
+      - docker run -e PYTHONPATH=/app --rm ${IMAGE_NAME}:${IMAGE_TAG} /bin/bash -c "coverage run -m pytest $@ && coverage report -m"
 
       - echo "Pushing Docker Image to ECR..."
       - docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${ECR_REPOSITORY}:${IMAGE_TAG}

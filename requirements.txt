@@ -3,3 +3,7 @@ openai
 flask
 waitress
 honeybadger
+pytest
+pytest-mock
+requests-mock
+coverage
