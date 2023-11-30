@@ -35,12 +35,12 @@ def grade(code, prompt, rubric, examples=[], api_key='', llm_model='gpt-4', num_
     logging.info("Using set OPENAI_API_KEY")
 
   # Validate example key concepts against rubric.
-  for ex in examples:
-    rubric_key_concepts = list(set(row['Key Concept'] for row in csv.DictReader(rubric.splitlines())))
-    example_key_concepts = list(set(row['Key Concept'] for row in csv.DictReader(ex[1].splitlines(), delimiter="\t")))
-    if rubric_key_concepts != example_key_concepts:
-      logging.error("Rubric and example key concepts do not match.")
-      return {}
+    for ex in examples:
+      rubric_key_concepts = list(set(row['Key Concept'] for row in csv.DictReader(rubric.splitlines())))
+      example_key_concepts = list(set(row['Key Concept'] for row in csv.DictReader(ex[1].splitlines(), delimiter="\t")))
+      if rubric_key_concepts != example_key_concepts:
+        logging.error("Rubric and example key concepts do not match.")
+        return {}
 
   grade = Grade()
   return grade.grade_student_work(
