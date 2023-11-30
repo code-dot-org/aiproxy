@@ -1,5 +1,5 @@
 numpy
-openai
+openai==0.28.1
 flask
 waitress
 pytest
