@@ -3,7 +3,7 @@ import os
 import pytest
 
 from lib.assessment.grade import Grade
-from lib.assessment.assess import grade
+from lib.assessment.assess import grade, KeyConceptError
 
 
 def test_grade_should_pass_arguments_along(
@@ -92,16 +92,16 @@ def test_grade_should_return_empty_result_when_example_and_rubric_key_concepts_m
     # Mock the Grade() class
     grade_student_work = mocker.patch.object(Grade, 'grade_student_work')
 
+    fake_rubric = "Key Concept,Extensive Evidence,Convincing Evidence,Limited Evidence,No Evidence\r\nConcept blahblah,blah,blah,blah,blah"""
     # Actually call the method
     result = grade(code, prompt, rubric,
-        examples=examples(rubric, 1),
+        examples=examples(fake_rubric, 1),
         llm_model=llm_model,
         num_responses=num_responses,
         temperature=temperature,
         remove_comments=remove_comments
     )
 
-    # Check to see an empty result
     assert result == {}
 
 

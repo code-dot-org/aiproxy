@@ -9,6 +9,7 @@ import json
 
 # Our assessment code
 from lib.assessment import assess
+from lib.assessment.assess import KeyConceptError
 from lib.assessment.grade import InvalidResponseError
 
 assessment_routes = Blueprint('assessment_routes', __name__)
@@ -47,6 +48,8 @@ def post_assessment():
         return str(e), 400
     except InvalidResponseError as e:
         return f'InvalidResponseError: {str(e)}', 400
+    except KeyConceptError as e:
+        return e, 400
 
     if not isinstance(grades, dict) or not isinstance(grades.get("data"), list):
         return "response from AI or service not valid", 400
@@ -158,7 +161,9 @@ def test_assessment_examples():
         return "One of the arguments is not parseable as a number: {}".format(str(e)), 400
     except openai.error.InvalidRequestError as e:
         return str(e), 400
-
+    except KeyConceptError as e:
+        return str(e), 400
+    
     if not isinstance(grades, dict) or not isinstance(grades.get("data"), list):
         return "response from AI or service not valid", 400
 
