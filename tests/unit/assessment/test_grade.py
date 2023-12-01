@@ -203,8 +203,6 @@ class TestGetTsvDataIfValid:
         ai_response = openai_gpt_response(rubric, num_responses=1, output_type='tsv')
         response = ai_response['choices'][0]['message']['content']
 
-        parsed_rubric = list(csv.DictReader(rubric.splitlines()))
-
         # We can invalidate the response
         response = response.replace("Key Concept", "Bogus Weasel")
 
@@ -216,8 +214,6 @@ class TestGetTsvDataIfValid:
         # rubrics in CSV or markdown (even though we told it NOT TO grr)
         ai_response = openai_gpt_response(rubric, num_responses=1, output_type='tsv')
         response = ai_response['choices'][0]['message']['content']
-
-        parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
         # We can invalidate the response
         response = response.replace("Observations", "Things I notice")
