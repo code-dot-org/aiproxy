@@ -42,7 +42,7 @@ def grade(code, prompt, rubric, examples=[], api_key='', llm_model='gpt-4', num_
     rubric_key_concepts = list(set(row['Key Concept'] for row in csv.DictReader(rubric.splitlines())))
     example_key_concepts = list(set(row['Key Concept'] for row in csv.DictReader(ex[1].splitlines(), delimiter="\t")))
     if rubric_key_concepts != example_key_concepts:
-      logging.error("Rubric and example key concepts do not match.")
+      logging.error(f"Mismatch between rubric and example key concepts for example {i}: Rubric: {rubric_key_concepts} | Example: {example_key_concepts}")
       raise KeyConceptError(f"Mismatch between rubric and example key concepts for example {i}: Rubric: {rubric_key_concepts} | Example: {example_key_concepts}")
 
   grade = Grade()
