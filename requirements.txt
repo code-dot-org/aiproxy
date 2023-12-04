@@ -1,8 +1,8 @@
-numpy
+numpy==1.24.4
 openai==0.28.1
-flask
-waitress
-pytest
-pytest-mock
-requests-mock
-coverage
+flask==3.0.0
+waitress==2.1.2
+pytest==7.4.3
+pytest-mock==3.12.0
+requests-mock==1.11.0
+coverage==7.3.2
