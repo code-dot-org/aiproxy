@@ -15,7 +15,7 @@ def test_grade_should_pass_arguments_along(
     # Mock the Grade() class
     grade_student_work = mocker.patch.object(Grade, 'grade_student_work')
 
-    ex = examples(rubric, 1)
+    ex = examples(rubric)
 
     # Actually call the method
     grade(code, prompt, rubric,
@@ -85,24 +85,28 @@ def test_grade_should_return_empty_result_when_no_api_key(
 
 
 def test_grade_should_return_empty_result_when_example_and_rubric_key_concepts_mismatch(
-        mocker, code, prompt, rubric, examples,
+        mocker, code, prompt, rubric, examples, openai_api_key,
         llm_model, num_responses, temperature, remove_comments):
     """ Tests lib.assessment.assess.grade() (without an api-key)
     """
     # Mock the Grade() class
     grade_student_work = mocker.patch.object(Grade, 'grade_student_work')
 
-    fake_rubric = "Key Concept,Extensive Evidence,Convincing Evidence,Limited Evidence,No Evidence\r\nConcept blahblah,blah,blah,blah,blah"""
-    # Actually call the method
-    result = grade(code, prompt, rubric,
-        examples=examples(fake_rubric, 1),
-        llm_model=llm_model,
-        num_responses=num_responses,
-        temperature=temperature,
-        remove_comments=remove_comments
-    )
+    example = []
+    with open('tests/data/example.js', 'r') as f:
+        example.append(f.read())
+    with open('tests/data/example.tsv', 'r') as f:
+        example.append(f.read())
 
-    assert result == {}
+    with pytest.raises(KeyConceptError):
+        grade(code, prompt, rubric,
+            examples=example,
+            api_key=openai_api_key,
+            llm_model=llm_model,
+            num_responses=num_responses,
+            temperature=temperature,
+            remove_comments=remove_comments
+        )
 
 
 def test_grade_should_call_grade_student_work_with_api_key_in_env_var(

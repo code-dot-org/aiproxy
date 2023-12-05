@@ -319,11 +319,10 @@ class TestAiGradeStudentWork:
         # Mock the validator to invalidate everything
         mocker.patch.object(Grade, 'get_tsv_data_if_valid').return_value = None
 
-        result = grade.ai_grade_student_work(
-            prompt, rubric, code, student_id, examples(rubric), num_responses, temperature, llm_model
-        )
-
-        assert result['data'] is None
+        with pytest.raises(InvalidResponseError):
+            grade.ai_grade_student_work(
+                prompt, rubric, code, student_id, examples(rubric), num_responses, temperature, llm_model
+            )
         
     def test_should_return_the_choice_when_only_requesting_one_response(self, requests_mock, mocker, openai_gpt_response, grade, prompt, rubric, code, student_id, examples, temperature, llm_model):
         num_responses = 1

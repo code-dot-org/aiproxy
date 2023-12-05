@@ -170,7 +170,7 @@ class Grade:
                     tsv_data_choices.append(tsv_data)
 
         if len(tsv_data_choices) == 0:
-            return None
+            raise InvalidResponseError("No valid responses. An InvalidResponseError should have been raised earlier.")
         elif len(tsv_data_choices) == 1:
             tsv_data = tsv_data_choices[0]
         else:
