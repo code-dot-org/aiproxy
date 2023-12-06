@@ -66,8 +66,22 @@ class Report:
         accuracy_table += '</table>'
         return accuracy_table
 
-    def generate_html_output(self, output_file, prompt, rubric, accuracy, actual_grades, expected_grades, passing_grades, accuracy_by_criteria, errors, command_line):
-        link_base_url = f'file://{os.getcwd()}/sample_code'
+    def _generate_confusion_table(self, confusion_matrix, labels):
+        confusion_table = '<table border="1">'
+        confusion_table += f'<tr><td></td>' #blank corner
+        for label in labels:
+            confusion_table += f'<td>{label}</td>'
+        confusion_table += '</tr>'
+        for label, row in zip(labels, confusion_matrix):
+            confusion_table += f'<tr><td>{label}</td>'
+            for cell in row:
+                confusion_table += f'<td style="text-align: center">{int(cell)}</td>'
+            confusion_table += '</tr>'
+        confusion_table += '</table>'
+        return confusion_table
+
+    def generate_html_output(self, output_file, prompt, rubric, accuracy, actual_grades, expected_grades, passing_grades, accuracy_by_criteria, errors, command_line, confusion_by_criteria, overall_confusion, grade_names, prefix='sample_code'):
+        link_base_url = f'file://{os.getcwd()}/{prefix}'
 
         with open(output_file, 'w+') as file:
             file.write('<!DOCTYPE html>\n')
@@ -93,6 +107,14 @@ class Report:
             file.write(f'  <h2>Overall Accuracy: {accuracy}</h2>\n')
             file.write('  <h2>Accuracy by Key Concept:</h2>\n')
             file.write(self._generate_accuracy_table(accuracy_by_criteria) + '\n')
+
+            file.write('  <h2>Overall Confusion:</h2>\n')
+            file.write(self._generate_confusion_table(overall_confusion, grade_names) + '\n')
+
+            file.write('  <h2>Confusion by Key Concept:</h2>\n')
+            for criteria in confusion_by_criteria:
+                file.write(f'  <h3>Confusion for {criteria}:</h3>\n')
+                file.write(self._generate_confusion_table(confusion_by_criteria[criteria], grade_names) + '\n\n')
 
             file.write('  <h2>Grades by student:</h2>\n')
             for student_id, grades in actual_grades.items():
