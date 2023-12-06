@@ -7,3 +7,7 @@ __pycache__
 # Local editor settings
 .vscode
 .idea
+.venv/
+
+# Ignore rubric testing files
+lesson_data/

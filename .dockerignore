@@ -1,3 +1,5 @@
 pybin
 __pycache__
 config.txt
+lesson_data/
+.venv/
