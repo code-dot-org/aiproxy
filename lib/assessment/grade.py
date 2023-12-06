@@ -171,7 +171,7 @@ class Grade:
                     tsv_data_choices.append(tsv_data)
 
         if len(tsv_data_choices) == 0:
-            raise "No valid responses. An InvalidResponseError should have been raised earlier."
+            raise InvalidResponseError("No valid responses. An InvalidResponseError should have been raised earlier.")
         elif len(tsv_data_choices) == 1:
             tsv_data = tsv_data_choices[0]
         else:
@@ -260,9 +260,10 @@ class Grade:
         rubric_key_concepts = list(set(row['Key Concept'] for row in csv.DictReader(rubric.splitlines())))
 
         if not all((set(row.keys()) & set(expected_columns)) == set(expected_columns) for row in tsv_data):
-            unexpected_columns = set(row.keys()) - set(expected_columns)
-            missing_columns = set(expected_columns) - set(row.keys())
-            raise InvalidResponseError('incorrect column names. unexpected: {unexpected_columns} missing: {missing_columns}')
+            for row in tsv_data:
+                unexpected_columns = set(row.keys()) - set(expected_columns)
+                missing_columns = set(expected_columns) - set(row.keys())
+                raise InvalidResponseError('incorrect column names. unexpected: {unexpected_columns} missing: {missing_columns}')
 
         key_concepts_from_response = list(set(row["Key Concept"] for row in tsv_data))
         if sorted(rubric_key_concepts) != sorted(key_concepts_from_response):

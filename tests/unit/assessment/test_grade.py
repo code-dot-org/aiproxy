@@ -203,8 +203,6 @@ class TestGetTsvDataIfValid:
         ai_response = openai_gpt_response(rubric, num_responses=1, output_type='tsv')
         response = ai_response['choices'][0]['message']['content']
 
-        parsed_rubric = list(csv.DictReader(rubric.splitlines()))
-
         # We can invalidate the response
         response = response.replace("Key Concept", "Bogus Weasel")
 
@@ -216,8 +214,6 @@ class TestGetTsvDataIfValid:
         # rubrics in CSV or markdown (even though we told it NOT TO grr)
         ai_response = openai_gpt_response(rubric, num_responses=1, output_type='tsv')
         response = ai_response['choices'][0]['message']['content']
-
-        parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
         # We can invalidate the response
         response = response.replace("Observations", "Things I notice")
@@ -323,11 +319,10 @@ class TestAiGradeStudentWork:
         # Mock the validator to invalidate everything
         mocker.patch.object(Grade, 'get_tsv_data_if_valid').return_value = None
 
-        result = grade.ai_grade_student_work(
-            prompt, rubric, code, student_id, examples(rubric), num_responses, temperature, llm_model
-        )
-
-        assert result['data'] is None
+        with pytest.raises(InvalidResponseError):
+            grade.ai_grade_student_work(
+                prompt, rubric, code, student_id, examples(rubric), num_responses, temperature, llm_model
+            )
         
     def test_should_return_the_choice_when_only_requesting_one_response(self, requests_mock, mocker, openai_gpt_response, grade, prompt, rubric, code, student_id, examples, temperature, llm_model):
         num_responses = 1

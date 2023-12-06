@@ -22,6 +22,9 @@ from lib.assessment.rubric_tester import (
     compute_accuracy
 )
 
+class KeyConceptError(Exception):
+  pass
+
 def grade(code, prompt, rubric, examples=[], api_key='', llm_model='gpt-4', num_responses=1, temperature=0.2, remove_comments=False):
   OPENAI_API_KEY = api_key
 
@@ -33,6 +36,14 @@ def grade(code, prompt, rubric, examples=[], api_key='', llm_model='gpt-4', num_
     return {}
   else:
     logging.info("Using set OPENAI_API_KEY")
+
+  # Validate example key concepts against rubric.
+  for i, ex in enumerate(examples):
+    rubric_key_concepts = list(set(row['Key Concept'] for row in csv.DictReader(rubric.splitlines())))
+    example_key_concepts = list(set(row['Key Concept'] for row in csv.DictReader(ex[1].splitlines(), delimiter="\t")))
+    if rubric_key_concepts != example_key_concepts:
+      logging.error(f"Mismatch between rubric and example key concepts for example {i}: Rubric: {rubric_key_concepts} | Example: {example_key_concepts}")
+      raise KeyConceptError(f"Mismatch between rubric and example key concepts for example {i}: Rubric: {rubric_key_concepts} | Example: {example_key_concepts}")
 
   grade = Grade()
   return grade.grade_student_work(
