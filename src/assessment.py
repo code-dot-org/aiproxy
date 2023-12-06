@@ -9,6 +9,7 @@ import json
 
 # Our assessment code
 from lib.assessment import assess
+from lib.assessment.assess import KeyConceptError
 from lib.assessment.grade import InvalidResponseError
 
 assessment_routes = Blueprint('assessment_routes', __name__)
@@ -47,6 +48,8 @@ def post_assessment():
         return str(e), 400
     except InvalidResponseError as e:
         return f'InvalidResponseError: {str(e)}', 400
+    except KeyConceptError as e:
+        return e, 400
 
     if not isinstance(grades, dict) or not isinstance(grades.get("data"), list):
         return "response from AI or service not valid", 400
@@ -58,13 +61,13 @@ def post_assessment():
 def test_assessment():
     openai.api_key = os.getenv('OPENAI_API_KEY')
     
-    with open('test/data/u3l23_01.js', 'r') as f:
+    with open('tests/data/u3l23_01.js', 'r') as f:
         code = f.read()
 
-    with open('test/data/u3l23.txt', 'r') as f:
+    with open('tests/data/u3l23.txt', 'r') as f:
         prompt = f.read()
 
-    with open('test/data/u3l23.csv', 'r') as f:
+    with open('tests/data/u3l23.csv', 'r') as f:
         rubric = f.read()
 
     try:
@@ -95,10 +98,10 @@ def test_assessment_blank():
 
     code = ""
 
-    with open('test/data/u3l23.txt', 'r') as f:
+    with open('tests/data/u3l23.txt', 'r') as f:
         prompt = f.read()
 
-    with open('test/data/u3l23.csv', 'r') as f:
+    with open('tests/data/u3l23.csv', 'r') as f:
         rubric = f.read()
 
     try:
@@ -117,6 +120,50 @@ def test_assessment_blank():
     except openai.error.InvalidRequestError as e:
         return str(e), 400
 
+    if not isinstance(grades, dict) or not isinstance(grades.get("data"), list):
+        return "response from AI or service not valid", 400
+
+    return grades
+
+# Submit a test rubric assessment with examples
+@assessment_routes.route('/test/assessment/examples', methods=['GET', 'POST'])
+def test_assessment_examples():
+    openai.api_key = os.getenv('OPENAI_API_KEY')
+
+    with open('tests/data/u3l13_01.js', 'r') as f:
+        code = f.read()
+
+    with open('tests/data/u3l13.txt', 'r') as f:
+        prompt = f.read()
+
+    with open('tests/data/u3l13.csv', 'r') as f:
+        rubric = f.read()
+
+    examples = []
+    with open('tests/data/example.js', 'r') as f:
+        examples.append(f.read())
+    with open('tests/data/example.tsv', 'r') as f:
+        examples.append(f.read())
+
+    try:
+        grades = assess.grade(
+            code=code,
+            prompt=prompt,
+            rubric=rubric,
+            examples=[examples],
+            api_key=request.values.get("api-key", openai.api_key),
+            llm_model=request.values.get("model", "gpt-4"),
+            remove_comments=(request.values.get("remove-comments", "0") != "0"),
+            num_responses=int(request.values.get("num-responses", "1")),
+            temperature=float(request.values.get("temperature", "0.2")),
+        )
+    except ValueError as e:
+        return "One of the arguments is not parseable as a number: {}".format(str(e)), 400
+    except openai.error.InvalidRequestError as e:
+        return str(e), 400
+    except KeyConceptError as e:
+        return str(e), 400
+    
     if not isinstance(grades, dict) or not isinstance(grades.get("data"), list):
         return "response from AI or service not valid", 400
 
