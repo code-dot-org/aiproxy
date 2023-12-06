@@ -6,3 +6,5 @@ pytest
 pytest-mock
 requests-mock
 coverage
+scikit-learn
+gdown
