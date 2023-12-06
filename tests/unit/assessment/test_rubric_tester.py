@@ -46,7 +46,8 @@ class TestGradeStudentWork:
             rubric=rubric,
             student_file=f"blah/{student_id}.js",
             examples=examples(rubric),
-            options=options
+            options=options,
+            prefix=""
         )
 
         assert result[0] == student_id
@@ -84,7 +85,7 @@ class TestReadInputs:
         mock_file = mocker.patch('builtins.open', mock_open, create=True)
         m.side_effect = file_open_mock
 
-        result = read_inputs(prompt_file, standard_rubric_file)
+        result = read_inputs(prompt_file, standard_rubric_file, "")
 
         assert result[0] == prompt
         assert result[1] == rubric
@@ -94,7 +95,7 @@ class TestGetStudentFiles:
     def test_should_return_student_code_paths_in_sample_code_path_when_given_ids(self):
         student_ids = [random.randint(100000, 999999) for _ in range(3, random.randint(10, 40))]
 
-        result = get_student_files(len(student_ids), student_ids=student_ids)
+        result = get_student_files(len(student_ids), "sample_code", student_ids=student_ids)
 
         for student_id in student_ids:
             assert f'sample_code/{student_id}.js' in result
@@ -106,7 +107,7 @@ class TestGetStudentFiles:
         glob_mock.return_value = [
         ]
 
-        result = get_student_files(20, student_ids=None)
+        result = get_student_files(20, "", student_ids=None)
 
         assert len(result) <= 20
 
@@ -116,7 +117,7 @@ class TestGetStudentFiles:
         glob_mock = mocker.patch('glob.glob')
         glob_mock.return_value = [f'sample_code/{x}.js' for x in student_ids]
 
-        result = get_student_files(20, student_ids=None)
+        result = get_student_files(20, "", student_ids=None)
 
         assert len(result) == 20
 
@@ -147,7 +148,7 @@ class TestGetExpectedGrades:
         mock_open = mocker.mock_open(read_data=expected_csv_data)
         mock_file = mocker.patch('builtins.open', mock_open)
 
-        result = get_expected_grades('expected.csv')
+        result = get_expected_grades('expected.csv', "")
 
         # The result it the size of the unique number of student ids
         assert len(result.keys()) == len(list(set(student_ids)))
@@ -175,7 +176,7 @@ class TestGetExamples:
         glob_mock = mocker.patch('glob.glob')
         glob_mock.return_value = [f'examples/{x}.js' for x in range(0, len(examples_set))]
 
-        result = get_examples()
+        result = get_examples("")
 
         assert len(result) == len(examples_set)
 
