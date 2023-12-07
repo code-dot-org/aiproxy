@@ -68,10 +68,12 @@ class Report:
 
     def _generate_confusion_table(self, confusion_matrix, labels):
         confusion_table = '<table border="1">'
-        confusion_table += f'<tr><td></td>' #blank corner
+        confusion_table += f'<tr><td colspan="2" rowspan="2"></td><th colspan="{len(labels)}" scope="colgroup" style="text-align: center">Predicted</th></tr>' #blank corner
+        confusion_table += '<tr>'
         for label in labels:
             confusion_table += f'<td>{label}</td>'
         confusion_table += '</tr>'
+        confusion_table += f'<tr><th rowspan="{len(labels)+1}" scope="rowgroup">Expected</th>'
         for label, row in zip(labels, confusion_matrix):
             confusion_table += f'<tr><td>{label}</td>'
             for cell in row:
