@@ -189,7 +189,7 @@ def grade_student_work(prompt, rubric, student_file, examples, options, prefix):
         student_id,
         examples=examples,
         use_cached=options.use_cached,
-        # write_cached=options.write_cached,
+        write_cached=True,
         num_responses=options.num_responses,
         temperature=options.temperature,
         llm_model=options.llm_model,
