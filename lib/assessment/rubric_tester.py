@@ -68,7 +68,7 @@ def command_line_options():
 
     unsupported_lessons = list(filter(lambda x: x not in LESSONS.keys(), args.lesson_names))
     if len(unsupported_lessons) > 0:
-        raise Exception(f"Unsupported Lesson names: {', '.join(unsupported_lessons)}. Supported models are: {', '.join(LESSONS.keys())}")
+        raise Exception(f"Unsupported Lesson names: {', '.join(unsupported_lessons)}. Supported lessons are: {', '.join(LESSONS.keys())}")
 
     return args
 
@@ -119,8 +119,6 @@ def get_examples(prefix):
         examples.append((example_code, example_rubric))
     return examples
 
-# TODO: Add check if concepts in "examples" match rubric and expected concepts
-# Mark has done this- pull branch 
 
 def validate_rubrics(expected_grades, standard_rubric):
     expected_concepts = sorted(list(list(expected_grades.values())[0].keys())[1:])
@@ -129,6 +127,7 @@ def validate_rubrics(expected_grades, standard_rubric):
     standard_concepts = sorted([rubric_dict["Key Concept"] for rubric_dict in standard_rubric_dicts])
     if standard_concepts != expected_concepts:
         raise Exception(f"standard concepts do not match expected concepts:\n{standard_concepts}\n{expected_concepts}")
+
 
 def validate_students(student_files, expected_grades):
     expected_students = sorted(expected_grades.keys())
