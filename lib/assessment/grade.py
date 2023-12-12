@@ -85,9 +85,9 @@ class Grade:
             'data': tsv_data,
         }
 
-    def grade_student_work(self, prompt, rubric, student_code, student_id, examples=[], use_cached=False, write_cached=True, num_responses=0, temperature=0.0, llm_model="", remove_comments=False):
-        if use_cached and os.path.exists(f"cached_responses/{student_id}.json"):
-            with open(f"cached_responses/{student_id}.json", 'r') as f:
+    def grade_student_work(self, prompt, rubric, student_code, student_id, examples=[], use_cached=False, write_cached=False, num_responses=0, temperature=0.0, llm_model="", remove_comments=False, cache_prefix=""):
+        if use_cached and os.path.exists(os.path.join(cache_prefix, f"cached_responses/{student_id}.json")):
+            with open(os.path.join(cache_prefix, f"cached_responses/{student_id}.json"), 'r') as f:
                 return json.load(f)
 
         # We will record the time it takes to perform the assessment
@@ -117,11 +117,6 @@ class Grade:
         tokens = result.get('metadata', {}).get('usage', {}).get('total_tokens', 0)
         logging.info(f"{student_id} request succeeded in {elapsed:.0f} seconds. {tokens} tokens used.")
 
-        # only write to cache if the response is valid
-        if write_cached and result:
-            with open(f"cached_responses/{student_id}.json", 'w+') as f:
-                json.dump(result, f, indent=4)
-
         # Craft the response dictionary
         response = {
             'metadata': {
@@ -131,6 +126,12 @@ class Grade:
             'data': result.get('data', []),
         }
         response['metadata'].update(result.get('metadata', {})),
+
+        # only write to cache if the response is valid
+        if write_cached and result:
+            with open(os.path.join(cache_prefix, f"cached_responses/{student_id}.json"), 'w+') as f:
+                json.dump(response, f, indent=4)
+
         return response
 
     def remove_js_comments(self, code):

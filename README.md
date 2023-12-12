@@ -44,6 +44,23 @@ This will run a webserver accessible at <http://localhost:5000>.
 **Note**: You need to provide the API keys in the `config.txt` file
 before the service runs. See the above "Configuration" section.
 
+### Rubric Tester
+To run the rubric tester locally, create a python virtual environment at the top of the directory with:
+`python -m venv .venv`
+
+Activate the virtual environment:
+`source .venv/bin/activate`
+
+Install requirements to the virtual environment with pip:
+`pip install -r requirements.txt`
+
+Export the following environment variables
+`export OPENAI_API_KEY=<your API key>`
+`export PYTHONPATH=<path to aiproxy root>`
+
+See rubric tester options with:
+`python lib/assessment/rubric_tester.py --help`
+
 ## Logging
 
 Logging is done via the normal Python `logging` library.
