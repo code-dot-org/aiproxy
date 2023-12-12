@@ -68,12 +68,12 @@ class Report:
 
     def _generate_confusion_table(self, confusion_matrix, labels):
         confusion_table = '<table border="1">'
-        confusion_table += f'<tr><td colspan="2" rowspan="2"></td><th colspan="{len(labels)}" scope="colgroup" style="text-align: center">Predicted</th></tr>' #blank corner
+        confusion_table += f'<tr><td colspan="2" rowspan="2"></td><th colspan="{len(labels)}" scope="colgroup" style="text-align: center">Predicted (AI)</th></tr>' #blank corner
         confusion_table += '<tr>'
         for label in labels:
             confusion_table += f'<td>{label}</td>'
         confusion_table += '</tr>'
-        confusion_table += f'<tr><th rowspan="{len(labels)+1}" scope="rowgroup">Expected</th>'
+        confusion_table += f'<tr><th rowspan="{len(labels)+1}" scope="rowgroup">Actual<br>(human)</th>'
         for label, row in zip(labels, confusion_matrix):
             confusion_table += f'<tr><td>{label}</td>'
             for cell in row:
@@ -123,7 +123,7 @@ class Report:
                 file.write(f'  <h3>Student: {student_id}</h3>\n')
                 file.write(f'  <a href="{link_base_url}/{student_id}.js">{student_id}.js</a>\n')
                 file.write('  <table border="1">\n')
-                file.write('    <tr><th>Criteria</th><th>Observations</th><th>Expected Grade</th><th>Actual Grade</th><th>Reason</th></tr>\n')
+                file.write('    <tr><th>Criteria</th><th>Observations</th><th>Actual Grade (human)</th><th>Predicted Grade (AI)</th><th>Reason</th></tr>\n')
                 for grade in grades:
                     criteria = grade['Key Concept']
                     observations = grade['Observations']
