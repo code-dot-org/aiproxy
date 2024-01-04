@@ -15,25 +15,25 @@ def report():
 
 
 class TestAccurate:
-    def test_should_just_match_expected_to_actual_if_no_passing_grades(self):
+    def test_should_just_match_actual_to_predicted_if_no_passing_grades(self):
         assert Report.accurate('No Evidence', 'No Evidence', None)
 
-    def test_should_return_false_when_expected_is_not_actual_if_no_passing_grades(self):
+    def test_should_return_false_when_actual_is_not_predicted_if_no_passing_grades(self):
         assert Report.accurate('No Evidence', 'Limited Evidence', None) == False
 
     def test_should_count_equal_number_of_matching_grades_in_given_passing_grades(self):
         assert Report.accurate('Convincing Evidence', 'Convincing Evidence', ['Convincing Evidence', 'Extensive Evidence'])
 
-    def test_should_be_true_when_expected_not_matching_actual_but_both_in_given_passing_grades(self):
+    def test_should_be_true_when_actual_not_matching_predicted_but_both_in_given_passing_grades(self):
         assert Report.accurate('Convincing Evidence', 'Extensive Evidence', ['Convincing Evidence', 'Extensive Evidence'])
 
     def test_should_return_true_when_neither_are_in_set_of_passing_grades(self):
         assert Report.accurate('No Evidence', 'Limited Evidence', ['Convincing Evidence', 'Extensive Evidence'])
 
-    def test_should_return_false_when_expected_is_not_in_set_of_passing_grades(self):
+    def test_should_return_false_when_actual_is_not_in_set_of_passing_grades(self):
         assert Report.accurate('No Evidence', 'Convincing Evidence', ['Convincing Evidence', 'Extensive Evidence']) == False
 
-    def test_should_return_false_when_actual_is_not_in_set_of_passing_grades(self):
+    def test_should_return_false_when_predicted_is_not_in_set_of_passing_grades(self):
         assert Report.accurate('Convincing Evidence', 'No Evidence', ['Convincing Evidence', 'Extensive Evidence']) == False
 
 
@@ -61,7 +61,14 @@ class TestGenerateHtmlOutput:
         mock_open = mocker.mock_open()
         mock_file = mocker.patch('builtins.open', mock_open)
 
-        report.generate_html_output(output_file, prompt, rubric, "42", {}, {}, [], {}, [], "./assess.py", {}, [], [])
+        # report.generate_html_output(output_file, prompt, rubric, "42", {}, {}, [], {}, [], "./assess.py", {}, [], [])
+        report.generate_html_output(
+            output_file,
+            prompt,
+            rubric,
+            accuracy="42",
+            command_line="./assess.py",
+        )
 
         mock_file.assert_called_with(output_file, 'w+')
 
@@ -73,7 +80,14 @@ class TestGenerateHtmlOutput:
         mock_open = mocker.mock_open()
         mock_file = mocker.patch('builtins.open', mock_open)
 
-        report.generate_html_output(output_file, prompt, rubric, "42", {}, {}, [], {}, [], "./assess.py", {}, [], [])
+        # report.generate_html_output(output_file, prompt, rubric, "42", {}, {}, [], {}, [], "./assess.py", {}, [], [])
+        report.generate_html_output(
+            output_file,
+            prompt,
+            rubric,
+            accuracy="42",
+            command_line="./assess.py",
+        )
 
         output = self._get_output(mock_file)
 
@@ -89,7 +103,14 @@ class TestGenerateHtmlOutput:
         mock_open = mocker.mock_open()
         mock_file = mocker.patch('builtins.open', mock_open)
 
-        report.generate_html_output(output_file, prompt, rubric, "42", {}, {}, [], {}, [], "./assess.py", {}, [], [])
+        # report.generate_html_output(output_file, prompt, rubric, "42", {}, {}, [], {}, [], "./assess.py", {}, [], [])
+        report.generate_html_output(
+            output_file,
+            prompt,
+            rubric,
+            accuracy="42",
+            command_line="./assess.py",
+        )
 
         output = self._get_output(mock_file)
 
@@ -106,7 +127,13 @@ class TestGenerateHtmlOutput:
         mock_open = mocker.mock_open()
         mock_file = mocker.patch('builtins.open', mock_open)
 
-        report.generate_html_output(output_file, prompt, rubric, None, {}, {}, [], {}, [], "./assess.py", {}, [], [])
+        # report.generate_html_output(output_file, prompt, rubric, None, {}, {}, [], {}, [], "./assess.py", {}, [], [])
+        report.generate_html_output(
+            output_file,
+            prompt,
+            rubric,
+            command_line="./assess.py",
+        )
 
         output = self._get_output(mock_file)
 
@@ -136,7 +163,14 @@ class TestGenerateHtmlOutput:
             else:
                 accuracy_by_criteria[key_concept] = random.randint(0, 100)
 
-        report.generate_html_output(output_file, prompt, rubric, None, {}, {}, [], accuracy_by_criteria, [], "./assess.py", {}, [], [])
+        # report.generate_html_output(output_file, prompt, rubric, None, {}, {}, [], accuracy_by_criteria, [], "./assess.py", {}, [], [])
+        report.generate_html_output(
+            output_file,
+            prompt,
+            rubric,
+            accuracy_by_criteria=accuracy_by_criteria,
+            command_line="./assess.py",
+        )
 
         output = self._get_output(mock_file)
 
@@ -155,18 +189,28 @@ class TestGenerateHtmlOutput:
         confusion_by_criteria = {}
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
         key_concepts = [x['Key Concept'] for x in parsed_rubric]
+        overall_confusion = []
+        for g in grades:
+            overall_confusion.append(random.sample(range(0, 100), len(grades)))
         for key_concept in key_concepts:
             confusion_by_criteria[key_concept] = []
             for g in grades:
                 confusion_by_criteria[key_concept].append(random.sample(range(0, 100), len(grades)))
 
-        report.generate_html_output(output_file, prompt, rubric, None, {}, {}, [], {}, [], "./assess.py", confusion_by_criteria, [], grades)
+        # report.generate_html_output(output_file, prompt, rubric, None, {}, {}, [], {}, [], "./assess.py", confusion_by_criteria, [], grades)
+        report.generate_html_output(
+            output_file,
+            prompt,
+            rubric,
+            command_line="./assess.py",
+            overall_confusion=overall_confusion,
+            confusion_by_criteria=confusion_by_criteria,
+            grade_names=grades,
+        )
 
-        print(confusion_by_criteria)
         output = self._get_output(mock_file)
 
-        print()
-        print(output)
+        assert re.search(fr'<h2>Overall Confusion:</h2>.*style="text-align: center">{overall_confusion[0][0]}<', output)
         for key_concept in key_concepts:
             assert re.search(fr'<h3>Confusion for {key_concept}:</h3>.*style="text-align: center">{confusion_by_criteria[key_concept][0][0]}<', output)
 
@@ -178,14 +222,14 @@ class TestGenerateHtmlOutput:
         mock_open = mocker.mock_open()
         mock_file = mocker.patch('builtins.open', mock_open)
 
+        predicted_grades = {}
         actual_grades = {}
-        expected_grades = {}
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
         key_concepts = [x['Key Concept'] for x in parsed_rubric]
         for _ in range(1, random.randint(3, 10)):
             student_id = str(random.randint(100000, 999999))
 
-            actual_grades[student_id] = list(map(lambda key_concept:
+            predicted_grades[student_id] = list(map(lambda key_concept:
                 {
                     'Key Concept': key_concept,
                     'Observations': 'What I see',
@@ -196,18 +240,26 @@ class TestGenerateHtmlOutput:
             ))
 
             for key_concept in key_concepts:
-                expected_grades[student_id] = expected_grades.get(student_id, {})
-                expected_grades[student_id][key_concept] = random_grade_generator()
+                actual_grades[student_id] = actual_grades.get(student_id, {})
+                actual_grades[student_id][key_concept] = random_grade_generator()
 
-        report.generate_html_output(output_file, prompt, rubric, None, actual_grades, expected_grades, [], {}, [], "./assess.py", {}, [], [])
+        # report.generate_html_output(output_file, prompt, rubric, None, predicted_grades, actual_grades, [], {}, [], "./assess.py", {}, [], [])
+        report.generate_html_output(
+            output_file,
+            prompt,
+            rubric,
+            predicted_grades=predicted_grades,
+            actual_grades=actual_grades,
+            command_line="./assess.py",
+        )
 
         output = self._get_output(mock_file)
 
-        for student_id, grades in actual_grades.items():
+        for student_id, grades in predicted_grades.items():
             for grade in grades:
                 key_concept = grade['Key Concept']
 
-                assert re.search(fr'<td>{key_concept}</td>.*>{expected_grades[student_id][key_concept]}<', output)
+                assert re.search(fr'<td>{key_concept}</td>.*>{actual_grades[student_id][key_concept]}<', output)
                 assert re.search(fr'<td>{key_concept}</td>.*>{grade["Grade"]}<', output)
 
     def test_should_report_generated_grade_report_with_pass_fail(self, mocker, report, prompt, rubric, random_grade_generator, randomstring):
@@ -218,14 +270,14 @@ class TestGenerateHtmlOutput:
         mock_open = mocker.mock_open()
         mock_file = mocker.patch('builtins.open', mock_open)
 
+        predicted_grades = {}
         actual_grades = {}
-        expected_grades = {}
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
         key_concepts = [x['Key Concept'] for x in parsed_rubric]
         for _ in range(1, random.randint(3, 10)):
             student_id = str(random.randint(100000, 999999))
 
-            actual_grades[student_id] = list(map(lambda key_concept:
+            predicted_grades[student_id] = list(map(lambda key_concept:
                 {
                     'Key Concept': key_concept,
                     'Observations': 'What I see',
@@ -236,19 +288,28 @@ class TestGenerateHtmlOutput:
             ))
 
             for key_concept in key_concepts:
-                expected_grades[student_id] = expected_grades.get(student_id, {})
-                expected_grades[student_id][key_concept] = random_grade_generator()
+                actual_grades[student_id] = actual_grades.get(student_id, {})
+                actual_grades[student_id][key_concept] = random_grade_generator()
 
         passing_grades = ['Extensive Evidence', 'Convincing Evidence']
-        report.generate_html_output(output_file, prompt, rubric, None, actual_grades, expected_grades, passing_grades, {}, [], "./assess.py", {}, [], [])
+        # report.generate_html_output(output_file, prompt, rubric, None, predicted_grades, actual_grades, passing_grades, {}, [], "./assess.py", {}, [], [])
+        report.generate_html_output(
+            output_file,
+            prompt,
+            rubric,
+            predicted_grades=predicted_grades,
+            actual_grades=actual_grades,
+            passing_grades=passing_grades,
+            command_line="./assess.py",
+        )
 
         output = self._get_output(mock_file)
 
-        for student_id, grades in actual_grades.items():
+        for student_id, grades in predicted_grades.items():
             for grade in grades:
                 key_concept = grade['Key Concept']
 
-                assert re.search(fr'<td>{key_concept}</td>.*>{expected_grades[student_id][key_concept]}<', output)
+                assert re.search(fr'<td>{key_concept}</td>.*>{actual_grades[student_id][key_concept]}<', output)
                 assert re.search(fr'<td>{key_concept}</td>.*>{grade["Grade"]}<', output)
 
     def test_should_report_errors(self, mocker, report, prompt, rubric, random_grade_generator, randomstring):
@@ -263,7 +324,14 @@ class TestGenerateHtmlOutput:
         for _ in range(0, random.randint(1, 5)):
             errors.append(randomstring(12))
 
-        report.generate_html_output(output_file, prompt, rubric, None, {}, {}, [], {}, errors, "./assess.py", {}, [], [])
+        # report.generate_html_output(output_file, prompt, rubric, None, {}, {}, [], {}, errors, "./assess.py", {}, [], [])
+        report.generate_html_output(
+            output_file,
+            prompt,
+            rubric,
+            errors=errors,
+            command_line="./assess.py",
+        )
 
         output = self._get_output(mock_file)
 

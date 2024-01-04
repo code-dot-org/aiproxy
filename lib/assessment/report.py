@@ -6,19 +6,19 @@ from typing import List, Dict, Any
 from lib.assessment.config import VALID_GRADES
 
 class Report:
-    def _compute_pass_fail_cell_color(self, expected, actual, passing_grades):
-        if Report.accurate(expected, actual, passing_grades):
+    def _compute_pass_fail_cell_color(self, actual, predicted, passing_grades):
+        if Report.accurate(actual, predicted, passing_grades):
             return 'green'
         else:
             return 'red'
 
-    def _compute_actual_cell_color(self, actual, expected, passing_grades):
+    def _compute_predicted_cell_color(self, predicted, actual, passing_grades):
         if passing_grades:
-            return self._compute_pass_fail_cell_color(expected, actual, passing_grades)
+            return self._compute_pass_fail_cell_color(actual, predicted, passing_grades)
 
-        expected_index = VALID_GRADES.index(expected) if expected in VALID_GRADES else None
         actual_index = VALID_GRADES.index(actual) if actual in VALID_GRADES else None
-        grade_difference = abs(expected_index - actual_index) if expected_index is not None and actual_index is not None else None
+        predicted_index = VALID_GRADES.index(predicted) if predicted in VALID_GRADES else None
+        grade_difference = abs(actual_index - predicted_index) if actual_index is not None and predicted_index is not None else None
         if grade_difference == 0:
             return 'green'
         elif grade_difference == 1:
@@ -82,7 +82,7 @@ class Report:
         confusion_table += '</table>'
         return confusion_table
 
-    def generate_html_output(self, output_file, prompt, rubric, accuracy, actual_grades, expected_grades, passing_grades, accuracy_by_criteria, errors, command_line, confusion_by_criteria, overall_confusion, grade_names, prefix='sample_code'):
+    def generate_html_output(self, output_file, prompt, rubric, accuracy=None, predicted_grades=None, actual_grades=None, passing_grades=None, accuracy_by_criteria=None, errors=[], command_line=None, confusion_by_criteria=None, overall_confusion=None, grade_names=None, prefix='sample_code'):
         link_base_url = f'file://{os.getcwd()}/{prefix}'
 
         with open(output_file, 'w+') as file:
@@ -102,44 +102,50 @@ class Report:
                 file.write(f'  <h2 style="color: red">Errors: {len(errors)}</h2>\n')
                 file.write(f'  <p style="color: red">{", ".join(errors)} failed to load</p>\n')
 
-            file.write('  <h2>Command Line:</h2>\n')
-            file.write(f'  <pre>{command_line}</pre>\n')
+            if command_line:
+                file.write('  <h2>Command Line:</h2>\n')
+                file.write(f'  <pre>{command_line}</pre>\n')
 
             accuracy = 'N/A' if accuracy is None else f'{int(accuracy)}%'
             file.write(f'  <h2>Overall Accuracy: {accuracy}</h2>\n')
-            file.write('  <h2>Accuracy by Key Concept:</h2>\n')
-            file.write(self._generate_accuracy_table(accuracy_by_criteria) + '\n')
+            
+            if accuracy_by_criteria is not None:
+                file.write('  <h2>Accuracy by Key Concept:</h2>\n')
+                file.write(self._generate_accuracy_table(accuracy_by_criteria) + '\n')
 
-            file.write('  <h2>Overall Confusion:</h2>\n')
-            file.write(self._generate_confusion_table(overall_confusion, grade_names) + '\n')
+            if overall_confusion is not None and grade_names is not None:
+                file.write('  <h2>Overall Confusion:</h2>\n')
+                file.write(self._generate_confusion_table(overall_confusion, grade_names) + '\n')
 
-            file.write('  <h2>Confusion by Key Concept:</h2>\n')
-            for criteria in confusion_by_criteria:
-                file.write(f'  <h3>Confusion for {criteria}:</h3>\n')
-                file.write(self._generate_confusion_table(confusion_by_criteria[criteria], grade_names) + '\n\n')
+            if confusion_by_criteria is not None and grade_names is not None:
+                file.write('  <h2>Confusion by Key Concept:</h2>\n')
+                for criteria in confusion_by_criteria:
+                    file.write(f'  <h3>Confusion for {criteria}:</h3>\n')
+                    file.write(self._generate_confusion_table(confusion_by_criteria[criteria], grade_names) + '\n\n')
 
-            file.write('  <h2>Grades by student:</h2>\n')
-            for student_id, grades in actual_grades.items():
-                file.write(f'  <h3>Student: {student_id}</h3>\n')
-                file.write(f'  <a href="{link_base_url}/{student_id}.js">{student_id}.js</a>\n')
-                file.write('  <table border="1">\n')
-                file.write('    <tr><th>Criteria</th><th>Observations</th><th>Actual Grade (human)</th><th>Predicted Grade (AI)</th><th>Reason</th></tr>\n')
-                for grade in grades:
-                    criteria = grade['Key Concept']
-                    observations = grade['Observations']
-                    expected = expected_grades[student_id][criteria]
-                    actual = grade['Grade']
-                    reason = grade['Reason']
-                    cell_color = self._compute_actual_cell_color(actual, expected, passing_grades)
-                    file.write(f'    <tr><td>{criteria}</td><td>{observations}</td><td>{expected}</td><td style="background-color: {cell_color};">{actual}</td><td>{reason}</td></tr>\n')
-                file.write('  </table>\n')
+            if predicted_grades is not None:
+                file.write('  <h2>Grades by student:</h2>\n')
+                for student_id, grades in predicted_grades.items():
+                    file.write(f'  <h3>Student: {student_id}</h3>\n')
+                    file.write(f'  <a href="{link_base_url}/{student_id}.js">{student_id}.js</a>\n')
+                    file.write('  <table border="1">\n')
+                    file.write('    <tr><th>Criteria</th><th>Observations</th><th>Actual Grade (human)</th><th>Predicted Grade (AI)</th><th>Reason</th></tr>\n')
+                    for grade in grades:
+                        criteria = grade['Key Concept']
+                        observations = grade['Observations']
+                        actual = actual_grades[student_id][criteria]
+                        predicted = grade['Grade']
+                        reason = grade['Reason']
+                        cell_color = self._compute_predicted_cell_color(predicted, actual, passing_grades)
+                        file.write(f'    <tr><td>{criteria}</td><td>{observations}</td><td>{actual}</td><td style="background-color: {cell_color};">{predicted}</td><td>{reason}</td></tr>\n')
+                    file.write('  </table>\n')
 
             file.write('</body>\n')
             file.write('</html>\n')
 
     @staticmethod
-    def accurate(expected_grade, actual_grade, passing_grades):
+    def accurate(actual_grade, predicted_grade, passing_grades):
         if passing_grades:
-            return passing_grades.count(expected_grade) == passing_grades.count(actual_grade)
+            return passing_grades.count(actual_grade) == passing_grades.count(predicted_grade)
         else:
-            return expected_grade == actual_grade
+            return actual_grade == predicted_grade

@@ -22,7 +22,7 @@ from lib.assessment.report import Report
 #globals
 prompt_file = 'system_prompt.txt'
 standard_rubric_file = 'standard_rubric.csv'
-expected_grades_file = 'expected_grades.csv'
+actual_labels_file = 'expected_grades.csv'
 output_dir_name = 'output'
 base_dir = 'lesson_data'
 cache_dir_name = 'cached_responses'
@@ -97,14 +97,14 @@ def get_student_files(max_num_students, prefix, student_ids=None):
         return sorted(glob.glob(os.path.join(prefix, '*.js')))[:max_num_students]
 
 
-def get_expected_grades(expected_grades_file, prefix):
-    expected_grades = {}
-    with open(os.path.join(prefix, expected_grades_file), newline='') as csvfile:
+def get_actual_grades(actual_grades_file, prefix):
+    actual_grades = {}
+    with open(os.path.join(prefix, actual_grades_file), newline='') as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
             student_id = row['student']
-            expected_grades[student_id] = dict(row)
-    return expected_grades
+            actual_grades[student_id] = dict(row)
+    return actual_grades
 
 
 def get_examples(prefix):
@@ -120,58 +120,58 @@ def get_examples(prefix):
     return examples
 
 
-def validate_rubrics(expected_grades, standard_rubric):
-    expected_concepts = sorted(list(list(expected_grades.values())[0].keys())[1:])
+def validate_rubrics(actual_grades, standard_rubric):
+    actual_concepts = sorted(list(list(actual_grades.values())[0].keys())[1:])
     standard_rubric_filelike = io.StringIO(standard_rubric)  # convert string to file-like object
     standard_rubric_dicts = list(csv.DictReader(standard_rubric_filelike))
     standard_concepts = sorted([rubric_dict["Key Concept"] for rubric_dict in standard_rubric_dicts])
-    if standard_concepts != expected_concepts:
-        raise Exception(f"standard concepts do not match expected concepts:\n{standard_concepts}\n{expected_concepts}")
+    if standard_concepts != actual_concepts:
+        raise Exception(f"standard concepts do not match actual concepts:\n{standard_concepts}\n{actual_concepts}")
 
 
-def validate_students(student_files, expected_grades):
-    expected_students = sorted(expected_grades.keys())
-    actual_students = sorted([os.path.splitext(os.path.basename(student_file))[0] for student_file in student_files])
+def validate_students(student_files, actual_grades):
+    actual_students = sorted(actual_grades.keys())
+    predicted_students = sorted([os.path.splitext(os.path.basename(student_file))[0] for student_file in student_files])
 
-    unexpected_students = list(set(actual_students) - set(expected_students))
+    unexpected_students = list(set(predicted_students) - set(actual_students))
     if unexpected_students:
         raise Exception(f"unexpected students: {unexpected_students}")
 
 
-def compute_accuracy(expected_grades, actual_grades, passing_grades):
-    expected_by_criteria = defaultdict(list)
+def compute_accuracy(actual_grades, predicted_grades, passing_grades):
     actual_by_criteria = defaultdict(list)
+    predicted_by_criteria = defaultdict(list)
     confusion_by_criteria = {}
+    overall_predicted = []
     overall_actual = []
-    overall_expected = []
     grade_names = VALID_GRADES
 
-    for student_id, grade in actual_grades.items():
+    for student_id, grade in predicted_grades.items():
         for row in grade:
             criteria = row['Key Concept']
-            expected_by_criteria[criteria].append(expected_grades[student_id][criteria])
-            actual_by_criteria[criteria].append(row['Grade'])
+            actual_by_criteria[criteria].append(actual_grades[student_id][criteria])
+            predicted_by_criteria[criteria].append(row['Grade'])
 
     accuracy_by_criteria = {}
 
-    for criteria in actual_by_criteria.keys():
+    for criteria in predicted_by_criteria.keys():
         if (passing_grades):
             pass_string = "/".join(passing_grades)
             fail_string = "/".join([grade for grade in VALID_GRADES if grade not in passing_grades])
             grade_names = [pass_string, fail_string]
+            predicted_by_criteria[criteria] = list(map(lambda x: pass_string if x in passing_grades else fail_string, predicted_by_criteria[criteria]))
             actual_by_criteria[criteria] = list(map(lambda x: pass_string if x in passing_grades else fail_string, actual_by_criteria[criteria]))
-            expected_by_criteria[criteria] = list(map(lambda x: pass_string if x in passing_grades else fail_string, expected_by_criteria[criteria]))
         
+        predicted = predicted_by_criteria[criteria]
         actual = actual_by_criteria[criteria]
-        expected = expected_by_criteria[criteria]
         
-        confusion_by_criteria[criteria] = confusion_matrix(expected, actual, labels=grade_names)
-        accuracy_by_criteria[criteria] = accuracy_score(expected, actual) * 100
+        confusion_by_criteria[criteria] = confusion_matrix(actual, predicted, labels=grade_names)
+        accuracy_by_criteria[criteria] = accuracy_score(actual, predicted) * 100
+        overall_predicted.extend(predicted)
         overall_actual.extend(actual)
-        overall_expected.extend(expected)
 
-    overall_accuracy = accuracy_score(overall_expected, overall_actual) * 100
-    overall_confusion = confusion_matrix(overall_expected, overall_actual, labels=grade_names)
+    overall_accuracy = accuracy_score(overall_actual, overall_predicted) * 100
+    overall_confusion = confusion_matrix(overall_actual, overall_predicted, labels=grade_names)
 
     return accuracy_by_criteria, overall_accuracy, confusion_by_criteria, overall_confusion, grade_names
 
@@ -212,11 +212,11 @@ def main():
         # read in lesson files, validate them
         prompt, standard_rubric = read_inputs(prompt_file, standard_rubric_file, prefix)
         student_files = get_student_files(options.max_num_students, prefix, student_ids=options.student_ids)
-        expected_grades = get_expected_grades(expected_grades_file, prefix)
+        actual_grades = get_actual_grades(actual_labels_file, prefix)
         examples = get_examples(prefix)
 
-        validate_rubrics(expected_grades, standard_rubric)
-        validate_students(student_files, expected_grades)
+        validate_rubrics(actual_grades, standard_rubric)
+        validate_students(student_files, actual_grades)
         rubric = standard_rubric
 
         # set up output and cache directories
@@ -229,17 +229,30 @@ def main():
 
         # call grade function to either call openAI or read from cache
         with concurrent.futures.ThreadPoolExecutor(max_workers=7) as executor:
-            actual_grades = list(executor.map(lambda student_file: grade_student_work(prompt, rubric, student_file, examples, options, prefix), student_files))
+            predicted_grades = list(executor.map(lambda student_file: grade_student_work(prompt, rubric, student_file, examples, options, prefix), student_files))
 
-        errors = [student_id for student_id, grades in actual_grades if not grades]
-        # actual_grades contains metadata and data (grades), we care about the data key
-        actual_grades = {student_id: grades['data'] for student_id, grades in actual_grades if grades}
+        errors = [student_id for student_id, grades in predicted_grades if not grades]
+        # predicted_grades contains metadata and data (grades), we care about the data key
+        predicted_grades = {student_id: grades['data'] for student_id, grades in predicted_grades if grades}
 
         # calculate accuracy and generate report
-        accuracy_by_criteria, overall_accuracy, confusion_by_criteria, overall_confusion, grade_names = compute_accuracy(expected_grades, actual_grades, options.passing_grades)
+        accuracy_by_criteria, overall_accuracy, confusion_by_criteria, overall_confusion, grade_names = compute_accuracy(actual_grades, predicted_grades, options.passing_grades)
         report = Report()
         report.generate_html_output(
-            output_file, prompt, rubric, overall_accuracy, actual_grades, expected_grades, options.passing_grades, accuracy_by_criteria, errors, command_line, confusion_by_criteria, overall_confusion, grade_names, prefix=prefix
+            output_file,
+            prompt,
+            rubric,
+            accuracy=overall_accuracy,
+            predicted_grades=predicted_grades,
+            actual_grades=actual_grades,
+            passing_grades=options.passing_grades,
+            accuracy_by_criteria=accuracy_by_criteria,
+            errors=errors,
+            command_line=command_line,
+            confusion_by_criteria=confusion_by_criteria,
+            overall_confusion=overall_confusion,
+            grade_names=grade_names,
+            prefix=prefix
         )
         logging.info(f"main finished in {int(time.time() - main_start_time)} seconds")
 
