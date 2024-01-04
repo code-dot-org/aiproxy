@@ -15,7 +15,7 @@ import gdown
 from sklearn.metrics import accuracy_score, confusion_matrix
 from collections import defaultdict
 
-from lib.assessment.config import SUPPORTED_MODELS, VALID_GRADES, LESSONS
+from lib.assessment.config import SUPPORTED_MODELS, VALID_LABELS, LESSONS
 from lib.assessment.grade import Grade
 from lib.assessment.report import Report
 
@@ -40,12 +40,12 @@ def command_line_options():
                         help=f"Which LLM model to use. Supported models: {', '.join(SUPPORTED_MODELS)}. Default: gpt-4")
     parser.add_argument('-n', '--num-responses', type=int, default=1,
                         help='Number of responses to generate for each student. Defaults to 1.')
-    parser.add_argument('-p', '--num-passing-grades', type=int,
-                        help='Number of grades which are considered passing.')
+    parser.add_argument('-p', '--num-passing-labels', type=int,
+                        help='Number of labels which are considered passing.')
     parser.add_argument('-s', '--max-num-students', type=int, default=100,
-                        help='Maximum number of students to grade. Defaults to 100 students.')
+                        help='Maximum number of students to label. Defaults to 100 students.')
     parser.add_argument('--student-ids', type=str,
-                        help='Comma-separated list of student ids to grade. Defaults to all students.')
+                        help='Comma-separated list of student ids to label. Defaults to all students.')
     parser.add_argument('-t', '--temperature', type=float, default=0.0,
                         help='Temperature of the LLM. Defaults to 0.0.')
     parser.add_argument('-d', '--download', action='store_true',
@@ -56,7 +56,7 @@ def command_line_options():
     if args.llm_model not in SUPPORTED_MODELS:
         raise Exception(f"Unsupported LLM model: {args.llm_model}. Supported models are: {', '.join(SUPPORTED_MODELS)}")
 
-    args.passing_grades = get_passing_grades(args.num_passing_grades)
+    args.passing_labels = get_passing_labels(args.num_passing_labels)
 
     if args.student_ids:
         args.student_ids = args.student_ids.split(',')
@@ -73,9 +73,9 @@ def command_line_options():
     return args
 
 
-def get_passing_grades(num_passing_grades):
-    if num_passing_grades:
-        return VALID_GRADES[:num_passing_grades]
+def get_passing_labels(num_passing_labels):
+    if num_passing_labels:
+        return VALID_LABELS[:num_passing_labels]
     else:
         return None
 
@@ -97,14 +97,14 @@ def get_student_files(max_num_students, prefix, student_ids=None):
         return sorted(glob.glob(os.path.join(prefix, '*.js')))[:max_num_students]
 
 
-def get_actual_grades(actual_grades_file, prefix):
-    actual_grades = {}
-    with open(os.path.join(prefix, actual_grades_file), newline='') as csvfile:
+def get_actual_labels(actual_labels_file, prefix):
+    actual_labels = {}
+    with open(os.path.join(prefix, actual_labels_file), newline='') as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
             student_id = row['student']
-            actual_grades[student_id] = dict(row)
-    return actual_grades
+            actual_labels[student_id] = dict(row)
+    return actual_labels
 
 
 def get_examples(prefix):
@@ -120,8 +120,8 @@ def get_examples(prefix):
     return examples
 
 
-def validate_rubrics(actual_grades, standard_rubric):
-    actual_concepts = sorted(list(list(actual_grades.values())[0].keys())[1:])
+def validate_rubrics(actual_labels, standard_rubric):
+    actual_concepts = sorted(list(list(actual_labels.values())[0].keys())[1:])
     standard_rubric_filelike = io.StringIO(standard_rubric)  # convert string to file-like object
     standard_rubric_dicts = list(csv.DictReader(standard_rubric_filelike))
     standard_concepts = sorted([rubric_dict["Key Concept"] for rubric_dict in standard_rubric_dicts])
@@ -129,8 +129,8 @@ def validate_rubrics(actual_grades, standard_rubric):
         raise Exception(f"standard concepts do not match actual concepts:\n{standard_concepts}\n{actual_concepts}")
 
 
-def validate_students(student_files, actual_grades):
-    actual_students = sorted(actual_grades.keys())
+def validate_students(student_files, actual_labels):
+    actual_students = sorted(actual_labels.keys())
     predicted_students = sorted([os.path.splitext(os.path.basename(student_file))[0] for student_file in student_files])
 
     unexpected_students = list(set(predicted_students) - set(actual_students))
@@ -138,50 +138,50 @@ def validate_students(student_files, actual_grades):
         raise Exception(f"unexpected students: {unexpected_students}")
 
 
-def compute_accuracy(actual_grades, predicted_grades, passing_grades):
+def compute_accuracy(actual_labels, predicted_labels, passing_labels):
     actual_by_criteria = defaultdict(list)
     predicted_by_criteria = defaultdict(list)
     confusion_by_criteria = {}
     overall_predicted = []
     overall_actual = []
-    grade_names = VALID_GRADES
+    label_names = VALID_LABELS
 
-    for student_id, grade in predicted_grades.items():
-        for row in grade:
+    for student_id, label in predicted_labels.items():
+        for row in label:
             criteria = row['Key Concept']
-            actual_by_criteria[criteria].append(actual_grades[student_id][criteria])
+            actual_by_criteria[criteria].append(actual_labels[student_id][criteria])
             predicted_by_criteria[criteria].append(row['Grade'])
 
     accuracy_by_criteria = {}
 
     for criteria in predicted_by_criteria.keys():
-        if (passing_grades):
-            pass_string = "/".join(passing_grades)
-            fail_string = "/".join([grade for grade in VALID_GRADES if grade not in passing_grades])
-            grade_names = [pass_string, fail_string]
-            predicted_by_criteria[criteria] = list(map(lambda x: pass_string if x in passing_grades else fail_string, predicted_by_criteria[criteria]))
-            actual_by_criteria[criteria] = list(map(lambda x: pass_string if x in passing_grades else fail_string, actual_by_criteria[criteria]))
+        if (passing_labels):
+            pass_string = "/".join(passing_labels)
+            fail_string = "/".join([label for label in VALID_LABELS if label not in passing_labels])
+            label_names = [pass_string, fail_string]
+            predicted_by_criteria[criteria] = list(map(lambda x: pass_string if x in passing_labels else fail_string, predicted_by_criteria[criteria]))
+            actual_by_criteria[criteria] = list(map(lambda x: pass_string if x in passing_labels else fail_string, actual_by_criteria[criteria]))
         
         predicted = predicted_by_criteria[criteria]
         actual = actual_by_criteria[criteria]
         
-        confusion_by_criteria[criteria] = confusion_matrix(actual, predicted, labels=grade_names)
+        confusion_by_criteria[criteria] = confusion_matrix(actual, predicted, labels=label_names)
         accuracy_by_criteria[criteria] = accuracy_score(actual, predicted) * 100
         overall_predicted.extend(predicted)
         overall_actual.extend(actual)
 
     overall_accuracy = accuracy_score(overall_actual, overall_predicted) * 100
-    overall_confusion = confusion_matrix(overall_actual, overall_predicted, labels=grade_names)
+    overall_confusion = confusion_matrix(overall_actual, overall_predicted, labels=label_names)
 
-    return accuracy_by_criteria, overall_accuracy, confusion_by_criteria, overall_confusion, grade_names
+    return accuracy_by_criteria, overall_accuracy, confusion_by_criteria, overall_confusion, label_names
 
 
-def grade_student_work(prompt, rubric, student_file, examples, options, prefix):
+def label_student_work(prompt, rubric, student_file, examples, options, prefix):
     student_id = os.path.splitext(os.path.basename(student_file))[0]
     with open(student_file, 'r') as f:
         student_code = f.read()
-    grade = Grade()
-    grades = grade.grade_student_work(
+    label = Grade()
+    labels = label.grade_student_work(
         prompt,
         rubric,
         student_code,
@@ -194,7 +194,7 @@ def grade_student_work(prompt, rubric, student_file, examples, options, prefix):
         llm_model=options.llm_model,
         cache_prefix=prefix
     )
-    return student_id, grades
+    return student_id, labels
 
 
 def main():
@@ -212,11 +212,11 @@ def main():
         # read in lesson files, validate them
         prompt, standard_rubric = read_inputs(prompt_file, standard_rubric_file, prefix)
         student_files = get_student_files(options.max_num_students, prefix, student_ids=options.student_ids)
-        actual_grades = get_actual_grades(actual_labels_file, prefix)
+        actual_labels = get_actual_labels(actual_labels_file, prefix)
         examples = get_examples(prefix)
 
-        validate_rubrics(actual_grades, standard_rubric)
-        validate_students(student_files, actual_grades)
+        validate_rubrics(actual_labels, standard_rubric)
+        validate_students(student_files, actual_labels)
         rubric = standard_rubric
 
         # set up output and cache directories
@@ -227,31 +227,31 @@ def main():
             for file in glob.glob(f'{os.path.join(prefix, cache_dir_name)}/*'):
                 os.remove(file)
 
-        # call grade function to either call openAI or read from cache
+        # call label function to either call openAI or read from cache
         with concurrent.futures.ThreadPoolExecutor(max_workers=7) as executor:
-            predicted_grades = list(executor.map(lambda student_file: grade_student_work(prompt, rubric, student_file, examples, options, prefix), student_files))
+            predicted_labels = list(executor.map(lambda student_file: label_student_work(prompt, rubric, student_file, examples, options, prefix), student_files))
 
-        errors = [student_id for student_id, grades in predicted_grades if not grades]
-        # predicted_grades contains metadata and data (grades), we care about the data key
-        predicted_grades = {student_id: grades['data'] for student_id, grades in predicted_grades if grades}
+        errors = [student_id for student_id, labels in predicted_labels if not labels]
+        # predicted_labels contains metadata and data (labels), we care about the data key
+        predicted_labels = {student_id: labels['data'] for student_id, labels in predicted_labels if labels}
 
         # calculate accuracy and generate report
-        accuracy_by_criteria, overall_accuracy, confusion_by_criteria, overall_confusion, grade_names = compute_accuracy(actual_grades, predicted_grades, options.passing_grades)
+        accuracy_by_criteria, overall_accuracy, confusion_by_criteria, overall_confusion, label_names = compute_accuracy(actual_labels, predicted_labels, options.passing_labels)
         report = Report()
         report.generate_html_output(
             output_file,
             prompt,
             rubric,
             accuracy=overall_accuracy,
-            predicted_grades=predicted_grades,
-            actual_grades=actual_grades,
-            passing_grades=options.passing_grades,
+            predicted_labels=predicted_labels,
+            actual_labels=actual_labels,
+            passing_labels=options.passing_labels,
             accuracy_by_criteria=accuracy_by_criteria,
             errors=errors,
             command_line=command_line,
             confusion_by_criteria=confusion_by_criteria,
             overall_confusion=overall_confusion,
-            grade_names=grade_names,
+            label_names=label_names,
             prefix=prefix
         )
         logging.info(f"main finished in {int(time.time() - main_start_time)} seconds")

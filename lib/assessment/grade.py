@@ -7,7 +7,7 @@ import requests
 import logging
 
 from typing import List, Dict, Any
-from lib.assessment.config import VALID_GRADES
+from lib.assessment.config import VALID_LABELS
 
 from io import StringIO
 
@@ -274,7 +274,7 @@ class Grade:
             raise InvalidResponseError(f'unexpected or missing key concept. unexpected: {unexpected_concepts} missing: {missing_concepts}')
 
         for row in tsv_data:
-            if row["Grade"] not in VALID_GRADES:
+            if row["Grade"] not in VALID_LABELS:
                 raise InvalidResponseError(f"invalid grade value: '{row['Grade']}'")
 
     def get_consensus_response(self, choices, student_id):

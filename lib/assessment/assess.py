@@ -7,7 +7,7 @@ import json
 import logging
 
 # Import our support classes
-from lib.assessment.config import SUPPORTED_MODELS, VALID_GRADES
+from lib.assessment.config import SUPPORTED_MODELS, VALID_LABELS
 from lib.assessment.grade import Grade
 
 class KeyConceptError(Exception):

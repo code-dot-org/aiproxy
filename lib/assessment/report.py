@@ -3,25 +3,25 @@ import csv
 import io
 import json
 from typing import List, Dict, Any
-from lib.assessment.config import VALID_GRADES
+from lib.assessment.config import VALID_LABELS
 
 class Report:
-    def _compute_pass_fail_cell_color(self, actual, predicted, passing_grades):
-        if Report.accurate(actual, predicted, passing_grades):
+    def _compute_pass_fail_cell_color(self, actual, predicted, passing_labels):
+        if Report.accurate(actual, predicted, passing_labels):
             return 'green'
         else:
             return 'red'
 
-    def _compute_predicted_cell_color(self, predicted, actual, passing_grades):
-        if passing_grades:
-            return self._compute_pass_fail_cell_color(actual, predicted, passing_grades)
+    def _compute_predicted_cell_color(self, predicted, actual, passing_labels):
+        if passing_labels:
+            return self._compute_pass_fail_cell_color(actual, predicted, passing_labels)
 
-        actual_index = VALID_GRADES.index(actual) if actual in VALID_GRADES else None
-        predicted_index = VALID_GRADES.index(predicted) if predicted in VALID_GRADES else None
-        grade_difference = abs(actual_index - predicted_index) if actual_index is not None and predicted_index is not None else None
-        if grade_difference == 0:
+        actual_index = VALID_LABELS.index(actual) if actual in VALID_LABELS else None
+        predicted_index = VALID_LABELS.index(predicted) if predicted in VALID_LABELS else None
+        label_difference = abs(actual_index - predicted_index) if actual_index is not None and predicted_index is not None else None
+        if label_difference == 0:
             return 'green'
-        elif grade_difference == 1:
+        elif label_difference == 1:
             return 'yellow'
         else:
             return 'red'
@@ -82,7 +82,7 @@ class Report:
         confusion_table += '</table>'
         return confusion_table
 
-    def generate_html_output(self, output_file, prompt, rubric, accuracy=None, predicted_grades=None, actual_grades=None, passing_grades=None, accuracy_by_criteria=None, errors=[], command_line=None, confusion_by_criteria=None, overall_confusion=None, grade_names=None, prefix='sample_code'):
+    def generate_html_output(self, output_file, prompt, rubric, accuracy=None, predicted_labels=None, actual_labels=None, passing_labels=None, accuracy_by_criteria=None, errors=[], command_line=None, confusion_by_criteria=None, overall_confusion=None, label_names=None, prefix='sample_code'):
         link_base_url = f'file://{os.getcwd()}/{prefix}'
 
         with open(output_file, 'w+') as file:
@@ -113,30 +113,30 @@ class Report:
                 file.write('  <h2>Accuracy by Key Concept:</h2>\n')
                 file.write(self._generate_accuracy_table(accuracy_by_criteria) + '\n')
 
-            if overall_confusion is not None and grade_names is not None:
+            if overall_confusion is not None and label_names is not None:
                 file.write('  <h2>Overall Confusion:</h2>\n')
-                file.write(self._generate_confusion_table(overall_confusion, grade_names) + '\n')
+                file.write(self._generate_confusion_table(overall_confusion, label_names) + '\n')
 
-            if confusion_by_criteria is not None and grade_names is not None:
+            if confusion_by_criteria is not None and label_names is not None:
                 file.write('  <h2>Confusion by Key Concept:</h2>\n')
                 for criteria in confusion_by_criteria:
                     file.write(f'  <h3>Confusion for {criteria}:</h3>\n')
-                    file.write(self._generate_confusion_table(confusion_by_criteria[criteria], grade_names) + '\n\n')
+                    file.write(self._generate_confusion_table(confusion_by_criteria[criteria], label_names) + '\n\n')
 
-            if predicted_grades is not None:
-                file.write('  <h2>Grades by student:</h2>\n')
-                for student_id, grades in predicted_grades.items():
+            if predicted_labels is not None:
+                file.write('  <h2>Labels by student:</h2>\n')
+                for student_id, labels in predicted_labels.items():
                     file.write(f'  <h3>Student: {student_id}</h3>\n')
                     file.write(f'  <a href="{link_base_url}/{student_id}.js">{student_id}.js</a>\n')
                     file.write('  <table border="1">\n')
-                    file.write('    <tr><th>Criteria</th><th>Observations</th><th>Actual Grade (human)</th><th>Predicted Grade (AI)</th><th>Reason</th></tr>\n')
-                    for grade in grades:
-                        criteria = grade['Key Concept']
-                        observations = grade['Observations']
-                        actual = actual_grades[student_id][criteria]
-                        predicted = grade['Grade']
-                        reason = grade['Reason']
-                        cell_color = self._compute_predicted_cell_color(predicted, actual, passing_grades)
+                    file.write('    <tr><th>Criteria</th><th>Observations</th><th>Actual Label (human)</th><th>Predicted Label (AI)</th><th>Reason</th></tr>\n')
+                    for label in labels:
+                        criteria = label['Key Concept']
+                        observations = label['Observations']
+                        actual = actual_labels[student_id][criteria]
+                        predicted = label['Grade']
+                        reason = label['Reason']
+                        cell_color = self._compute_predicted_cell_color(predicted, actual, passing_labels)
                         file.write(f'    <tr><td>{criteria}</td><td>{observations}</td><td>{actual}</td><td style="background-color: {cell_color};">{predicted}</td><td>{reason}</td></tr>\n')
                     file.write('  </table>\n')
 
@@ -144,8 +144,8 @@ class Report:
             file.write('</html>\n')
 
     @staticmethod
-    def accurate(actual_grade, predicted_grade, passing_grades):
-        if passing_grades:
-            return passing_grades.count(actual_grade) == passing_grades.count(predicted_grade)
+    def accurate(actual_label, predicted_label, passing_labels):
+        if passing_labels:
+            return passing_labels.count(actual_label) == passing_labels.count(predicted_label)
         else:
-            return actual_grade == predicted_grade
+            return actual_label == predicted_label
