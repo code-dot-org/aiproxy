@@ -142,6 +142,7 @@ Resources:
       DesiredCount: 1
       LaunchType: FARGATE
       TaskDefinition: !Ref ECSTaskDefinition
+      PropagateTags: SERVICE
       NetworkConfiguration:
         AwsvpcConfiguration:
           AssignPublicIp: DISABLED
