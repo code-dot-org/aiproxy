@@ -7,7 +7,7 @@ import requests
 import logging
 
 from typing import List, Dict, Any
-from lib.assessment.config import VALID_GRADES
+from lib.assessment.config import VALID_LABELS
 
 from io import StringIO
 
@@ -22,7 +22,7 @@ class Grade:
     #
     # For instance, it will determine a blank project should receive a No Evidence score for
     # all items in the rubric.
-    def statically_grade_student_work(self, rubric, student_code, student_id, examples=[]):
+    def statically_label_student_work(self, rubric, student_code, student_id, examples=[]):
         rubric_key_concepts = list(set(row['Key Concept'] for row in csv.DictReader(rubric.splitlines())))
 
         if student_code.strip() == "":
@@ -47,7 +47,7 @@ class Grade:
         # We can't assess this statically
         return None
 
-    def ai_grade_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model=""):
+    def ai_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model=""):
         # Determine the OpenAI URL and headers
         api_url = 'https://api.openai.com/v1/chat/completions'
         headers = {
@@ -97,14 +97,14 @@ class Grade:
         student_code = self.sanitize_code(student_code, remove_comments=remove_comments)
 
         # Try static analysis options (before invoking AI)
-        result = self.statically_grade_student_work(rubric, student_code, student_id, examples=examples)
+        result = self.statically_label_student_work(rubric, student_code, student_id, examples=examples)
 
         # If it gives back a response, right now assume it is complete and do not perform an AI analysis
-        # We may want to, in the future, gauge how many of the concepts it has graded and let AI fill in the blanks
+        # We may want to, in the future, gauge how many of the concepts it has labeled and let AI fill in the blanks
         # Right now, however, only if there is no result, we try the AI for assessment
         if result is None:
             try:
-                result = self.ai_grade_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
+                result = self.ai_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
             except requests.exceptions.ReadTimeout:
                 logging.error(f"{student_id} request timed out in {(time.time() - start_time):.0f} seconds.")
                 result = None
@@ -274,34 +274,34 @@ class Grade:
             raise InvalidResponseError(f'unexpected or missing key concept. unexpected: {unexpected_concepts} missing: {missing_concepts}')
 
         for row in tsv_data:
-            if row["Grade"] not in VALID_GRADES:
-                raise InvalidResponseError(f"invalid grade value: '{row['Grade']}'")
+            if row["Grade"] not in VALID_LABELS:
+                raise InvalidResponseError(f"invalid label value: '{row['Grade']}'")
 
     def get_consensus_response(self, choices, student_id):
         from collections import Counter
 
-        key_concept_to_grades = {}
+        key_concept_to_labels = {}
         for choice in choices:
             for row in choice:
-                if row['Key Concept'] not in key_concept_to_grades:
-                    key_concept_to_grades[row['Key Concept']] = []
-                key_concept_to_grades[row['Key Concept']].append(row['Grade'])
+                if row['Key Concept'] not in key_concept_to_labels:
+                    key_concept_to_labels[row['Key Concept']] = []
+                key_concept_to_labels[row['Key Concept']].append(row['Grade'])
 
-        key_concept_to_majority_grade = {}
-        for key_concept, grades in key_concept_to_grades.items():
-            majority_grade = Counter(grades).most_common(1)[0][0]
-            key_concept_to_majority_grade[key_concept] = majority_grade
-            if majority_grade != grades[0]:
-                logging.info(f"outvoted {student_id} Key Concept: {key_concept} first grade: {grades[0]} majority grade: {majority_grade}")
+        key_concept_to_majority_label = {}
+        for key_concept, labels in key_concept_to_labels.items():
+            majority_label = Counter(labels).most_common(1)[0][0]
+            key_concept_to_majority_label[key_concept] = majority_label
+            if majority_label != labels[0]:
+                logging.info(f"outvoted {student_id} Key Concept: {key_concept} first label: {labels[0]} majority label: {majority_label}")
 
         key_concept_to_observations = {}
         key_concept_to_reason = {}
         for choice in choices:
             for row in choice:
                 key_concept = row['Key Concept']
-                if key_concept_to_majority_grade[key_concept] == row['Grade']:
+                if key_concept_to_majority_label[key_concept] == row['Grade']:
                     if key_concept not in key_concept_to_observations:
                         key_concept_to_observations[key_concept] = row['Observations']
                     key_concept_to_reason[key_concept] = row['Reason']
 
-        return [{'Key Concept': key_concept, 'Observations': key_concept_to_observations[key_concept], 'Grade': grade, 'Reason': f"<b>Votes: [{', '.join(key_concept_to_grades[key_concept])}]</b><br>{key_concept_to_reason[key_concept]}"} for key_concept, grade in key_concept_to_majority_grade.items()]
+        return [{'Key Concept': key_concept, 'Observations': key_concept_to_observations[key_concept], 'Grade': label, 'Reason': f"<b>Votes: [{', '.join(key_concept_to_labels[key_concept])}]</b><br>{key_concept_to_reason[key_concept]}"} for key_concept, label in key_concept_to_majority_label.items()]

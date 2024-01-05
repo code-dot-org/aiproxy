@@ -7,8 +7,8 @@ import pytest
 
 
 @pytest.fixture
-def random_grade_generator():
-    def gen_random_grade():
+def random_label_generator():
+    def gen_random_label():
         return random.choice([
             'Extensive Evidence',
             'Convincing Evidence',
@@ -16,7 +16,7 @@ def random_grade_generator():
             'No Evidence'
         ])
 
-    yield gen_random_grade
+    yield gen_random_label
 
 
 @pytest.fixture
@@ -76,19 +76,19 @@ def rubric(randomstring):
 
 
 @pytest.fixture
-def example_generator(code, randomstring, random_grade_generator):
+def example_generator(code, randomstring, random_label_generator):
     """ Creates a random example.
     """
 
     def gen_example(rubric):
-        # Generate the example grades (which are TSV formatted)
+        # Generate the example labels (which are TSV formatted)
         example_rubric = "Key Concept\tObservations\tGrade\tReason\n"
 
-        # Generate a grade for each concept
+        # Generate a label for each concept
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
         example_rubric += '\n'.join(
             map(
-                lambda key_concept: f'{key_concept}\t{randomstring(10)}\t{random_grade_generator()}\t{randomstring(12)}',
+                lambda key_concept: f'{key_concept}\t{randomstring(10)}\t{random_label_generator()}\t{randomstring(12)}',
                 set(x['Key Concept'] for x in parsed_rubric)
             )
         )
@@ -183,8 +183,8 @@ def openai_gpt_response(randomstring):
         def gen_rubric_response_header(delimiter='\t'):
             return f"Key Concept{delimiter}Observations{delimiter}Grade{delimiter}Reason\n"
 
-        def gen_rubric_response_row(key_concept, grade, delimiter='\t'):
-            return f"{key_concept}{delimiter}{randomstring(10)}{delimiter}{grade}{delimiter}{randomstring(10)}\n"
+        def gen_rubric_response_row(key_concept, label, delimiter='\t'):
+            return f"{key_concept}{delimiter}{randomstring(10)}{delimiter}{label}{delimiter}{randomstring(10)}\n"
 
         delimiter = '\t'
 
@@ -194,9 +194,9 @@ def openai_gpt_response(randomstring):
         if output_type == 'csv':
             delimiter = ','
 
-        assigned_grades = {}
+        assigned_labels = {}
         for key_concept in key_concepts:
-            assigned_grades[key_concept] = random.choice([
+            assigned_labels[key_concept] = random.choice([
                 'Extensive Evidence',
                 'Convincing Evidence',
                 'Limited Evidence',
@@ -208,19 +208,19 @@ def openai_gpt_response(randomstring):
             content = gen_rubric_response_header(delimiter)
 
             for key_concept in key_concepts:
-                grade = assigned_grades[key_concept]
+                label = assigned_labels[key_concept]
 
                 # Add a disagreement, if requested
                 if disagreements_left != 0:
-                    grade = random.choice(list(set([
+                    label = random.choice(list(set([
                         'Extensive Evidence',
                         'Convincing Evidence',
                         'Limited Evidence',
                         'No Evidence'
-                    ]) - set([grade])))
+                    ]) - set([label])))
                     disagreements_left -= 1
 
-                content += gen_rubric_response_row(key_concept, grade, delimiter)
+                content += gen_rubric_response_row(key_concept, label, delimiter)
 
             gpt_response['choices'].append({
                 'index': i,

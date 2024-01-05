@@ -6,11 +6,11 @@ from unittest import mock
 from types import SimpleNamespace
 
 from lib.assessment.rubric_tester import (
-    grade_student_work,
-    get_passing_grades,
+    label_student_work,
+    get_passing_labels,
     read_inputs,
     get_student_files,
-    get_expected_grades,
+    get_actual_labels,
     validate_rubrics,
     validate_students,
     compute_accuracy,
@@ -22,7 +22,7 @@ from lib.assessment.rubric_tester import (
 from lib.assessment.grade import Grade, InvalidResponseError
 
 
-class TestGradeStudentWork:
+class TestLabelStudentWork:
     def test_should_pass_arguments_through(self, mocker, code, prompt, rubric, examples, student_id, temperature, llm_model):
         grade_student_work_mock = mocker.patch.object(Grade, 'grade_student_work')
 
@@ -38,10 +38,10 @@ class TestGradeStudentWork:
             llm_model=llm_model
         )
 
-        grades = ['good data']
-        grade_student_work_mock.return_value = grades
+        labels = ['good data']
+        grade_student_work_mock.return_value = labels
 
-        result = grade_student_work(
+        result = label_student_work(
             prompt=prompt,
             rubric=rubric,
             student_file=f"blah/{student_id}.js",
@@ -51,20 +51,20 @@ class TestGradeStudentWork:
         )
 
         assert result[0] == student_id
-        assert result[1] == grades
+        assert result[1] == labels
 
 
-class TestGetPassingGrades:
+class TestGetPassingLabels:
     def test_should_return_all_values_when_input_would_indicate_all_values(self):
-        assert len(get_passing_grades(4)) == 4
-        assert get_passing_grades(4).sort() == ['Extensive Evidence', 'Convincing Evidence', 'Limited Evidence', 'No Evidence'].sort()
+        assert len(get_passing_labels(4)) == 4
+        assert get_passing_labels(4).sort() == ['Extensive Evidence', 'Convincing Evidence', 'Limited Evidence', 'No Evidence'].sort()
 
     def test_should_simply_return_top_values(self):
-        assert len(get_passing_grades(2)) == 2
-        assert get_passing_grades(2).sort() == ['Extensive Evidence', 'Convincing Evidence'].sort()
+        assert len(get_passing_labels(2)) == 2
+        assert get_passing_labels(2).sort() == ['Extensive Evidence', 'Convincing Evidence'].sort()
 
-    def test_should_return_none_if_the_number_of_passing_grades_is_none(self):
-        assert get_passing_grades(0) is None
+    def test_should_return_none_if_the_number_of_passing_labels_is_none(self):
+        assert get_passing_labels(0) is None
 
 
 class TestReadInputs:
@@ -122,33 +122,33 @@ class TestGetStudentFiles:
         assert len(result) == 20
 
 
-class TestGetExpectedGrades:
-    def test_should_open_and_parse_the_given_file(self, mocker, rubric, random_grade_generator):
+class TestGetActualLabels:
+    def test_should_open_and_parse_the_given_file(self, mocker, rubric, random_label_generator):
         key_concepts = list(set(row['Key Concept'] for row in csv.DictReader(rubric.splitlines())))
 
         # Build header of key concepts starting with student id
-        expected_csv_data = "student,"
+        actual_csv_data = "student,"
         for key_concept in key_concepts:
-            expected_csv_data += f'{key_concept},'
+            actual_csv_data += f'{key_concept},'
 
         # Chop off leading comma
-        expected_csv_data = expected_csv_data[0:-1]
+        actual_csv_data = actual_csv_data[0:-1]
 
-        # Now add random grades
+        # Now add random labels
         student_ids = [random.randint(100000, 999999) for _ in range(3, 50)]
         for student_id in student_ids:
-            expected_csv_data += f'\n{student_id},'
+            actual_csv_data += f'\n{student_id},'
             for key_concept in key_concepts:
-                expected_csv_data += f'{random_grade_generator()},'
+                actual_csv_data += f'{random_label_generator()},'
 
             # Chop off leading comma
-            expected_csv_data = expected_csv_data[0:-1]
+            actual_csv_data = actual_csv_data[0:-1]
 
         # Mock the file read
-        mock_open = mocker.mock_open(read_data=expected_csv_data)
+        mock_open = mocker.mock_open(read_data=actual_csv_data)
         mock_file = mocker.patch('builtins.open', mock_open)
 
-        result = get_expected_grades('expected.csv', "")
+        result = get_actual_labels('actual.csv', "")
 
         # The result it the size of the unique number of student ids
         assert len(result.keys()) == len(list(set(student_ids)))
@@ -186,93 +186,93 @@ class TestGetExamples:
 
 
 class TestValidateRubrics:
-    def test_should_raise_when_expected_grades_contains_a_concept_unknown_to_the_rubric(self, rubric, random_grade_generator, randomstring):
+    def test_should_raise_when_actual_labels_contains_a_concept_unknown_to_the_rubric(self, rubric, random_label_generator, randomstring):
         student_ids = [random.randint(100000, 999999) for _ in range(3, random.randint(10, 40))]
         key_concepts = list(set(row['Key Concept'] for row in csv.DictReader(rubric.splitlines())))
 
-        expected_grades = {}
+        actual_labels = {}
 
         unexpected_concept = randomstring(12)
 
         for student_id in student_ids:
-            expected_grades[student_id] = {
+            actual_labels[student_id] = {
                 'student': student_id
             }
 
             for key_concept in key_concepts:
-                expected_grades[student_id][key_concept] = random_grade_generator()
-            expected_grades[student_id][unexpected_concept] = random_grade_generator()
+                actual_labels[student_id][key_concept] = random_label_generator()
+            actual_labels[student_id][unexpected_concept] = random_label_generator()
 
         with pytest.raises(Exception):
-            validate_rubrics(expected_grades, rubric)
+            validate_rubrics(actual_labels, rubric)
 
 
 class TestValidateStudents:
-    def test_should_raise_when_student_work_exists_without_being_in_expected_grades(self, rubric, random_grade_generator):
+    def test_should_raise_when_student_work_exists_without_being_in_actual_labels(self, rubric, random_label_generator):
         student_ids = [str(random.randint(100000, 999999)) for _ in range(3, random.randint(10, 40))]
         key_concepts = list(set(row['Key Concept'] for row in csv.DictReader(rubric.splitlines())))
 
-        expected_grades = {}
+        actual_labels = {}
         unexpected_student = '199999x'
 
         for student_id in student_ids:
-            expected_grades[student_id] = {
+            actual_labels[student_id] = {
                 'student': student_id
             }
 
             for key_concept in key_concepts:
-                expected_grades[student_id][key_concept] = random_grade_generator()
+                actual_labels[student_id][key_concept] = random_label_generator()
 
         student_files = [f'sample_code/{id}.js' for id in student_ids]
         student_files.append(f'sample_code/{unexpected_student}.js')
 
         with pytest.raises(Exception):
-            validate_students(student_files, expected_grades)
+            validate_students(student_files, actual_labels)
 
-    def test_should_not_raise_when_student_work_entirely_exists_in_expected_grades(self, rubric, random_grade_generator):
+    def test_should_not_raise_when_student_work_entirely_exists_in_actual_labels(self, rubric, random_label_generator):
         student_ids = [str(random.randint(100000, 999999)) for _ in range(3, random.randint(10, 40))]
         key_concepts = list(set(row['Key Concept'] for row in csv.DictReader(rubric.splitlines())))
 
-        expected_grades = {}
+        actual_labels = {}
         unexpected_student = '199999x'
 
         for student_id in student_ids:
-            expected_grades[student_id] = {
+            actual_labels[student_id] = {
                 'student': student_id
             }
 
             for key_concept in key_concepts:
-                expected_grades[student_id][key_concept] = random_grade_generator()
+                actual_labels[student_id][key_concept] = random_label_generator()
 
         student_files = [f'sample_code/{id}.js' for id in student_ids]
 
-        validate_students(student_files, expected_grades)
+        validate_students(student_files, actual_labels)
 
-    def test_should_not_raise_when_there_is_an_unknown_student_in_expected_grades(self, rubric, random_grade_generator):
+    def test_should_not_raise_when_there_is_an_unknown_student_in_actual_labels(self, rubric, random_label_generator):
         student_ids = [str(random.randint(100000, 999999)) for _ in range(3, random.randint(10, 40))]
         key_concepts = list(set(row['Key Concept'] for row in csv.DictReader(rubric.splitlines())))
 
-        expected_grades = {}
+        actual_labels = {}
         unexpected_student = '199999x'
 
         for student_id in student_ids:
-            expected_grades[student_id] = {
+            actual_labels[student_id] = {
                 'student': student_id
             }
 
             for key_concept in key_concepts:
-                expected_grades[student_id][key_concept] = random_grade_generator()
+                actual_labels[student_id][key_concept] = random_label_generator()
 
-        expected_grades[unexpected_student] = {
+        actual_labels[unexpected_student] = {
             'student': unexpected_student
         }
 
         for key_concept in key_concepts:
-            expected_grades[unexpected_student][key_concept] = random_grade_generator()
+            actual_labels[unexpected_student][key_concept] = random_label_generator()
 
         student_files = [f'sample_code/{id}.js' for id in student_ids]
 
-        validate_students(student_files, expected_grades)
+        validate_students(student_files, actual_labels)
 
 
 class TestComputeAccuracy:

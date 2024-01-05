@@ -7,20 +7,8 @@ import json
 import logging
 
 # Import our support classes
-from lib.assessment.config import SUPPORTED_MODELS, VALID_GRADES
+from lib.assessment.config import SUPPORTED_MODELS, VALID_LABELS
 from lib.assessment.grade import Grade
-from lib.assessment.report import Report
-from lib.assessment.rubric_tester import (
-    read_inputs,
-    get_expected_grades,
-    get_examples,
-    get_passing_grades,
-    get_student_files,
-    validate_rubrics,
-    validate_students,
-    grade_student_work,
-    compute_accuracy
-)
 
 class KeyConceptError(Exception):
   pass
