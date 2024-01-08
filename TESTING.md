@@ -14,8 +14,8 @@ docker container and invoke pytest. You can pass any arguments to pytest
 via the command. For instance, the `-k` argument can filter tests by name:
 
 ```
-# Run only tests with 'grade' in the name:
-./bin/test.sh -k grade
+# Run only tests with 'label' in the name:
+./bin/test.sh -k label
 ```
 
 This will run a container without starting the server itself. You can also

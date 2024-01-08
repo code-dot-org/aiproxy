@@ -16,7 +16,7 @@ from sklearn.metrics import accuracy_score, confusion_matrix
 from collections import defaultdict
 
 from lib.assessment.config import SUPPORTED_MODELS, VALID_LABELS, LESSONS
-from lib.assessment.grade import Grade
+from lib.assessment.label import Label
 from lib.assessment.report import Report
 
 #globals
@@ -180,8 +180,8 @@ def label_student_work(prompt, rubric, student_file, examples, options, prefix):
     student_id = os.path.splitext(os.path.basename(student_file))[0]
     with open(student_file, 'r') as f:
         student_code = f.read()
-    label = Grade()
-    labels = label.grade_student_work(
+    label = Label()
+    labels = label.label_student_work(
         prompt,
         rubric,
         student_code,

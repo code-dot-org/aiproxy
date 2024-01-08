@@ -45,7 +45,7 @@ class TestPostAssessment:
         assert response.status_code == 400
 
     def test_should_return_400_on_openai_error(self, mocker, client, randomstring):
-        mocker.patch('lib.assessment.assess.grade').side_effect = openai.error.InvalidRequestError('', '')
+        mocker.patch('lib.assessment.assess.label').side_effect = openai.error.InvalidRequestError('', '')
         response = client.post('/assessment', data={
           "code": randomstring(10),
           "prompt": randomstring(10),
@@ -87,9 +87,9 @@ class TestPostAssessment:
         })
         assert response.status_code == 400
 
-    def test_should_return_400_when_the_grade_function_does_not_return_data(self, mocker, client, randomstring):
-        grade_mock = mocker.patch('lib.assessment.assess.grade')
-        grade_mock.return_value = []
+    def test_should_return_400_when_the_label_function_does_not_return_data(self, mocker, client, randomstring):
+        label_mock = mocker.patch('lib.assessment.assess.label')
+        label_mock.return_value = []
 
         response = client.post('/assessment', data={
           "code": randomstring(10),
@@ -105,9 +105,9 @@ class TestPostAssessment:
 
         assert response.status_code == 400
 
-    def test_should_return_400_when_the_grade_function_does_not_return_the_right_structure(self, mocker, client, randomstring):
-        grade_mock = mocker.patch('lib.assessment.assess.grade')
-        grade_mock.return_value = {
+    def test_should_return_400_when_the_label_function_does_not_return_the_right_structure(self, mocker, client, randomstring):
+        label_mock = mocker.patch('lib.assessment.assess.label')
+        label_mock.return_value = {
             'metadata': {},
             'data': {}
         }
@@ -126,8 +126,8 @@ class TestPostAssessment:
 
         assert response.status_code == 400
 
-    def test_should_pass_arguments_to_grade_function(self, mocker, client, randomstring):
-        grade_mock = mocker.patch('lib.assessment.assess.grade')
+    def test_should_pass_arguments_to_label_function(self, mocker, client, randomstring):
+        label_mock = mocker.patch('lib.assessment.assess.label')
         data = {
           "code": randomstring(10),
           "prompt": randomstring(10),
@@ -142,7 +142,7 @@ class TestPostAssessment:
 
         response = client.post('/assessment', data=data)
 
-        grade_mock.assert_called_with(
+        label_mock.assert_called_with(
             code=data["code"],
             prompt=data["prompt"],
             rubric=data["rubric"],
@@ -154,9 +154,9 @@ class TestPostAssessment:
             temperature=0.2
         )
 
-    def test_should_return_the_result_from_grade_function_when_valid(self, mocker, client, randomstring):
-        grade_mock = mocker.patch('lib.assessment.assess.grade')
-        grade_mock.return_value = {
+    def test_should_return_the_result_from_label_function_when_valid(self, mocker, client, randomstring):
+        label_mock = mocker.patch('lib.assessment.assess.label')
+        label_mock.return_value = {
             'metadata': {},
             'data': [
                 {
@@ -182,7 +182,7 @@ class TestPostAssessment:
         response = client.post('/assessment', data=data)
 
         assert response.status_code == 200
-        assert response.json == grade_mock.return_value
+        assert response.json == label_mock.return_value
 
 
 class TestPostTestAssessment:
@@ -190,7 +190,7 @@ class TestPostTestAssessment:
     """
 
     def test_should_return_400_on_openai_error(self, mocker, client, randomstring):
-        mocker.patch('lib.assessment.assess.grade').side_effect = openai.error.InvalidRequestError('', '')
+        mocker.patch('lib.assessment.assess.label').side_effect = openai.error.InvalidRequestError('', '')
         mock_open = mocker.mock_open(read_data='file data')
         mock_file = mocker.patch('builtins.open', mock_open)
         response = client.post('/test/assessment', data={
@@ -235,11 +235,11 @@ class TestPostTestAssessment:
         })
         assert response.status_code == 400
 
-    def test_should_return_400_when_the_grade_function_does_not_return_data(self, mocker, client, randomstring):
-        grade_mock = mocker.patch('lib.assessment.assess.grade')
+    def test_should_return_400_when_the_label_function_does_not_return_data(self, mocker, client, randomstring):
+        label_mock = mocker.patch('lib.assessment.assess.label')
         mock_open = mocker.mock_open(read_data='file data')
         mock_file = mocker.patch('builtins.open', mock_open)
-        grade_mock.return_value = []
+        label_mock.return_value = []
 
         response = client.post('/test/assessment', data={
           "code": randomstring(10),
@@ -254,11 +254,11 @@ class TestPostTestAssessment:
 
         assert response.status_code == 400
 
-    def test_should_return_400_when_the_grade_function_does_not_return_the_right_structure(self, mocker, client, randomstring):
-        grade_mock = mocker.patch('lib.assessment.assess.grade')
+    def test_should_return_400_when_the_label_function_does_not_return_the_right_structure(self, mocker, client, randomstring):
+        label_mock = mocker.patch('lib.assessment.assess.label')
         mock_open = mocker.mock_open(read_data='file data')
         mock_file = mocker.patch('builtins.open', mock_open)
-        grade_mock.return_value = {
+        label_mock.return_value = {
             'metadata': {},
             'data': {}
         }
@@ -276,8 +276,8 @@ class TestPostTestAssessment:
 
         assert response.status_code == 400
 
-    def test_should_pass_arguments_to_grade_function(self, mocker, client, randomstring):
-        grade_mock = mocker.patch('lib.assessment.assess.grade')
+    def test_should_pass_arguments_to_label_function(self, mocker, client, randomstring):
+        label_mock = mocker.patch('lib.assessment.assess.label')
         mock_open = mocker.mock_open(read_data='file data')
         mock_file = mocker.patch('builtins.open', mock_open)
         data = {
@@ -293,7 +293,7 @@ class TestPostTestAssessment:
 
         response = client.post('/test/assessment', data=data)
 
-        grade_mock.assert_called_with(
+        label_mock.assert_called_with(
             code='file data',
             prompt='file data',
             rubric='file data',
@@ -304,11 +304,11 @@ class TestPostTestAssessment:
             temperature=0.2
         )
 
-    def test_should_return_the_result_from_grade_function_when_valid(self, mocker, client, randomstring):
-        grade_mock = mocker.patch('lib.assessment.assess.grade')
+    def test_should_return_the_result_from_label_function_when_valid(self, mocker, client, randomstring):
+        label_mock = mocker.patch('lib.assessment.assess.label')
         mock_open = mocker.mock_open(read_data='file data')
         mock_file = mocker.patch('builtins.open', mock_open)
-        grade_mock.return_value = {
+        label_mock.return_value = {
             'metadata': {},
             'data': [
                 {
@@ -333,7 +333,7 @@ class TestPostTestAssessment:
         response = client.post('/test/assessment', data=data)
 
         assert response.status_code == 200
-        assert response.json == grade_mock.return_value
+        assert response.json == label_mock.return_value
 
 
 class TestPostBlankAssessment:
@@ -341,7 +341,7 @@ class TestPostBlankAssessment:
     """
 
     def test_should_return_400_on_openai_error(self, mocker, client, randomstring):
-        mocker.patch('lib.assessment.assess.grade').side_effect = openai.error.InvalidRequestError('', '')
+        mocker.patch('lib.assessment.assess.label').side_effect = openai.error.InvalidRequestError('', '')
         mock_open = mocker.mock_open(read_data='file data')
         mock_file = mocker.patch('builtins.open', mock_open)
         response = client.post('/test/assessment/blank', data={
@@ -383,11 +383,11 @@ class TestPostBlankAssessment:
         })
         assert response.status_code == 400
 
-    def test_should_return_400_when_the_grade_function_does_not_return_data(self, mocker, client, randomstring):
-        grade_mock = mocker.patch('lib.assessment.assess.grade')
+    def test_should_return_400_when_the_label_function_does_not_return_data(self, mocker, client, randomstring):
+        label_mock = mocker.patch('lib.assessment.assess.label')
         mock_open = mocker.mock_open(read_data='file data')
         mock_file = mocker.patch('builtins.open', mock_open)
-        grade_mock.return_value = []
+        label_mock.return_value = []
 
         response = client.post('/test/assessment/blank', data={
           "prompt": randomstring(10),
@@ -401,11 +401,11 @@ class TestPostBlankAssessment:
 
         assert response.status_code == 400
 
-    def test_should_return_400_when_the_grade_function_does_not_return_the_right_structure(self, mocker, client, randomstring):
-        grade_mock = mocker.patch('lib.assessment.assess.grade')
+    def test_should_return_400_when_the_label_function_does_not_return_the_right_structure(self, mocker, client, randomstring):
+        label_mock = mocker.patch('lib.assessment.assess.label')
         mock_open = mocker.mock_open(read_data='file data')
         mock_file = mocker.patch('builtins.open', mock_open)
-        grade_mock.return_value = {
+        label_mock.return_value = {
             'metadata': {},
             'data': {}
         }
@@ -422,8 +422,8 @@ class TestPostBlankAssessment:
 
         assert response.status_code == 400
 
-    def test_should_pass_arguments_including_blank_code_to_grade_function(self, mocker, client, randomstring):
-        grade_mock = mocker.patch('lib.assessment.assess.grade')
+    def test_should_pass_arguments_including_blank_code_to_label_function(self, mocker, client, randomstring):
+        label_mock = mocker.patch('lib.assessment.assess.label')
         mock_open = mocker.mock_open(read_data='file data')
         mock_file = mocker.patch('builtins.open', mock_open)
         data = {
@@ -438,7 +438,7 @@ class TestPostBlankAssessment:
 
         response = client.post('/test/assessment/blank', data=data)
 
-        grade_mock.assert_called_with(
+        label_mock.assert_called_with(
             code='',
             prompt='file data',
             rubric='file data',
@@ -449,11 +449,11 @@ class TestPostBlankAssessment:
             temperature=0.2
         )
 
-    def test_should_return_the_result_from_grade_function_when_valid(self, mocker, client, randomstring):
-        grade_mock = mocker.patch('lib.assessment.assess.grade')
+    def test_should_return_the_result_from_label_function_when_valid(self, mocker, client, randomstring):
+        label_mock = mocker.patch('lib.assessment.assess.label')
         mock_open = mocker.mock_open(read_data='file data')
         mock_file = mocker.patch('builtins.open', mock_open)
-        grade_mock.return_value = {
+        label_mock.return_value = {
             'metadata': {},
             'data': [
                 {
@@ -477,4 +477,4 @@ class TestPostBlankAssessment:
         response = client.post('/test/assessment/blank', data=data)
 
         assert response.status_code == 200
-        assert response.json == grade_mock.return_value
+        assert response.json == label_mock.return_value

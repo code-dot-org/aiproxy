@@ -26,7 +26,7 @@ form_data = [
   ['examples', examples.to_json],
   ['remove-comments', '1'],
   ['num-responses', '3'],
-  ['num-passing-grades', '2'],
+  ['num-passing-labels', '2'],
   ['temperature', '0.2'],
 ]
 

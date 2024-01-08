@@ -9,14 +9,14 @@ from io import StringIO
 import requests
 import pytest
 
-from lib.assessment.grade import Grade, InvalidResponseError
+from lib.assessment.label import Label, InvalidResponseError
 
 
 @pytest.fixture
 def label():
-    """ Creates a Grade() instance for any test that has a 'label' parameter.
+    """ Creates a Label() instance for any test that has a 'label' parameter.
     """
-    yield Grade()
+    yield Label()
 
 
 class TestRemoveJsComments:
@@ -48,14 +48,14 @@ class TestRemoveJsComments:
 
 class TestSanitizeCode:
     def test_should_call_remove_js_comments_if_wanted(self, mocker, label, code):
-        remove_js_comments_mock = mocker.patch.object(Grade, 'remove_js_comments')
+        remove_js_comments_mock = mocker.patch.object(Label, 'remove_js_comments')
 
         label.sanitize_code(code, remove_comments=True)
 
         remove_js_comments_mock.assert_called_with(code)
 
     def test_should_not_call_remove_js_comments_if_not_wanted(self, mocker, label, code):
-        remove_js_comments_mock = mocker.patch.object(Grade, 'remove_js_comments')
+        remove_js_comments_mock = mocker.patch.object(Label, 'remove_js_comments')
 
         label.sanitize_code(code, remove_comments=False)
 
@@ -317,7 +317,7 @@ class TestAiLabelStudentWork:
         )
 
         # Mock the validator to invalidate everything
-        mocker.patch.object(Grade, 'get_tsv_data_if_valid').return_value = None
+        mocker.patch.object(Label, 'get_tsv_data_if_valid').return_value = None
 
         with pytest.raises(InvalidResponseError):
             label.ai_label_student_work(
@@ -380,7 +380,7 @@ class TestAiLabelStudentWork:
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
         # Mock out compute_messages
-        compute_messages = mocker.patch.object(Grade, 'compute_messages')
+        compute_messages = mocker.patch.object(Label, 'compute_messages')
         messages = ['messages']
         compute_messages.return_value = messages
 
@@ -395,10 +395,10 @@ class TestAiLabelStudentWork:
         assert requests_mock.last_request.json()['messages'] == messages
 
     def test_should_raise_timeout(self, mocker, label, prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model):
-        mocker.patch('lib.assessment.grade.requests.post', side_effect = requests.exceptions.ReadTimeout())
+        mocker.patch('lib.assessment.label.requests.post', side_effect = requests.exceptions.ReadTimeout())
 
         # Mock out compute_messages
-        compute_messages = mocker.patch.object(Grade, 'compute_messages')
+        compute_messages = mocker.patch.object(Label, 'compute_messages')
         messages = ['messages']
         compute_messages.return_value = messages
 
@@ -461,13 +461,13 @@ class TestlabelStudentWork:
 
     def test_should_log_timeout(self, mocker, caplog, label, prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model):
         # Mock out static assessment
-        mocker.patch.object(Grade, 'statically_label_student_work').return_value = None
+        mocker.patch.object(Label, 'statically_label_student_work').return_value = None
 
         # Mock out ai assessment to raise a timeout
-        mocker.patch.object(Grade, 'ai_label_student_work').side_effect = requests.exceptions.ReadTimeout()
+        mocker.patch.object(Label, 'ai_label_student_work').side_effect = requests.exceptions.ReadTimeout()
 
         with pytest.raises(Exception):
-            label.grade_student_work(
+            label.label_student_work(
                 prompt, rubric, code, student_id,
                 examples=examples(rubric),
                 num_responses=num_responses,
@@ -486,9 +486,9 @@ class TestlabelStudentWork:
         mock_file = mocker.patch('builtins.open', mock_open)
 
         # Mock the file exists
-        exists_mock = mocker.patch('lib.assessment.grade.os.path.exists', return_value=True)
+        exists_mock = mocker.patch('lib.assessment.label.os.path.exists', return_value=True)
 
-        result = label.grade_student_work(
+        result = label.label_student_work(
             prompt, rubric, code, student_id,
             examples=examples(rubric),
             num_responses=num_responses,
@@ -511,20 +511,20 @@ class TestlabelStudentWork:
         mock_file = mocker.patch('builtins.open', mock_open)
 
         # Mock the file so it does not exist
-        exists_mock = mocker.patch('lib.assessment.grade.os.path.exists', return_value=False)
+        exists_mock = mocker.patch('lib.assessment.label.os.path.exists', return_value=False)
 
         # Get mocks
         statically_label_student_work_mock = mocker.patch.object(
-            Grade, 'statically_label_student_work',
+            Label, 'statically_label_student_work',
             return_value=None
         )
 
         ai_label_student_work_mock = mocker.patch.object(
-            Grade, 'ai_label_student_work',
+            Label, 'ai_label_student_work',
             return_value=assessment_return_value(rubric)
         )
 
-        result = label.grade_student_work(
+        result = label.label_student_work(
             prompt, rubric, code, student_id,
             examples=examples(rubric),
             num_responses=num_responses,
@@ -542,17 +542,17 @@ class TestlabelStudentWork:
 
         # Get mocks
         statically_label_student_work_mock = mocker.patch.object(
-            Grade, 'statically_label_student_work',
+            Label, 'statically_label_student_work',
             return_value=None
         ).side_effect = lambda *a, **kw: call_order.append('static')
 
         ai_label_student_work_mock = mocker.patch.object(
-            Grade, 'ai_label_student_work',
+            Label, 'ai_label_student_work',
             return_value=None
         ).side_effect = lambda *a, **kw: call_order.append('ai')
 
         try:
-            result = label.grade_student_work(
+            result = label.label_student_work(
                 prompt, rubric, code, student_id,
                 examples=examples(rubric),
                 num_responses=num_responses,
@@ -570,16 +570,16 @@ class TestlabelStudentWork:
     def test_should_call_ai_assessment_when_static_assessment_returns_none(self, mocker, label, assessment_return_value, prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model):
         # Get mocks
         statically_label_student_work_mock = mocker.patch.object(
-            Grade, 'statically_label_student_work',
+            Label, 'statically_label_student_work',
             return_value=None
         )
 
         ai_label_student_work_mock = mocker.patch.object(
-            Grade, 'ai_label_student_work',
+            Label, 'ai_label_student_work',
             return_value=assessment_return_value(rubric)
         )
 
-        result = label.grade_student_work(
+        result = label.label_student_work(
             prompt, rubric, code, student_id,
             examples=examples(rubric),
             num_responses=num_responses,
