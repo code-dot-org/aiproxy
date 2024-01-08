@@ -285,7 +285,6 @@ class TestGenerateHtmlOutput:
                 actual_labels[student_id][key_concept] = random_label_generator()
 
         passing_labels = ['Extensive Evidence', 'Convincing Evidence']
-        # report.generate_html_output(output_file, prompt, rubric, None, predicted_labels, actual_labels, passing_labels, {}, [], "./assess.py", {}, [], [])
         report.generate_html_output(
             output_file,
             prompt,
