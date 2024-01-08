@@ -1,4 +1,4 @@
-VALID_GRADES = ["Extensive Evidence", "Convincing Evidence", "Limited Evidence", "No Evidence"]
+VALID_LABELS = ["Extensive Evidence", "Convincing Evidence", "Limited Evidence", "No Evidence"]
 SUPPORTED_MODELS = ['gpt-4', 'gpt-4-0314', 'gpt-4-32k', 'gpt-4-32k-0314']
 LESSONS = {
     "U3-2022-L10" : "1ROCbvHb3yWGVoQqzKAjwdaF0dSRPUjy_",
