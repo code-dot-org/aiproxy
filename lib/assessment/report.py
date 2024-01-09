@@ -134,7 +134,7 @@ class Report:
                         criteria = label['Key Concept']
                         observations = label['Observations']
                         actual = actual_labels[student_id][criteria]
-                        predicted = label['Grade']
+                        predicted = label['Label']
                         reason = label['Reason']
                         cell_color = self._compute_predicted_cell_color(predicted, actual, passing_labels)
                         file.write(f'    <tr><td>{criteria}</td><td>{observations}</td><td>{actual}</td><td style="background-color: {cell_color};">{predicted}</td><td>{reason}</td></tr>\n')

@@ -150,7 +150,7 @@ def compute_accuracy(actual_labels, predicted_labels, passing_labels):
         for row in label:
             criteria = row['Key Concept']
             actual_by_criteria[criteria].append(actual_labels[student_id][criteria])
-            predicted_by_criteria[criteria].append(row['Grade'])
+            predicted_by_criteria[criteria].append(row['Label'])
 
     accuracy_by_criteria = {}
 
