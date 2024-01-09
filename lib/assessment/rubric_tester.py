@@ -23,7 +23,7 @@ from lib.assessment.report import Report
 prompt_file = 'system_prompt.txt'
 standard_rubric_file = 'standard_rubric.csv'
 actual_labels_file_old = 'expected_grades.csv'
-actual_labels_file = 'expected_labels.csv'
+actual_labels_file = 'actual_labels.csv'
 output_dir_name = 'output'
 base_dir = 'lesson_data'
 cache_dir_name = 'cached_responses'
