@@ -22,7 +22,8 @@ from lib.assessment.report import Report
 #globals
 prompt_file = 'system_prompt.txt'
 standard_rubric_file = 'standard_rubric.csv'
-actual_labels_file = 'expected_grades.csv'
+actual_labels_file_old = 'expected_grades.csv'
+actual_labels_file = 'expected_labels.csv'
 output_dir_name = 'output'
 base_dir = 'lesson_data'
 cache_dir_name = 'cached_responses'
@@ -212,7 +213,10 @@ def main():
         # read in lesson files, validate them
         prompt, standard_rubric = read_inputs(prompt_file, standard_rubric_file, prefix)
         student_files = get_student_files(options.max_num_students, prefix, student_ids=options.student_ids)
-        actual_labels = get_actual_labels(actual_labels_file, prefix)
+        if os.path.exists(os.path.join(prefix, actual_labels_file_old)):
+            actual_labels = get_actual_labels(actual_labels_file_old, prefix)
+        else:
+            actual_labels = get_actual_labels(actual_labels_file, prefix)
         examples = get_examples(prefix)
 
         validate_rubrics(actual_labels, standard_rubric)
