@@ -162,7 +162,7 @@ class TestPostAssessment:
                 {
                     'Key Concept': randomstring(10),
                     'Observations': 'foo',
-                    'Grade': 'No Evidence',
+                    'Label': 'No Evidence',
                     'Reason': 'bar'
                 }
             ]
@@ -314,7 +314,7 @@ class TestPostTestAssessment:
                 {
                     'Key Concept': randomstring(10),
                     'Observations': 'foo',
-                    'Grade': 'No Evidence',
+                    'Label': 'No Evidence',
                     'Reason': 'bar'
                 }
             ]
@@ -459,7 +459,7 @@ class TestPostBlankAssessment:
                 {
                     'Key Concept': randomstring(10),
                     'Observations': 'foo',
-                    'Grade': 'No Evidence',
+                    'Label': 'No Evidence',
                     'Reason': 'bar'
                 }
             ]

@@ -227,7 +227,7 @@ class TestGenerateHtmlOutput:
                 {
                     'Key Concept': key_concept,
                     'Observations': 'What I see',
-                    'Grade': random_label_generator(),
+                    'Label': random_label_generator(),
                     'Reason': 'Why I think so'
                 },
                 key_concepts
@@ -253,7 +253,7 @@ class TestGenerateHtmlOutput:
                 key_concept = label['Key Concept']
 
                 assert re.search(fr'<td>{key_concept}</td>.*>{actual_labels[student_id][key_concept]}<', output)
-                assert re.search(fr'<td>{key_concept}</td>.*>{label["Grade"]}<', output)
+                assert re.search(fr'<td>{key_concept}</td>.*>{label["Label"]}<', output)
 
     def test_should_report_generated_label_report_with_pass_fail(self, mocker, report, prompt, rubric, random_label_generator, randomstring):
         # Generate a random output filename
@@ -274,7 +274,7 @@ class TestGenerateHtmlOutput:
                 {
                     'Key Concept': key_concept,
                     'Observations': 'What I see',
-                    'Grade': random_label_generator(),
+                    'Label': random_label_generator(),
                     'Reason': 'Why I think so'
                 },
                 key_concepts
@@ -302,7 +302,7 @@ class TestGenerateHtmlOutput:
                 key_concept = label['Key Concept']
 
                 assert re.search(fr'<td>{key_concept}</td>.*>{actual_labels[student_id][key_concept]}<', output)
-                assert re.search(fr'<td>{key_concept}</td>.*>{label["Grade"]}<', output)
+                assert re.search(fr'<td>{key_concept}</td>.*>{label["Label"]}<', output)
 
     def test_should_report_errors(self, mocker, report, prompt, rubric, random_label_generator, randomstring):
         # Generate a random output filename

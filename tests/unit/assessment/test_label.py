@@ -45,7 +45,6 @@ class TestRemoveJsComments:
     }
     """
 
-
 class TestSanitizeCode:
     def test_should_call_remove_js_comments_if_wanted(self, mocker, label, code):
         remove_js_comments_mock = mocker.patch.object(Label, 'remove_js_comments')
@@ -78,7 +77,7 @@ class TestStaticallyLabelStudentWork:
         assert len(result['data']) == len(parsed_rubric)
 
         # It should return 'No Evidence' in every row
-        assert all(x['Grade'] == 'No Evidence' for x in result['data'])
+        assert all(x['Label'] == 'No Evidence' for x in result['data'])
 
         # It should match the concepts given in the rubric
         assert set(x['Key Concept'] for x in parsed_rubric) == set(x['Key Concept'] for x in result['data'])
@@ -178,6 +177,21 @@ class TestGetTsvDataIfValid:
         assert result is not None
         assert len(result) == len(parsed_rubric)
 
+    def test_should_strip_server_response(self, label, rubric, student_id, openai_gpt_response):
+        # We will generate fake openai gpt responses where it gave us the labeled
+        # rubrics in CSV or markdown (even though we told it NOT TO grr)
+        ai_response = openai_gpt_response(rubric, num_responses=1, output_type='tsv')
+        response = ai_response['choices'][0]['message']['content']
+
+        # We can invalidate the response
+        response = response.replace("Observations", " Observations ")
+
+        parsed_rubric = list(csv.DictReader(rubric.splitlines()))
+
+        result = label.get_tsv_data_if_valid(response, rubric, student_id)
+        assert result is not None
+        assert len(result) == len(parsed_rubric)
+
     def test_should_work_when_there_are_weird_entries(self, mocker, label, rubric, student_id, openai_gpt_response):
         # We will occasionally get entries that place lines within the returned data
         # This is true with markdown responses that place a set of '-----' lines
@@ -189,6 +203,24 @@ class TestGetTsvDataIfValid:
         lines.append(lines[-1])
         lines[-2] = "--------\t---------\t--------\t---------"
         response = '\n'.join(lines)
+
+        parsed_rubric = list(csv.DictReader(rubric.splitlines()))
+
+        # Should be fine
+        result = label.get_tsv_data_if_valid(response, rubric, student_id)
+        assert result is not None
+        assert len(result) == len(parsed_rubric)
+
+    def test_should_work_when_there_are_multiple_weird_entries(self, mocker, label, rubric, student_id, openai_gpt_response):
+        # We will occasionally get entries that place lines within the returned data
+        # This is true with markdown responses that place a set of '-----' lines
+        ai_response = openai_gpt_response(rubric, num_responses=1, output_type='tsv')
+        response = ai_response['choices'][0]['message']['content']
+
+        # Slide a nonsense line within the response (2nd to last entry)
+        lines = response.splitlines()
+        delimeter = "\n--------\t---------\t--------\t---------\n"
+        response = delimeter.join(lines)
 
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
@@ -440,7 +472,7 @@ class TestlabelStudentWork:
                     {
                         'Key Concept': key_concept,
                         'Observations': randomstring(10),
-                        'Grade': random.choice([
+                        'Label': random.choice([
                             'Extensive Evidence',
                             'Convincing Evidence',
                             'Limited Evidence',
@@ -594,18 +626,19 @@ class TestlabelStudentWork:
 
 class TestGetConsensusResponse:
     @pytest.fixture
-    def tsv_data_choices(self, openai_gpt_response):
-        def gen_tsv_data_choices(rubric):
+    def tsv_data_choices(self, label, openai_gpt_response):
+        def gen_tsv_data_choices(rubric, student_id):
             # Disagreements always happen in the first choice... so they always
             # mean an 'outvote'
             ai_response = openai_gpt_response(rubric, num_responses=3, disagreements=1, output_type='tsv')
-            responses = [x['message']['content'] for x in ai_response['choices']]
-            return [list(csv.DictReader(StringIO(x), delimiter='\t')) for x in responses]
+            responses = [label.get_tsv_data_if_valid(x['message']['content'], rubric, student_id) for x in ai_response['choices']]
+            # return [list(csv.DictReader(StringIO(x), delimiter='\t')) for x in responses]
+            return responses
 
         yield gen_tsv_data_choices
 
     def test_should_coalesce_votes(self, label, tsv_data_choices, rubric, student_id):
-        choices = tsv_data_choices(rubric)
+        choices = tsv_data_choices(rubric, student_id)
         result = label.get_consensus_response(choices, student_id)
 
         # It should have the same number of rows as the rubric has key concepts
@@ -621,17 +654,17 @@ class TestGetConsensusResponse:
             for entry in choice:
                 key_concept = entry['Key Concept']
                 labels[key_concept] = labels.get(key_concept, [])
-                labels[key_concept].append(entry['Grade'])
+                labels[key_concept].append(entry['Label'])
 
         # Now we have a dictionary where the key concept is mapped to the list
         # of labels. So, let's ensure that the resulting label is found at least twice
         # in the choice list.
-        assert all(labels[entry['Key Concept']].count(entry['Grade']) >= 2 for entry in result)
+        assert all(labels[entry['Key Concept']].count(entry['Label']) >= 2 for entry in result)
 
     def test_should_log_outvoting(self, caplog, label, tsv_data_choices, rubric, student_id):
         caplog.set_level(logging.INFO)
 
-        choices = tsv_data_choices(rubric)
+        choices = tsv_data_choices(rubric, student_id)
         result = label.get_consensus_response(choices, student_id)
 
         # It should have the same number of rows as the rubric has key concepts
