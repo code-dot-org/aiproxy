@@ -231,8 +231,7 @@ class Label:
             self._validate_server_response(tsv_data, rubric)
             return [row for row in tsv_data]
         except InvalidResponseError as e:
-            # logging.error(f"{student_id} {choice_text} Invalid response: {str(e)}\n{response_text}")
-            logging.error(f"{student_id} {choice_text} Invalid response: {str(e)}\n{tsv_data}")
+            logging.error(f"{student_id} {choice_text} Invalid response: {str(e)}\n{response_text}")
             if reraise:
                 raise e
             return None
@@ -254,7 +253,7 @@ class Label:
             if "Key Concept" in row:
                 if not row["Key Concept"][0:1].isalnum():
                     tsv_data.remove(row)
-        
+
         for row in tsv_data:
             if "Grade" in row.keys():
                 row['Label'] = row['Grade']
