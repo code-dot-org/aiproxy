@@ -167,9 +167,9 @@ Resources:
       TargetTrackingScalingPolicyConfiguration:
         PredefinedMetricSpecification:
           PredefinedMetricType: ECSServiceAverageCPUUtilization
-        ScaleInCooldown: 300
-        ScaleOutCooldown: 300
-        TargetValue: 1
+        ScaleInCooldown: 60 # revert to 500
+        ScaleOutCooldown: 60 # revert to 500
+        TargetValue: 10 # revert to 50-75
 
   ECSServiceScalableTarget:
     Type: AWS::ApplicationAutoScaling::ScalableTarget
