@@ -167,14 +167,16 @@ Resources:
       TargetTrackingScalingPolicyConfiguration:
         PredefinedMetricSpecification:
           PredefinedMetricType: ECSServiceAverageCPUUtilization
-        ScaleInCooldown: 60 # revert to 500
-        ScaleOutCooldown: 60 # revert to 500
-        TargetValue: 10 # revert to 50-75
+        # Scale out when CPU usage is above 50%.
+        TargetValue: 50
+        # Wait 2 minutes after a scaling event before scaling again. 
+        ScaleInCooldown: 120
+        ScaleOutCooldown: 120
 
   ECSServiceScalableTarget:
     Type: AWS::ApplicationAutoScaling::ScalableTarget
     Properties:
-      MaxCapacity: 5
+      MaxCapacity: 10
       MinCapacity: 1
       ResourceId: !Sub service/${ECSCluster}/${ECSService.Name}
       RoleARN: !ImportValue AiProxyECSAutoscaleRoleArn
