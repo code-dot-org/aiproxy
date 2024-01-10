@@ -180,6 +180,7 @@ Resources:
                 Action:
                   - application-autoscaling:*
                   - cloudwatch:PutMetricAlarm
+                  - cloudwatch:DescribeAlarms
                 Resource: "*"
 
 
