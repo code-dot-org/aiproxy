@@ -169,12 +169,12 @@ Resources:
           PredefinedMetricType: ECSServiceAverageCPUUtilization
         ScaleInCooldown: 300
         ScaleOutCooldown: 300
-        TargetValue: 75.0
+        TargetValue: 1
 
   ECSServiceScalableTarget:
     Type: AWS::ApplicationAutoScaling::ScalableTarget
     Properties:
-      MaxCapacity: 10
+      MaxCapacity: 5
       MinCapacity: 1
       ResourceId: !Sub service/${ECSCluster}/${ECSService.Name}
       RoleARN: !ImportValue AiProxyECSAutoscaleRoleArn
