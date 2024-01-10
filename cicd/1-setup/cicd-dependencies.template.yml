@@ -208,3 +208,7 @@ Outputs:
     Description: AiProxy ECS Task Execution Role ARN
     Value: !GetAtt ECSTaskExecutionRole.Arn
     Export: {Name: AiProxyECSTaskExecutionRoleArn}
+  ECSAutoscaleRoleArn:
+    Description: AiProxy ECS Autoscale Role ARN
+    Value: !GetAtt ECSServiceAutoScalingRole.Arn
+    Export: {Name: AiProxyECSAutoscaleRoleArn}
