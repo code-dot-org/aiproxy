@@ -158,28 +158,28 @@ Resources:
           ContainerPort: 80
           TargetGroupArn: !Ref TargetGroup
 
-  ECSServiceScalingPolicy:
-    Type: AWS::ApplicationAutoScaling::ScalingPolicy
-    Properties:
-      PolicyName: AiProxyServiceScalingPolicy
-      PolicyType: TargetTrackingScaling
-      ScalingTargetId: !Ref ECSServiceScalableTarget
-      TargetTrackingScalingPolicyConfiguration:
-        PredefinedMetricSpecification:
-          PredefinedMetricType: ECSServiceAverageCPUUtilization
-        ScaleInCooldown: 300
-        ScaleOutCooldown: 300
-        TargetValue: 75.0
+  # ECSServiceScalingPolicy:
+  #   Type: AWS::ApplicationAutoScaling::ScalingPolicy
+  #   Properties:
+  #     PolicyName: AiProxyServiceScalingPolicy
+  #     PolicyType: TargetTrackingScaling
+  #     ScalingTargetId: !Ref ECSServiceScalableTarget
+  #     TargetTrackingScalingPolicyConfiguration:
+  #       PredefinedMetricSpecification:
+  #         PredefinedMetricType: ECSServiceAverageCPUUtilization
+  #       ScaleInCooldown: 300
+  #       ScaleOutCooldown: 300
+  #       TargetValue: 75.0
 
-  ECSServiceScalableTarget:
-    Type: AWS::ApplicationAutoScaling::ScalableTarget
-    Properties:
-      MaxCapacity: 10
-      MinCapacity: 1
-      ResourceId: !Sub service/${ECSCluster}/${ECSService.Name}
-      RoleARN: !ImportValue AiProxyECSAutoscaleRoleArn
-      ScalableDimension: ecs:service:DesiredCount
-      ServiceNamespace: ecs
+  # ECSServiceScalableTarget:
+  #   Type: AWS::ApplicationAutoScaling::ScalableTarget
+  #   Properties:
+  #     MaxCapacity: 10
+  #     MinCapacity: 1
+  #     ResourceId: !Sub service/${ECSCluster}/${ECSService.Name}
+  #     RoleARN: !ImportValue AiProxyECSAutoscaleRoleArn
+  #     ScalableDimension: ecs:service:DesiredCount
+  #     ServiceNamespace: ecs
 
   ECSSecurityGroup:
     Type: AWS::EC2::SecurityGroup
