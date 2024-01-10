@@ -14,7 +14,7 @@ from io import StringIO
 class InvalidResponseError(Exception):
     pass
 
-class Grade:
+class Label:
     def __init__(self):
         pass
 
@@ -34,7 +34,7 @@ class Grade:
                 'data': list(
                     map(
                         lambda key_concept: {
-                            "Grade": "No Evidence",
+                            "Label": "No Evidence",
                             "Key Concept": key_concept,
                             "Observations": "The program is empty.",
                             "Reason": "The program is empty.",
@@ -85,7 +85,7 @@ class Grade:
             'data': tsv_data,
         }
 
-    def grade_student_work(self, prompt, rubric, student_code, student_id, examples=[], use_cached=False, write_cached=False, num_responses=0, temperature=0.0, llm_model="", remove_comments=False, cache_prefix=""):
+    def label_student_work(self, prompt, rubric, student_code, student_id, examples=[], use_cached=False, write_cached=False, num_responses=0, temperature=0.0, llm_model="", remove_comments=False, cache_prefix=""):
         if use_cached and os.path.exists(os.path.join(cache_prefix, f"cached_responses/{student_id}.json")):
             with open(os.path.join(cache_prefix, f"cached_responses/{student_id}.json"), 'r') as f:
                 return json.load(f)
@@ -254,8 +254,13 @@ class Grade:
                 if not row["Key Concept"][0:1].isalnum():
                     tsv_data.remove(row)
 
+        for row in tsv_data:
+            if "Grade" in row.keys():
+                row['Label'] = row['Grade']
+                del row['Grade']
+
     def _validate_server_response(self, tsv_data, rubric):
-        expected_columns = ["Key Concept", "Observations", "Grade", "Reason"]
+        expected_columns = ["Key Concept", "Observations", "Label", "Reason"]
 
         rubric_key_concepts = list(set(row['Key Concept'] for row in csv.DictReader(rubric.splitlines())))
 
@@ -263,7 +268,7 @@ class Grade:
             for row in tsv_data:
                 unexpected_columns = set(row.keys()) - set(expected_columns)
                 missing_columns = set(expected_columns) - set(row.keys())
-                raise InvalidResponseError('incorrect column names. unexpected: {unexpected_columns} missing: {missing_columns}')
+                raise InvalidResponseError(f'incorrect column names. unexpected: {unexpected_columns} missing: {missing_columns}')
 
         key_concepts_from_response = list(set(row["Key Concept"] for row in tsv_data))
         if sorted(rubric_key_concepts) != sorted(key_concepts_from_response):
@@ -274,8 +279,8 @@ class Grade:
             raise InvalidResponseError(f'unexpected or missing key concept. unexpected: {unexpected_concepts} missing: {missing_concepts}')
 
         for row in tsv_data:
-            if row["Grade"] not in VALID_LABELS:
-                raise InvalidResponseError(f"invalid label value: '{row['Grade']}'")
+            if row['Label'] not in VALID_LABELS:
+                raise InvalidResponseError(f"invalid label value: '{row['Label']}'")
 
     def get_consensus_response(self, choices, student_id):
         from collections import Counter
@@ -285,7 +290,7 @@ class Grade:
             for row in choice:
                 if row['Key Concept'] not in key_concept_to_labels:
                     key_concept_to_labels[row['Key Concept']] = []
-                key_concept_to_labels[row['Key Concept']].append(row['Grade'])
+                key_concept_to_labels[row['Key Concept']].append(row['Label'])
 
         key_concept_to_majority_label = {}
         for key_concept, labels in key_concept_to_labels.items():
@@ -299,9 +304,9 @@ class Grade:
         for choice in choices:
             for row in choice:
                 key_concept = row['Key Concept']
-                if key_concept_to_majority_label[key_concept] == row['Grade']:
+                if key_concept_to_majority_label[key_concept] == row['Label']:
                     if key_concept not in key_concept_to_observations:
                         key_concept_to_observations[key_concept] = row['Observations']
                     key_concept_to_reason[key_concept] = row['Reason']
 
-        return [{'Key Concept': key_concept, 'Observations': key_concept_to_observations[key_concept], 'Grade': label, 'Reason': f"<b>Votes: [{', '.join(key_concept_to_labels[key_concept])}]</b><br>{key_concept_to_reason[key_concept]}"} for key_concept, label in key_concept_to_majority_label.items()]
+        return [{'Key Concept': key_concept, 'Observations': key_concept_to_observations[key_concept], 'Label': label, 'Reason': f"<b>Votes: [{', '.join(key_concept_to_labels[key_concept])}]</b><br>{key_concept_to_reason[key_concept]}"} for key_concept, label in key_concept_to_majority_label.items()]

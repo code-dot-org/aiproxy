@@ -47,12 +47,12 @@
     {
       "Key Concept": "Program Development 2",
       "Observations": "The program uses whitespace  good nami [... snipped for brevity ...]. The code is easily readable.",
-      "Grade": "Extensive Evidence",
+      "Label": "Extensive Evidence",
       "Reason": "The program code effectively uses whitespace, good naming conventions, indentation and comments to make the code easily readable."
     }, {
       "Key Concept": "Algorithms and Control Structures",
       "Observations": "Sprite interactions occur at lines 48-50 (player touches burger), 52 (sw[... snipped for brevity ...]",
-      "Grade": "Extensive Evidence",
+      "Label": "Extensive Evidence",
       "Reason": "The game includes multiple different interactions between sprites, responds to multiple types of user input (e.g. different arrow keys)."
     }
   ]

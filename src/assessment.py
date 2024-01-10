@@ -10,7 +10,7 @@ import json
 # Our assessment code
 from lib.assessment import assess
 from lib.assessment.assess import KeyConceptError
-from lib.assessment.grade import InvalidResponseError
+from lib.assessment.label import InvalidResponseError
 
 assessment_routes = Blueprint('assessment_routes', __name__)
 
@@ -31,7 +31,7 @@ def post_assessment():
     examples = json.loads(request.values.get("examples", "[]"))
 
     try:
-        grades = assess.grade(
+        labels = assess.label(
             code=request.values.get("code", ""),
             prompt=request.values.get("prompt", ""),
             rubric=request.values.get("rubric", ""),
@@ -51,10 +51,10 @@ def post_assessment():
     except KeyConceptError as e:
         return e, 400
 
-    if not isinstance(grades, dict) or not isinstance(grades.get("data"), list):
+    if not isinstance(labels, dict) or not isinstance(labels.get("data"), list):
         return "response from AI or service not valid", 400
 
-    return grades
+    return labels
 
 # Submit a test rubric assessment
 @assessment_routes.route('/test/assessment', methods=['GET','POST'])
@@ -71,7 +71,7 @@ def test_assessment():
         rubric = f.read()
 
     try:
-        grades = assess.grade(
+        labels = assess.label(
             code=code,
             prompt=prompt,
             rubric=rubric,
@@ -86,10 +86,10 @@ def test_assessment():
     except openai.error.InvalidRequestError as e:
         return str(e), 400
 
-    if not isinstance(grades, dict) or not isinstance(grades.get("data"), list):
+    if not isinstance(labels, dict) or not isinstance(labels.get("data"), list):
         return "response from AI or service not valid", 400
 
-    return grades
+    return labels
 
 # Submit a test rubric assessment for a blank project
 @assessment_routes.route('/test/assessment/blank', methods=['GET','POST'])
@@ -105,7 +105,7 @@ def test_assessment_blank():
         rubric = f.read()
 
     try:
-        grades = assess.grade(
+        labels = assess.label(
             code=code,
             prompt=prompt,
             rubric=rubric,
@@ -120,10 +120,10 @@ def test_assessment_blank():
     except openai.error.InvalidRequestError as e:
         return str(e), 400
 
-    if not isinstance(grades, dict) or not isinstance(grades.get("data"), list):
+    if not isinstance(labels, dict) or not isinstance(labels.get("data"), list):
         return "response from AI or service not valid", 400
 
-    return grades
+    return labels
 
 # Submit a test rubric assessment with examples
 @assessment_routes.route('/test/assessment/examples', methods=['GET', 'POST'])
@@ -146,7 +146,7 @@ def test_assessment_examples():
         examples.append(f.read())
 
     try:
-        grades = assess.grade(
+        labels = assess.label(
             code=code,
             prompt=prompt,
             rubric=rubric,
@@ -164,7 +164,7 @@ def test_assessment_examples():
     except KeyConceptError as e:
         return str(e), 400
     
-    if not isinstance(grades, dict) or not isinstance(grades.get("data"), list):
+    if not isinstance(labels, dict) or not isinstance(labels.get("data"), list):
         return "response from AI or service not valid", 400
 
-    return grades
+    return labels

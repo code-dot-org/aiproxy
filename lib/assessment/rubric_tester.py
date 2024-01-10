@@ -16,13 +16,14 @@ from sklearn.metrics import accuracy_score, confusion_matrix
 from collections import defaultdict
 
 from lib.assessment.config import SUPPORTED_MODELS, VALID_LABELS, LESSONS
-from lib.assessment.grade import Grade
+from lib.assessment.label import Label
 from lib.assessment.report import Report
 
 #globals
 prompt_file = 'system_prompt.txt'
 standard_rubric_file = 'standard_rubric.csv'
-actual_labels_file = 'expected_grades.csv'
+actual_labels_file_old = 'expected_grades.csv'
+actual_labels_file = 'actual_labels.csv'
 output_dir_name = 'output'
 base_dir = 'lesson_data'
 cache_dir_name = 'cached_responses'
@@ -150,7 +151,7 @@ def compute_accuracy(actual_labels, predicted_labels, passing_labels):
         for row in label:
             criteria = row['Key Concept']
             actual_by_criteria[criteria].append(actual_labels[student_id][criteria])
-            predicted_by_criteria[criteria].append(row['Grade'])
+            predicted_by_criteria[criteria].append(row['Label'])
 
     accuracy_by_criteria = {}
 
@@ -180,8 +181,8 @@ def label_student_work(prompt, rubric, student_file, examples, options, prefix):
     student_id = os.path.splitext(os.path.basename(student_file))[0]
     with open(student_file, 'r') as f:
         student_code = f.read()
-    label = Grade()
-    labels = label.grade_student_work(
+    label = Label()
+    labels = label.label_student_work(
         prompt,
         rubric,
         student_code,
@@ -212,7 +213,10 @@ def main():
         # read in lesson files, validate them
         prompt, standard_rubric = read_inputs(prompt_file, standard_rubric_file, prefix)
         student_files = get_student_files(options.max_num_students, prefix, student_ids=options.student_ids)
-        actual_labels = get_actual_labels(actual_labels_file, prefix)
+        if os.path.exists(os.path.join(prefix, actual_labels_file_old)):
+            actual_labels = get_actual_labels(actual_labels_file_old, prefix)
+        else:
+            actual_labels = get_actual_labels(actual_labels_file, prefix)
         examples = get_examples(prefix)
 
         validate_rubrics(actual_labels, standard_rubric)
