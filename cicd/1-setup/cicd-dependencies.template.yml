@@ -27,7 +27,6 @@ Resources:
                 - codepipeline.amazonaws.com
         Version: '2012-10-17'
       Path: /service-role/
-      PermissionsBoundary: !ImportValue IAM-DevPermissions
       Policies:
         - PolicyName: AiProxyPassRole
           PolicyDocument:
@@ -103,7 +102,6 @@ Resources:
                 - codebuild.amazonaws.com
         Version: '2012-10-17'
       Path: /service-role/
-      PermissionsBoundary: !ImportValue IAM-DevPermissions
       Policies:
         - PolicyName: PublicCodeBuildSecretsAccess
           PolicyDocument:
