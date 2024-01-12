@@ -278,11 +278,25 @@ Resources:
                   ActionMode: CREATE_UPDATE
                   TemplatePath: appBuildResults::packaged-app-template.yml
                   TemplateConfiguration: appBuildResults::cicd/3-app/aiproxy/dev.config.json
+                  # ParameterOverrides must be a JSON string, not an object
                   ParameterOverrides: !Join
-                      - ''
-                      - - '{ "SubdomainName": "'
-                        - !Sub "aiproxy-dev-${GitHubBranch}"
-                        - '" }'
+                    - ''
+                    - - '{'
+                      - !Sub '"SubdomainName": "aiproxy-dev-${GitHubBranch}",'
+                      - !Sub '"ECRRepositoryArn": "${EcrRepository.Arn}",'
+                      - !Sub
+                        - '"VPC": "${VPCValue}",'
+                        - { VPCValue: !ImportValue VPC }
+                      - !Sub
+                        - '"SecurityGroup": "${SecurityGroupValue}",'
+                        - { SecurityGroupValue: !ImportValue VPC-ELBSecurityGroup }
+                      - !Sub
+                        - '"PublicSubnets": ${PublicSubnetsValue},'
+                        - { PublicSubnetsValue: [!ImportValue VPC-PublicSubnetB, !ImportValue VPC-PublicSubnetC, !ImportValue VPC-PublicSubnetD, !ImportValue VPC-PublicSubnetE] }
+                      - !Sub
+                        - '"PrivateSubnets": ${PrivateSubnetsValue},'
+                        - { PrivateSubnetsValue: [!ImportValue VPC-SubnetB, !ImportValue VPC-SubnetC, !ImportValue VPC-SubnetD, !ImportValue VPC-SubnetE] }
+                      - '}'
                   Capabilities: CAPABILITY_AUTO_EXPAND,CAPABILITY_IAM
                   RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/admin/CloudFormationService
           - !Ref AWS::NoValue
@@ -304,11 +318,27 @@ Resources:
                   ActionMode: CREATE_UPDATE
                   TemplatePath: appBuildResults::packaged-app-template.yml
                   TemplateConfiguration: appBuildResults::cicd/3-app/aiproxy/test.config.json
+                  # ParameterOverrides must be a JSON string, not an object
                   ParameterOverrides: !Join
                     - ''
-                    - - '{ "SubdomainName": "'
-                      - !If [ TargetsMainBranch, 'aiproxy-test', !Sub 'aiproxy-test-${GitHubBranch}' ]
-                      - '" }'
+                    - - '{'
+                      - !Sub
+                        - '"SubdomainName": "${SubdomainName}",'
+                        - { SubdomainName: !If [ TargetsMainBranch, 'aiproxy-test', !Sub 'aiproxy-test-${GitHubBranch}' ] }
+                      - !Sub '"ECRRepositoryArn": "${EcrRepository.Arn}",'
+                      - !Sub
+                        - '"VPC": "${VPCValue}",'
+                        - { VPCValue: !ImportValue VPC }
+                      - !Sub
+                        - '"SecurityGroup": "${SecurityGroupValue}",'
+                        - { SecurityGroupValue: !ImportValue VPC-ELBSecurityGroup }
+                      - !Sub
+                        - '"PublicSubnets": ${PublicSubnetsValue},'
+                        - { PublicSubnetsValue: [!ImportValue VPC-PublicSubnetB, !ImportValue VPC-PublicSubnetC, !ImportValue VPC-PublicSubnetD, !ImportValue VPC-PublicSubnetE] }
+                      - !Sub
+                        - '"PrivateSubnets": ${PrivateSubnetsValue},'
+                        - { PrivateSubnetsValue: [!ImportValue VPC-SubnetB, !ImportValue VPC-SubnetC, !ImportValue VPC-SubnetD, !ImportValue VPC-SubnetE] }
+                      - '}'
                   Capabilities: CAPABILITY_AUTO_EXPAND,CAPABILITY_IAM
                   RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/admin/CloudFormationService
           - !Ref AWS::NoValue
@@ -353,11 +383,27 @@ Resources:
                   ActionMode: CREATE_UPDATE
                   TemplatePath: appBuildResults::packaged-app-template.yml
                   TemplateConfiguration: appBuildResults::cicd/3-app/aiproxy/production.config.json
+                  # ParameterOverrides must be a JSON string, not an object
                   ParameterOverrides: !Join
                     - ''
-                    - - '{ "SubdomainName": "'
-                      - !If [ TargetsMainBranch, 'aiproxy', !Sub 'aiproxy-${GitHubBranch}' ]
-                      - '" }'
+                    - - '{'
+                      - !Sub
+                        - '"SubdomainName": "${SubdomainName}",'
+                        - { SubdomainName: !If [ TargetsMainBranch, 'aiproxy', !Sub 'aiproxy-${GitHubBranch}' ] }
+                      - !Sub '"ECRRepositoryArn": "${EcrRepository.Arn}",'
+                      - !Sub
+                        - '"VPC": "${VPCValue}",'
+                        - { VPCValue: !ImportValue VPC }
+                      - !Sub
+                        - '"SecurityGroup": "${SecurityGroupValue}",'
+                        - { SecurityGroupValue: !ImportValue VPC-ELBSecurityGroup }
+                      - !Sub
+                        - '"PublicSubnets": ${PublicSubnetsValue},'
+                        - { PublicSubnetsValue: [!ImportValue VPC-PublicSubnetB, !ImportValue VPC-PublicSubnetC, !ImportValue VPC-PublicSubnetD, !ImportValue VPC-PublicSubnetE] }
+                      - !Sub
+                        - '"PrivateSubnets": ${PrivateSubnetsValue},'
+                        - { PrivateSubnetsValue: [!ImportValue VPC-SubnetB, !ImportValue VPC-SubnetC, !ImportValue VPC-SubnetD, !ImportValue VPC-SubnetE] }
+                      - '}'
                   Capabilities: CAPABILITY_AUTO_EXPAND,CAPABILITY_IAM
                   RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/admin/CloudFormationService
           - !Ref AWS::NoValue

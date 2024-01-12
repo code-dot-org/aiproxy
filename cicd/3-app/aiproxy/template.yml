@@ -2,8 +2,6 @@ AWSTemplateFormatVersion: 2010-09-09
 Transform: AWS::Serverless-2016-10-31
 Description: Provision an instance of the AI Proxy service.
 
-# Dependencies: This template has dependencies, look for !ImportValue in the Resources section.
-
 Parameters:
   BaseDomainName:
     Type: String
@@ -14,9 +12,20 @@ Parameters:
   SubdomainName:
     Type: String
     Description: Subdomain name for aiproxy service (e.g. 'aiproxy' in 'aiproxy.code.org').
+  ECRRepositoryArn:
+    Type: String
+    Description: ARN of the ECR repository for this service.
   AppImageUri:
     Type: String
     Description: URI of the Docker image in ECR.
+  VPC:
+    Type: AWS::EC2::VPC::Id
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup::Id
+  PublicSubnets:
+    Type: List<AWS::EC2::Subnet::Id>
+  PrivateSubnets:
+    Type: List<AWS::EC2::Subnet::Id>
 
 # Conditions:
 #   IsDevCondition: !Equals [!Ref BaseDomainName, "dev-code.org"]
@@ -63,16 +72,11 @@ Resources:
       LoadBalancerAttributes:
         - Key: idle_timeout.timeout_seconds
           Value: 180
-      SecurityGroups:
-        - !ImportValue VPC-ELBSecurityGroup
-      Subnets:
-        # Place load balancer in public subnets, so it's accessible from the internet.
-        # We may want to move this to the private subnets, so only internal resources
-        # can access it, but this is very convenient for local development.
-        - !ImportValue VPC-PublicSubnetB
-        - !ImportValue VPC-PublicSubnetC
-        - !ImportValue VPC-PublicSubnetD
-        - !ImportValue VPC-PublicSubnetE
+      SecurityGroups: !Ref LoadBalancerSecurityGroups
+      # Place load balancer in public subnets, so it's accessible from the internet.
+      # We may want to move this to the private subnets, so only internal resources
+      # can access it, but this is very convenient for local development.
+      Subnets: !Ref PublicSubnets
 
   HttpListener:
    Type: AWS::ElasticLoadBalancingV2::Listener
@@ -114,7 +118,7 @@ Resources:
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      VpcId: !ImportValue VPC
+      VpcId: !Ref VPC
       Port: 80
       TargetType: ip
       Protocol: HTTP
@@ -147,12 +151,8 @@ Resources:
           AssignPublicIp: DISABLED
           SecurityGroups: 
             - !Ref ECSSecurityGroup
-          Subnets:
             # Place ECS Service in private subnets, but traffic should use the LoadBalancer.
-            - !ImportValue VPC-SubnetB
-            - !ImportValue VPC-SubnetC
-            - !ImportValue VPC-SubnetD
-            - !ImportValue VPC-SubnetE
+          Subnets: !Ref PrivateSubnets
       LoadBalancers:
         - ContainerName: aiproxy
           ContainerPort: 80
@@ -163,7 +163,7 @@ Resources:
     Properties: 
       GroupDescription: Security Group for ECS Service
       # TODO: This copies geocoder, but we should probably have a separate VPC for this service.
-      VpcId: !ImportValue VPC
+      VpcId: !Ref VPC
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
@@ -177,7 +177,7 @@ Resources:
       RequiresCompatibilities:
         - FARGATE
       NetworkMode: awsvpc
-      ExecutionRoleArn: !ImportValue AiProxyECSTaskExecutionRoleArn
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
       Cpu: 256
       Memory: 512
       ContainerDefinitions:
@@ -195,12 +195,50 @@ Resources:
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: ecs
 
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: ECRPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                Resource: !Ref ECRRepositoryArn
+        - PolicyName: LogsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt LogGroup.Arn
+                  - !Sub "${LogGroup.Arn}:*"
+
   # ------------------
   #  Logging & Alerts
   # ------------------
 
   LogGroup:
     Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
     Properties:
       LogGroupName: !Sub "${AWS::StackName}"
 
