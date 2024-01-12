@@ -40,8 +40,11 @@ Conditions:
 
 Resources:
 
-  # The Elastic Container Registry Repository will store our built docker
-  # images.
+  #-------------------------------------
+  # Elastic Container Registry (ECR)
+  # - Store built docker images
+  #-------------------------------------
+
   EcrRepository:
     Type: AWS::ECR::Repository
     Properties: 
@@ -112,6 +115,10 @@ Resources:
               - 'kms:GenerateDataKey'
               - 'kms:GenerateDataKeyWithoutPlaintext'
             Resource: '*'
+
+  #-------------------------------------
+  # CodeBuild Projects
+  #-------------------------------------
 
   # The CodeBuild Project is triggered by pull requests targeting $GitHubBranch
   # It will perform any steps defined in the pr-buildspec.yml file.
@@ -191,32 +198,9 @@ Resources:
       Artifacts:
         Type: CODEPIPELINE
 
-  # Grant the AiProxy CodeBuild Role additional permissions for resources in
-  # this template. This allows us to avoid granting permission to * resources.
-  AiProxyRolePolicy:
-    Type: 'AWS::IAM::Policy'
-    Properties:
-      PolicyName: !Sub "${AWS::StackName}-codebuild-policy"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - codebuild:*
-            Resource:
-              - !GetAtt AppBuildProject.Arn
-              - !GetAtt IntegrationTestBuildProject.Arn
-          - Effect: Allow
-            Action:
-              - codebuild:CreateReportGroup
-              - codebuild:CreateReport
-              - codebuild:UpdateReport
-              - codebuild:BatchPutTestCases
-              - codebuild:BatchPutCodeCoverage
-            Resource:
-              - !Sub arn:aws:codebuild:us-east-1:165336972514:report-group/${AWS::StackName}-${GitHubBranch}-pr-build
-      Roles:
-        - !ImportValue AiProxyCodeBuildRoleName
+  #-------------------------------------
+  # Pipeline
+  #-------------------------------------
 
   Pipeline:
     Type: AWS::CodePipeline::Pipeline
@@ -430,6 +414,42 @@ Resources:
                   - Name: smokeTestResults
           - !Ref AWS::NoValue
   
+
+  #-------------------------------------
+  # IAM Roles & Policies
+  #-------------------------------------
+
+  # Grant the AiProxy CodeBuild Role additional permissions for resources in
+  # this template. This allows us to avoid granting permission to * resources.
+  AiProxyRolePolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: !Sub "${AWS::StackName}-codebuild-policy"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - codebuild:*
+            Resource:
+              - !GetAtt AppBuildProject.Arn
+              - !GetAtt IntegrationTestBuildProject.Arn
+          - Effect: Allow
+            Action:
+              - codebuild:CreateReportGroup
+              - codebuild:CreateReport
+              - codebuild:UpdateReport
+              - codebuild:BatchPutTestCases
+              - codebuild:BatchPutCodeCoverage
+            Resource:
+              - !Sub arn:aws:codebuild:us-east-1:165336972514:report-group/${AWS::StackName}-${GitHubBranch}-pr-build
+      Roles:
+        - !ImportValue AiProxyCodeBuildRoleName
+
+  #-------------------------------------
+  # Metrics & Notifications
+  #-------------------------------------
+
   # Send pipeline events to an SNS topic.
   # Note:
   # Integration with Slack via AWS ChatBot is configured manually via AWS
