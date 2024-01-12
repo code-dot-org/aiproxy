@@ -12,9 +12,9 @@ Parameters:
   SubdomainName:
     Type: String
     Description: Subdomain name for aiproxy service (e.g. 'aiproxy' in 'aiproxy.code.org').
-  ECRRepositoryArn:
-    Type: String
-    Description: ARN of the ECR repository for this service.
+  # ECRRepositoryArn:
+  #   Type: String
+  #   Description: ARN of the ECR repository for this service.
   AppImageUri:
     Type: String
     Description: URI of the Docker image in ECR.
