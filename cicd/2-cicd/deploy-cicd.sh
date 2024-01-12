@@ -8,82 +8,54 @@ echo Deploying AiProxy CICD Pipeline
 # - ENVIRONMENT_TYPE: Can be 'production' (default) or 'development', passed as a Parameter for "cicd/2-cicd/cicd.template.yml"
 # - GITHUB_BADGE_ENABLED: defaults to true, passed as a Parameter for "cicd/2-cicd/cicd.template.yml"
 
-# The branch name may become part of a domain name, so we need to validate it.
-validate_branch_name() {
-  local branch_name=$1
-  if [[ ! $branch_name =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])$ ]]; then
-    echo "Invalid branch name '${branch_name}', branches must be alphanumeric and may contain hyphens."
-    exit 1
-  fi
-}
-
 # 'Developer' role requires a specific service role for all CloudFormation operations.
 if [[ $(aws sts get-caller-identity --query Arn --output text) =~ "assumed-role/Developer/" ]]; then
   # Append the role-arn option to the positional parameters $@ passed to cloudformation deploy.
   set -- "$@" --role-arn "arn:aws:iam::$(aws sts get-caller-identity --query Account --output text):role/admin/CloudFormationService"
 fi
 
-ENVIRONMENT_TYPE=${ENVIRONMENT_TYPE:-'production'}
-GITHUB_BADGE_ENABLED=${GITHUB_BADGE_ENABLED:-'true'}
-TARGET_BRANCH=${TARGET_BRANCH:-'main'}
+# Default to main branch, but support pipelines using other branches
+TARGET_BRANCH=${TARGET_BRANCH-'main'}
 
 if [ "$TARGET_BRANCH" == "main" ]
 then
   STACK_NAME="aiproxy-cicd"
 else
-  validate_branch_name "$TARGET_BRANCH"
-  STACK_NAME="aiproxy-${TARGET_BRANCH}-cicd"
+  # only allow alphanumeric branch names that may contain an internal hyphen.
+  # to avoid complicated logic elsewhere, we're constraining it here.
+  if [[ "$TARGET_BRANCH" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])$ ]]; then
+    STACK_NAME="aiproxy-${TARGET_BRANCH}-cicd"
+  else
+    echo "Invalid branch name '${TARGET_BRANCH}', branches must be alphanumeric and may contain hyphens."
+    exit
+  fi
 fi
+
+ENVIRONMENT_TYPE=${ENVIRONMENT_TYPE-'production'}
+GITHUB_BADGE_ENABLED=${GITHUB_BADGE_ENABLED-'true'}
 
 TEMPLATE_FILE=cicd/2-cicd/cicd.template.yml
 
 echo Validating cloudformation template...
 aws cloudformation validate-template \
   --template-body file://${TEMPLATE_FILE} \
-  > /dev/null
+  | cat
 
 ACCOUNT=$(aws sts get-caller-identity --query "Account" --output text)
-REGION=$(aws configure get region)
 
-echo "Stack name is: $STACK_NAME"
-
-read -r -p "Would you like to create a change set for this template in AWS account $ACCOUNT? [y/N] " response
+read -r -p "Would you like to deploy this template to AWS account $ACCOUNT? [y/N] " response
 if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]
 then
-  CHANGE_SET_TYPE="UPDATE"
-  if ! aws cloudformation describe-stacks --stack-name $STACK_NAME > /dev/null 2>&1; then
-    CHANGE_SET_TYPE="CREATE"
-  fi
-
-  echo Creating change set...
-  CHANGE_SET_NAME="${STACK_NAME}-changeset-$(date +%s)"
-  aws cloudformation create-change-set \
+  echo Updating cloudformation stack...
+  aws cloudformation deploy \
     --stack-name $STACK_NAME \
-    --change-set-name $CHANGE_SET_NAME \
-    --change-set-type $CHANGE_SET_TYPE \
-    --template-body file://${TEMPLATE_FILE} \
-    --parameters ParameterKey=GitHubBranch,ParameterValue=$TARGET_BRANCH ParameterKey=GitHubBadgeEnabled,ParameterValue=$GITHUB_BADGE_ENABLED ParameterKey=EnvironmentType,ParameterValue=$ENVIRONMENT_TYPE \
+    --template-file $TEMPLATE_FILE \
+    --parameter-overrides GitHubBranch=$TARGET_BRANCH GitHubBadgeEnabled=$GITHUB_BADGE_ENABLED EnvironmentType=$ENVIRONMENT_TYPE \
     --capabilities CAPABILITY_IAM \
-    --tags Key=EnvType,Value=${ENVIRONMENT_TYPE} \
+    --tags EnvType=${ENVIRONMENT_TYPE} \
     "$@"
 
-  echo "Change set created. You can review it at:"
-  echo "https://console.aws.amazon.com/cloudformation/home?region=$REGION#/stacks/changesets/changes?stackId=arn:aws:cloudformation:$REGION:$ACCOUNT:stack/$STACK_NAME/*&changeSetId=arn:aws:cloudformation:$REGION:$ACCOUNT:changeSet/$CHANGE_SET_NAME"
-  # TODO: That's wrong, it's at https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/changesets/changes?stackId=arn%3Aaws%3Acloudformation%3Aus-east-1%3A475661607190%3Astack%2Faiproxy-refactor-iam-role-creation-cicd%2F90acf300-b169-11ee-8df0-0a6d63bbc467&changeSetId=arn%3Aaws%3Acloudformation%3Aus-east-1%3A475661607190%3AchangeSet%2Faiproxy-refactor-iam-role-creation-cicd-changeset-1705077744%2F9b26634f-00f8-4e37-954f-b7c8877f46d1
-
-
-
-  read -r -p "Would you like to execute the change set? [y/N] " response
-  if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]
-  then
-    echo Executing change set...
-    aws cloudformation execute-change-set \
-      --stack-name $STACK_NAME \
-      --change-set-name $CHANGE_SET_NAME
-    echo Complete!
-  else
-    echo Exiting...
-  fi
+  echo Complete!
 else
   echo Exiting...
 fi
