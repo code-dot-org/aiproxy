@@ -42,7 +42,7 @@ Resources:
                   - "cloudformation:DescribeStacks"
                   - "cloudformation:CreateStack"
                   - "cloudformation:UpdateStack"
-                Resource: "*"
+                Resource: "*" # TODO scope to specific stacks
         - PolicyName: CodeBuildResourcesAccess
           PolicyDocument:
             Statement:
@@ -67,11 +67,10 @@ Resources:
                   - s3:GetObjectVersion
                 Resource:
                   - !Sub ${ArtifactStore.Arn}/*
-              # TODO: Scope to specific ECR Repos?
               - Effect: Allow
                 Action:
                   - ecr:GetAuthorizationToken
-                Resource: '*'
+                Resource: '*' # TODO scope to specific ECR repos
               - Effect: Allow
                 Action: codestar-connections:UseConnection
                 Resource:
