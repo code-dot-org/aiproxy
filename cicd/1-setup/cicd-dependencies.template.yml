@@ -112,6 +112,45 @@ Resources:
                   - !Sub arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:cicd/docker-hub/username-ITBwTx
                   - !Sub arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:cicd/docker-hub/read-only-token-SsbSj7
 
+  # This would ideally be defined in 3-app/aiproxy/template.yml, but we do
+  # not allow the CloudFormationServiceRole permission to CreateRole, so we
+  # have to define it here. TODO: Tweak permissions for the role used to create
+  # the cloudformation stack.
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: ECRPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                Resource: "*"
+        - PolicyName: LogsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+
 Outputs:
   CodeBuildArtifactBucket:
     Description: AiProxy CodeBuild Artifact Bucket Name
@@ -133,3 +172,7 @@ Outputs:
     Description: AiProxy Pull Request CodeBuild Role Name
     Value: !Ref PublicCodeBuildRole
     Export: {Name: AiProxyPublicCodeBuildRoleName}
+  ECSTaskExecutionRoleArn:
+    Description: AiProxy ECS Task Execution Role ARN
+    Value: !GetAtt ECSTaskExecutionRole.Arn
+    Export: {Name: AiProxyECSTaskExecutionRoleArn}
