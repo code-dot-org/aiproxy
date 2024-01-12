@@ -19,11 +19,17 @@ REGION=$(aws configure get region)
 read -r -p "Would you like to create a change set for this template in AWS account $ACCOUNT? [y/N] " response
 if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]
 then
+  CHANGE_SET_TYPE="UPDATE"
+  if ! aws cloudformation describe-stacks --stack-name aiproxy-cicd-deps > /dev/null 2>&1; then
+    CHANGE_SET_TYPE="CREATE"
+  fi
+
   echo Creating change set...
   CHANGE_SET_NAME="aiproxy-cicd-deps-changeset-$(date +%s)"
   aws cloudformation create-change-set \
     --stack-name aiproxy-cicd-deps \
     --change-set-name $CHANGE_SET_NAME \
+    --change-set-type $CHANGE_SET_TYPE \
     --template-body file://${TEMPLATE_FILE} \
     --capabilities CAPABILITY_IAM \
     --tags EnvType=infrastructure \

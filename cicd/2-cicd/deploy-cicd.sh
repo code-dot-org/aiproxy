@@ -45,14 +45,22 @@ aws cloudformation validate-template \
 ACCOUNT=$(aws sts get-caller-identity --query "Account" --output text)
 REGION=$(aws configure get region)
 
+echo "Stack name is: $STACK_NAME"
+
 read -r -p "Would you like to create a change set for this template in AWS account $ACCOUNT? [y/N] " response
 if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]
 then
+  CHANGE_SET_TYPE="UPDATE"
+  if ! aws cloudformation describe-stacks --stack-name $STACK_NAME > /dev/null 2>&1; then
+    CHANGE_SET_TYPE="CREATE"
+  fi
+
   echo Creating change set...
   CHANGE_SET_NAME="${STACK_NAME}-changeset-$(date +%s)"
   aws cloudformation create-change-set \
     --stack-name $STACK_NAME \
     --change-set-name $CHANGE_SET_NAME \
+    --change-set-type $CHANGE_SET_TYPE \
     --template-body file://${TEMPLATE_FILE} \
     --parameters ParameterKey=GitHubBranch,ParameterValue=$TARGET_BRANCH ParameterKey=GitHubBadgeEnabled,ParameterValue=$GITHUB_BADGE_ENABLED ParameterKey=EnvironmentType,ParameterValue=$ENVIRONMENT_TYPE \
     --capabilities CAPABILITY_IAM \
@@ -61,6 +69,9 @@ then
 
   echo "Change set created. You can review it at:"
   echo "https://console.aws.amazon.com/cloudformation/home?region=$REGION#/stacks/changesets/changes?stackId=arn:aws:cloudformation:$REGION:$ACCOUNT:stack/$STACK_NAME/*&changeSetId=arn:aws:cloudformation:$REGION:$ACCOUNT:changeSet/$CHANGE_SET_NAME"
+  # TODO: That's wrong, it's at https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/changesets/changes?stackId=arn%3Aaws%3Acloudformation%3Aus-east-1%3A475661607190%3Astack%2Faiproxy-refactor-iam-role-creation-cicd%2F90acf300-b169-11ee-8df0-0a6d63bbc467&changeSetId=arn%3Aaws%3Acloudformation%3Aus-east-1%3A475661607190%3AchangeSet%2Faiproxy-refactor-iam-role-creation-cicd-changeset-1705077744%2F9b26634f-00f8-4e37-954f-b7c8877f46d1
+
+
 
   read -r -p "Would you like to execute the change set? [y/N] " response
   if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]
