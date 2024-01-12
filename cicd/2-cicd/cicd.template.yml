@@ -267,7 +267,7 @@ Resources:
                     - ''
                     - - '{'
                       - !Sub '"SubdomainName": "aiproxy-dev-${GitHubBranch}",'
-                      - !Sub '"ECRRepositoryArn": "${EcrRepository.Arn}",'
+                      # - !Sub '"ECRRepositoryArn": "${EcrRepository.Arn}",'
                       - !Sub
                         - '"VPC": "${VPCValue}",'
                         - { VPCValue: !ImportValue VPC }
