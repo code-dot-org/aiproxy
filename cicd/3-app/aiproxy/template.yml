@@ -72,7 +72,7 @@ Resources:
       LoadBalancerAttributes:
         - Key: idle_timeout.timeout_seconds
           Value: 180
-      SecurityGroups: !Ref LoadBalancerSecurityGroups
+      SecurityGroups: [!Ref SecurityGroup]
       # Place load balancer in public subnets, so it's accessible from the internet.
       # We may want to move this to the private subnets, so only internal resources
       # can access it, but this is very convenient for local development.
