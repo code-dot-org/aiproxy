@@ -278,7 +278,7 @@ Resources:
                         - '"PublicSubnets": "[${PublicSubnetsValue}]",'
                         - { PublicSubnetsValue: !Join [",", [!ImportValue VPC-PublicSubnetB, !ImportValue VPC-PublicSubnetC, !ImportValue VPC-PublicSubnetD, !ImportValue VPC-PublicSubnetE]] }
                       - !Sub
-                        - '"PrivateSubnets": "[${PrivateSubnetsValue}]",'
+                        - '"PrivateSubnets": "[${PrivateSubnetsValue}]"'
                         - { PrivateSubnetsValue: !Join [",", [!ImportValue VPC-SubnetB, !ImportValue VPC-SubnetC, !ImportValue VPC-SubnetD, !ImportValue VPC-SubnetE]] }
                       - '}'
                   Capabilities: CAPABILITY_AUTO_EXPAND,CAPABILITY_IAM
@@ -320,7 +320,7 @@ Resources:
                         - '"PublicSubnets": "[${PublicSubnetsValue}]",'
                         - { PublicSubnetsValue: !Join [",", [!ImportValue VPC-PublicSubnetB, !ImportValue VPC-PublicSubnetC, !ImportValue VPC-PublicSubnetD, !ImportValue VPC-PublicSubnetE]] }
                       - !Sub
-                        - '"PrivateSubnets": "[${PrivateSubnetsValue}]",'
+                        - '"PrivateSubnets": "[${PrivateSubnetsValue}]"'
                         - { PrivateSubnetsValue: !Join [",", [!ImportValue VPC-SubnetB, !ImportValue VPC-SubnetC, !ImportValue VPC-SubnetD, !ImportValue VPC-SubnetE]] }
                       - '}'
                   Capabilities: CAPABILITY_AUTO_EXPAND,CAPABILITY_IAM
@@ -385,7 +385,7 @@ Resources:
                         - '"PublicSubnets": "[${PublicSubnetsValue}]",'
                         - { PublicSubnetsValue: !Join [",", [!ImportValue VPC-PublicSubnetB, !ImportValue VPC-PublicSubnetC, !ImportValue VPC-PublicSubnetD, !ImportValue VPC-PublicSubnetE]] }
                       - !Sub
-                        - '"PrivateSubnets": "[${PrivateSubnetsValue}]",'
+                        - '"PrivateSubnets": "[${PrivateSubnetsValue}]"'
                         - { PrivateSubnetsValue: !Join [",", [!ImportValue VPC-SubnetB, !ImportValue VPC-SubnetC, !ImportValue VPC-SubnetD, !ImportValue VPC-SubnetE]] }
                       - '}'
                   Capabilities: CAPABILITY_AUTO_EXPAND,CAPABILITY_IAM
