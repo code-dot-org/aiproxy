@@ -17,3 +17,4 @@ class TestAccuracy:
         with mock.patch('sys.argv', ['rubric_tester.py', '-a']):
             ret = main()
         assert ret == True
+        
