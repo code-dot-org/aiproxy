@@ -11,6 +11,7 @@ import concurrent.futures
 import io
 import logging
 import gdown
+import pprint
 
 from sklearn.metrics import accuracy_score, confusion_matrix
 from collections import defaultdict
@@ -27,6 +28,10 @@ actual_labels_file = 'actual_labels.csv'
 output_dir_name = 'output'
 base_dir = 'lesson_data'
 cache_dir_name = 'cached_responses'
+accuracy_threshold_file = 'accuracy_thresholds.json'
+accuracy_threshold_dir = 'tests/data'
+
+pp = pprint.PrettyPrinter(indent=2)
 
 def command_line_options():
     parser = argparse.ArgumentParser(description='Usage')
@@ -51,6 +56,8 @@ def command_line_options():
                         help='Temperature of the LLM. Defaults to 0.0.')
     parser.add_argument('-d', '--download', action='store_true',
                         help='re-download lesson files, overwriting previous files')
+    parser.add_argument('-a', '--accuracy', action='store_true',
+                        help='Run against accuracy thresholds')
 
     args = parser.parse_args()
 
@@ -106,6 +113,13 @@ def get_actual_labels(actual_labels_file, prefix):
             student_id = row['student']
             actual_labels[student_id] = dict(row)
     return actual_labels
+
+def get_accuracy_thresholds(accuracy_threshold_file=accuracy_threshold_file, prefix=accuracy_threshold_dir):
+    thresholds = None
+    if os.path.exists(os.path.join(prefix, accuracy_threshold_file)):
+        with open(os.path.join(prefix, accuracy_threshold_file), 'r') as f:
+            thresholds = json.load(f)
+    return thresholds
 
 
 def get_examples(prefix):
@@ -167,11 +181,11 @@ def compute_accuracy(actual_labels, predicted_labels, passing_labels):
         actual = actual_by_criteria[criteria]
         
         confusion_by_criteria[criteria] = confusion_matrix(actual, predicted, labels=label_names)
-        accuracy_by_criteria[criteria] = accuracy_score(actual, predicted) * 100
+        accuracy_by_criteria[criteria] = accuracy_score(actual, predicted)
         overall_predicted.extend(predicted)
         overall_actual.extend(actual)
 
-    overall_accuracy = accuracy_score(overall_actual, overall_predicted) * 100
+    overall_accuracy = accuracy_score(overall_actual, overall_predicted)
     overall_confusion = confusion_matrix(overall_actual, overall_predicted, labels=label_names)
 
     return accuracy_by_criteria, overall_accuracy, confusion_by_criteria, overall_confusion, label_names
@@ -202,13 +216,25 @@ def main():
     command_line = " ".join(os.sys.argv)
     options = command_line_options()
     main_start_time = time.time()
+    accuracy_failures = {}
+    accuracy_pass = True
+    accuracy_thresholds = None
+
+    print(options)
+
+    if options.accuracy:
+        accuracy_thresholds = get_accuracy_thresholds()
 
     for lesson in options.lesson_names:
         prefix = os.path.join(base_dir, lesson)
 
         # download lesson files
         if not os.path.exists(prefix) or options.download:
-            gdown.download_folder(id=LESSONS[lesson], output=prefix)
+            try:
+                gdown.download_folder(id=LESSONS[lesson], output=prefix)
+            except Exception as e:
+                print(f"Could not download lesson {lesson}")
+                logging.error(e)
 
         # read in lesson files, validate them
         prompt, standard_rubric = read_inputs(prompt_file, standard_rubric_file, prefix)
@@ -241,16 +267,18 @@ def main():
 
         # calculate accuracy and generate report
         accuracy_by_criteria, overall_accuracy, confusion_by_criteria, overall_confusion, label_names = compute_accuracy(actual_labels, predicted_labels, options.passing_labels)
+        overall_accuracy_percent = overall_accuracy * 100
+        accuracy_by_criteria_percent = {k:v*100 for k,v in accuracy_by_criteria.items()}
         report = Report()
         report.generate_html_output(
             output_file,
             prompt,
             rubric,
-            accuracy=overall_accuracy,
+            accuracy=overall_accuracy_percent,
             predicted_labels=predicted_labels,
             actual_labels=actual_labels,
             passing_labels=options.passing_labels,
-            accuracy_by_criteria=accuracy_by_criteria,
+            accuracy_by_criteria=accuracy_by_criteria_percent,
             errors=errors,
             command_line=command_line,
             confusion_by_criteria=confusion_by_criteria,
@@ -260,7 +288,29 @@ def main():
         )
         logging.info(f"main finished in {int(time.time() - main_start_time)} seconds")
 
+        if options.accuracy and accuracy_thresholds is not None:
+            if overall_accuracy < accuracy_thresholds[lesson]['overall']:
+                accuracy_pass = False
+                accuracy_failures[lesson] = {}
+                accuracy_failures[lesson]['overall'] = {}
+                accuracy_failures[lesson]['overall']['accuracy_score'] = overall_accuracy
+                accuracy_failures[lesson]['overall']['threshold'] = accuracy_thresholds[lesson]['overall']
+            for key_concept in accuracy_by_criteria:
+                if accuracy_by_criteria[key_concept] < accuracy_thresholds[lesson]['key_concepts'][key_concept]:
+                    accuracy_pass = False
+                    if lesson not in accuracy_failures.keys(): accuracy_failures[lesson] = {}
+                    if 'key_concepts' not in accuracy_failures[lesson].keys(): accuracy_failures[lesson]['key_concepts'] = {}
+                    if key_concept not in accuracy_failures[lesson]['key_concepts'].keys() : accuracy_failures[lesson]['key_concepts'][key_concept] = {}
+                    accuracy_failures[lesson]['key_concepts'][key_concept]['accuracy_score'] = accuracy_by_criteria[key_concept]
+                    accuracy_failures[lesson]['key_concepts'][key_concept]['threshold'] = accuracy_thresholds[lesson]['key_concepts'][key_concept]
+
         os.system(f"open {output_file}")
+
+    if not accuracy_pass and len(accuracy_failures.keys()) > 0:
+        logging.error(f"The following thresholds were not met:\n{pp.pformat(accuracy_failures)}")
+        print(("PASS" if accuracy_pass else "FAIL"))
+
+    return accuracy_pass
 
 
 def init():
