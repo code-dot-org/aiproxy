@@ -32,7 +32,7 @@ PYTHONPATH=/app pytest
 **Running the Accuracy test hits the OpenAI endpoint and is expensive! Only run this test infrequently**
 
 To run the accuracy threshold test, follow directions in `README.md` to set up your local
-environment for running the Rubric Tester. You can then run `.bin/test_accuracy.sh` to run
+environment for running the Rubric Tester. You can then run `./bin/test_accuracy.sh` to run
 tests locally, including the accuracy threshold test.
 
 You can pass any arguments to pytest with this script. For instance, the `-k` argument can filter tests by name:
