@@ -8,4 +8,5 @@ LESSONS = {
     "U3-2022-L23" : "12OJex4l9OhWrnbLenpvZAibtfiFWWdzx",
     "New-U3-2022-L10" : "15xAUFVeGkXeG18mDWBOKN6yJPpI185tg",
     "New-U3-2022-L13" : "14LI9eRRgxL5rRQK6FoUI0ow_YIb5V0mg",
+    "New-U3-2023-L24" : "1WjVideBUnMBdrRqrBCrUgu2pUsgGDiRn",
 }
