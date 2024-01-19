@@ -5,10 +5,10 @@ require 'json'
 require 'httparty'
 require 'fileutils'
 
-# Goal: Convert the TSV to an appropriate CSV for 'expected_grades.csv'
+# Goal: Convert the TSV to an appropriate CSV for 'actual_labels.csv'
 
 if ARGV.length < 2
-  echo "Usage: ./prepare.rb google_sheet.tsv expected_grades.csv"
+  echo "Usage: ./prepare.rb google_sheet.tsv actual_labels.csv"
   echo ""
   echo "Ensure google_sheet.tsv is tab separated... you can copy and paste"
   echo "from the sheet."
@@ -24,7 +24,7 @@ if ARGV.length < 2
   exit 1
 end
 
-# We want to generate a CSV of expected grades from the google sheet
+# We want to generate a CSV of actual labels from the google sheet
 tokens = []
 csv_data = CSV.generate do |csv|
   headers = ['student']
