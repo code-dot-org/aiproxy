@@ -199,6 +199,9 @@ def label_student_work(prompt, rubric, student_file, examples, options, prefix):
 
 
 def main():
+    log_level = os.getenv('LOG_LEVEL', 'INFO')
+    logging.basicConfig(format='%(asctime)s: %(levelname)s: %(message)s', level=log_level)
+
     command_line = " ".join(os.sys.argv)
     options = command_line_options()
     main_start_time = time.time()
