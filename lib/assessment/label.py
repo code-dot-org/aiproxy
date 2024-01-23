@@ -309,4 +309,10 @@ class Label:
                         key_concept_to_observations[key_concept] = row['Observations']
                     key_concept_to_reason[key_concept] = row['Reason']
 
-        return [{'Key Concept': key_concept, 'Observations': key_concept_to_observations[key_concept], 'Label': label, 'Reason': f"<b>Votes: [{', '.join(key_concept_to_labels[key_concept])}]</b><br>{key_concept_to_reason[key_concept]}"} for key_concept, label in key_concept_to_majority_label.items()]
+        return [{'Key Concept': key_concept, 'Observations': key_concept_to_observations[key_concept], 'Label': label, 'Reason': f"{self.get_consensus_votes(key_concept_to_labels[key_concept])}{key_concept_to_reason[key_concept]}"} for key_concept, label in key_concept_to_majority_label.items()]
+
+    def get_consensus_votes(self, labels):
+        # only display votes if there is a disagreement
+        if len(set(labels)) == 1:
+            return ""
+        return f"<b>Votes: [{', '.join(labels)}]</b><br>"
