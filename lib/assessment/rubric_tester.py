@@ -15,7 +15,7 @@ import gdown
 from sklearn.metrics import accuracy_score, confusion_matrix
 from collections import defaultdict
 
-from lib.assessment.config import SUPPORTED_MODELS, VALID_LABELS, LESSONS
+from lib.assessment.config import SUPPORTED_MODELS, DEFAULT_MODEL, VALID_LABELS, LESSONS
 from lib.assessment.label import Label
 from lib.assessment.report import Report
 
@@ -37,8 +37,8 @@ def command_line_options():
                         help='Output filename within output directory')
     parser.add_argument('-c', '--use-cached', action='store_true',
                         help='Use cached responses from the API.')
-    parser.add_argument('-l', '--llm-model', type=str, default='gpt-4',
-                        help=f"Which LLM model to use. Supported models: {', '.join(SUPPORTED_MODELS)}. Default: gpt-4")
+    parser.add_argument('-l', '--llm-model', type=str, default=DEFAULT_MODEL,
+                        help=f"Which LLM model to use. Supported models: {', '.join(SUPPORTED_MODELS)}. Default: {DEFAULT_MODEL}")
     parser.add_argument('-n', '--num-responses', type=int, default=1,
                         help='Number of responses to generate for each student. Defaults to 1.')
     parser.add_argument('-p', '--num-passing-labels', type=int,
