@@ -7,6 +7,8 @@ import os
 import openai
 import json
 
+from lib.assessment.config import DEFAULT_MODEL
+
 # Our assessment code
 from lib.assessment import assess
 from lib.assessment.assess import KeyConceptError
@@ -37,7 +39,7 @@ def post_assessment():
             rubric=request.values.get("rubric", ""),
             examples=examples,
             api_key=request.values.get("api-key", openai.api_key),
-            llm_model=request.values.get("model", "gpt-4"),
+            llm_model=request.values.get("model", DEFAULT_MODEL),
             remove_comments=(request.values.get("remove-comments", "0") != "0"),
             num_responses=int(request.values.get("num-responses", "1")),
             temperature=float(request.values.get("temperature", "0.2")),
@@ -76,7 +78,7 @@ def test_assessment():
             prompt=prompt,
             rubric=rubric,
             api_key=request.values.get("api-key", openai.api_key),
-            llm_model=request.values.get("model", "gpt-4"),
+            llm_model=request.values.get("model", DEFAULT_MODEL),
             remove_comments=(request.values.get("remove-comments", "0") != "0"),
             num_responses=int(request.values.get("num-responses", "1")),
             temperature=float(request.values.get("temperature", "0.2")),
@@ -110,7 +112,7 @@ def test_assessment_blank():
             prompt=prompt,
             rubric=rubric,
             api_key=request.values.get("api-key", openai.api_key),
-            llm_model=request.values.get("model", "gpt-4"),
+            llm_model=request.values.get("model", DEFAULT_MODEL),
             remove_comments=(request.values.get("remove-comments", "0") != "0"),
             num_responses=int(request.values.get("num-responses", "1")),
             temperature=float(request.values.get("temperature", "0.2")),
@@ -152,7 +154,7 @@ def test_assessment_examples():
             rubric=rubric,
             examples=[examples],
             api_key=request.values.get("api-key", openai.api_key),
-            llm_model=request.values.get("model", "gpt-4"),
+            llm_model=request.values.get("model", DEFAULT_MODEL),
             remove_comments=(request.values.get("remove-comments", "0") != "0"),
             num_responses=int(request.values.get("num-responses", "1")),
             temperature=float(request.values.get("temperature", "0.2")),

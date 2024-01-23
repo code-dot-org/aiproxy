@@ -1,5 +1,7 @@
 VALID_LABELS = ["Extensive Evidence", "Convincing Evidence", "Limited Evidence", "No Evidence"]
-SUPPORTED_MODELS = ['gpt-4', 'gpt-4-0314', 'gpt-4-32k', 'gpt-4-32k-0314']
+# do not include gpt-4, so that we always know what version of the model we are using.
+SUPPORTED_MODELS = ['gpt-4-0314', 'gpt-4-32k-0314', 'gpt-4-0613', 'gpt-4-32k-0613', 'gpt-4-1106-preview']
+DEFAULT_MODEL = 'gpt-4-0613'
 LESSONS = {
     "U3-2022-L10" : "1ROCbvHb3yWGVoQqzKAjwdaF0dSRPUjy_",
     "U3-2022-L13" : "1kGHeY5LRpFJ9xVRoBEWbyOJyKm4wClqw",
