@@ -46,7 +46,7 @@ before the service runs. See the above "Configuration" section.
 
 ### Rubric Tester
 To run the rubric tester locally, create a python virtual environment at the top of the directory with:
-`python -m venv .venv`
+`python3 -m venv .venv`
 
 Activate the virtual environment:
 `source .venv/bin/activate`
