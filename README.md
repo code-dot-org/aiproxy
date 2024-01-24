@@ -45,21 +45,38 @@ This will run a webserver accessible at <http://localhost:5000>.
 before the service runs. See the above "Configuration" section.
 
 ### Rubric Tester
-To run the rubric tester locally, create a python virtual environment at the top of the directory with:
-`python -m venv .venv`
+To run the rubric tester locally:
+
+#### setup
+
+install pyenv: https://github.com/pyenv/pyenv?tab=readme-ov-file#installation
+* Mac: `brew install pyenv`
+* Ubuntu: `curl https://pyenv.run | bash`
+
+install python 3.11:
+* `pyenv install 3.11.7`
+
+set python 3.11 for the aiproxy repo:
+* `cd aiproxy`
+* `pyenv local 3.11.7`
+
+create a python virtual environment at the top of the directory:
+* `python -m venv .venv`
+
+#### run
 
 Activate the virtual environment:
-`source .venv/bin/activate`
+* `source .venv/bin/activate`
 
 Install requirements to the virtual environment with pip:
-`pip install -r requirements.txt`
+* `pip install -r requirements.txt`
 
-Export the following environment variables
-`export OPENAI_API_KEY=<your API key>`
-`export PYTHONPATH=<path to aiproxy root>`
+Export the following environment variables (or add them once to your shell profile)
+* `export OPENAI_API_KEY=<your API key>`
+* `export PYTHONPATH=<path to aiproxy root>`
 
 See rubric tester options with:
-`python lib/assessment/rubric_tester.py --help`
+* `python lib/assessment/rubric_tester.py --help`
 
 ## Logging
 
