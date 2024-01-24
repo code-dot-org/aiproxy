@@ -74,6 +74,23 @@ def rubric(randomstring):
 
     yield output.getvalue()
 
+@pytest.fixture
+def short_rubric(randomstring):
+    """ Creates a generic rubric (a CSV string) with a single non-header row.
+    """
+
+    output = io.StringIO()
+    writer = csv.writer(output, csv.QUOTE_NONNUMERIC)
+
+    # Header
+    writer.writerow(['Key Concept', 'Extensive Evidence', 'Convincing Evidence', 'Limited Evidence', 'No Evidence'])
+
+    # single key concept row
+    key_concept = f"Concept {randomstring(10)}"
+    writer.writerow([key_concept, randomstring(20), randomstring(23), randomstring(25), randomstring(15)])
+
+    yield output.getvalue()
+
 
 @pytest.fixture
 def example_generator(code, randomstring, random_label_generator):
