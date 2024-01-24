@@ -2,10 +2,11 @@
 
 ## Unit Tests
 
-The `./tests` directory contains two categories of test:
+The `./tests` directory contains three categories of test:
 
 * `unit`: Unit tests for library functions in the `./lib` path.
 * `routes`: Tests routes and their helpers in the `./src` as a unit.
+* `accuracy`: Tests accuracy against thresholds by calling OpenAI. Not run by default.
 
 All tests are using [pytest](https://docs.pytest.org/en/7.4.x/).
 
@@ -24,6 +25,21 @@ just run `pytest` within a running container's shell session by using the
 
 ```
 PYTHONPATH=/app pytest
+```
+
+## Accuracy Tests
+
+**Running the Accuracy test hits the OpenAI endpoint and is expensive! Only run this test infrequently**
+
+To run the accuracy threshold test, follow directions in `README.md` to set up your local
+environment for running the Rubric Tester. You can then run `./bin/test_accuracy.sh` to run
+tests locally, including the accuracy threshold test.
+
+You can pass any arguments to pytest with this script. For instance, the `-k` argument can filter tests by name:
+
+```
+# Run only tests with 'accuracy' in the name:
+./bin/test_accuracy.sh -k accuracy
 ```
 
 ## Scripted
