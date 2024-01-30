@@ -84,7 +84,7 @@ class Label:
         }
 
     def compute_meta_prompt(self, prompt, rubric, student_code, examples=[]):
-            return f"{prompt}\n\nRubric:\n{rubric}\n\nStudent Code:\n{student_code}"
+            return f"{prompt}\n\nRubric:\n{rubric}\n\nStudent Code:\n{student_code}\n\nAssistant:\n"
 
     def openai_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model=""):
         # Determine the OpenAI URL and headers
