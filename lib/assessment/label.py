@@ -51,18 +51,18 @@ class Label:
     def ai_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model=""):
         if llm_model.startswith("gpt"):
             return self.openai_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
-        elif llm_model.startswith("meta"):
-            return self.meta_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
+        elif llm_model.startswith("anthropic"):
+            return self.anthropic_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
         else:
             raise Exception("Unknown model: {}".format(llm_model))
 
-    def meta_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model=""):
+    def anthropic_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model=""):
         bedrock = boto3.client(service_name='bedrock-runtime')
 
-        meta_prompt = self.compute_meta_prompt(prompt, rubric, student_code, examples=examples)
+        anthropic_prompt = self.compute_anthropic_prompt(prompt, rubric, student_code, examples=examples)
         body = json.dumps({
-            "prompt": meta_prompt,
-            "max_gen_len": 1024,
+            "prompt": anthropic_prompt,
+            "max_tokens_to_sample": 1024,
             "temperature": temperature,
             # "top_p": 0.9,
         })
@@ -71,19 +71,19 @@ class Label:
         response = bedrock.invoke_model(body=body, modelId=llm_model, accept=accept, contentType=content_type)
 
         response_body = json.loads(response.get('body').read())
-        generation = response_body.get('generation')
+        generation = response_body.get('completion')
 
         tsv_data = self.get_tsv_data_if_valid(generation, rubric, student_id, reraise=True)
 
         return {
             'metadata': {
-                'agent': 'openai',
+                'agent': 'anthropic',
                 'request': data,
             },
             'data': tsv_data,
         }
 
-    def compute_meta_prompt(self, prompt, rubric, student_code, examples=[]):
+    def compute_anthropic_prompt(self, prompt, rubric, student_code, examples=[]):
             return f"{prompt}\n\nRubric:\n{rubric}\n\nStudent Code:\n{student_code}"
 
     def openai_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model=""):
