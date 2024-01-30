@@ -60,6 +60,7 @@ class Label:
         bedrock = boto3.client(service_name='bedrock-runtime')
 
         meta_prompt = self.compute_meta_prompt(prompt, rubric, student_code, examples=examples)
+        logging.info(f"meta_prompt:\n{meta_prompt}")
         body = json.dumps({
             "prompt": meta_prompt,
             "max_gen_len": 1024,
@@ -72,6 +73,7 @@ class Label:
 
         response_body = json.loads(response.get('body').read())
         generation = response_body.get('generation')
+        logging.info(f"AI response:\n{generation}")
 
         tsv_data = self.get_tsv_data_if_valid(generation, rubric, student_id, reraise=True)
 
@@ -84,7 +86,7 @@ class Label:
         }
 
     def compute_meta_prompt(self, prompt, rubric, student_code, examples=[]):
-            return f"{prompt}\n\nRubric:\n{rubric}\n\nStudent Code:\n{student_code}\n\nAssistant:\n"
+            return f"[INST]{prompt}[/INST]\n\nRubric:\n{rubric}\n\nStudent Code:\n{student_code}\n\nEvaluation (JSON):\n"
 
     def openai_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model=""):
         # Determine the OpenAI URL and headers
