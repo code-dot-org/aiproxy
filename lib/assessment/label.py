@@ -5,6 +5,7 @@ import csv
 import time
 import requests
 import logging
+import boto3
 
 from typing import List, Dict, Any
 from lib.assessment.config import VALID_LABELS
@@ -48,6 +49,47 @@ class Label:
         return None
 
     def ai_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model=""):
+        # call openai if we are using a gpt model
+        if llm_model.startswith("gpt"):
+            return self.openai_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
+        # elsif we are using a meta model
+        elif llm_model.startswith("meta"):
+            return self.meta_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
+
+    def meta_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model=""):
+        bedrock = boto3.client(service_name='bedrock-runtime')
+
+        meta_prompt = self.compute_meta_prompt(prompt, rubric, student_code, examples=examples)
+        print(f"meta_prompt:\n", meta_prompt)
+        body = json.dumps({
+            "prompt": meta_prompt,
+            "max_gen_len": 2048,
+            "temperature": temperature,
+            # "top_p": 0.9,
+        })
+        accept = 'application/json'
+        content_type = 'application/json'
+        response = bedrock.invoke_model(body=body, modelId=llm_model, accept=accept, contentType=content_type)
+
+        response_body = json.loads(response.get('body').read())
+        generation = response_body.get('generation')
+        print(f"AI Response:\n", generation)
+
+        tsv_data = self.get_tsv_data_if_valid(generation, rubric, student_id, reraise=True)
+
+        return {
+            'metadata': {
+                'agent': 'openai',
+                # 'usage': info['usage'],
+                'request': data,
+            },
+            'data': tsv_data,
+        }
+
+    def compute_meta_prompt(self, prompt, rubric, student_code, examples=[]):
+            return f"{prompt}\n\nRubric:\n{rubric}\n\nStudent Code:\n{student_code}"
+
+    def openai_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model=""):
         # Determine the OpenAI URL and headers
         api_url = 'https://api.openai.com/v1/chat/completions'
         headers = {
@@ -178,6 +220,7 @@ class Label:
             tsv_data = self.get_consensus_response(tsv_data_choices, student_id)
         return tsv_data
 
+    # TODO: rename to compute_openai_messages
     def compute_messages(self, prompt, rubric, student_code, examples=[]):
         messages = [
             {'role': 'system', 'content': f"{prompt}\n\nRubric:\n{rubric}"}
