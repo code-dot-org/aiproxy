@@ -63,7 +63,7 @@ class Label:
         print(f"meta_prompt:\n", meta_prompt)
         body = json.dumps({
             "prompt": meta_prompt,
-            "max_gen_len": 2048,
+            "max_gen_len": 1024,
             "temperature": temperature,
             # "top_p": 0.9,
         })
