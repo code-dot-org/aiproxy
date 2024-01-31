@@ -60,22 +60,21 @@ class Label:
         bedrock = boto3.client(service_name='bedrock-runtime')
 
         meta_prompt = self.compute_meta_prompt(prompt, rubric, student_code, examples=examples)
-        logging.info(f"meta_prompt:\n{meta_prompt}")
         body = json.dumps({
             "prompt": meta_prompt,
             "max_gen_len": 1024,
             "temperature": temperature,
-            # "top_p": 0.9,
         })
         accept = 'application/json'
         content_type = 'application/json'
         response = bedrock.invoke_model(body=body, modelId=llm_model, accept=accept, contentType=content_type)
 
         response_body = json.loads(response.get('body').read())
+        #logging.info(f"raw AI response:\n{response_body}")
         generation = response_body.get('generation')
-        logging.info(f"AI response:\n{generation}")
 
         data = self.get_json_data_if_valid(generation, rubric, student_id)
+        #logging.info(f"AI response json:\n{json.dumps(data, indent=2)}")
 
         return {
             'metadata': {
