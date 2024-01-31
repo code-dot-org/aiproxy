@@ -75,14 +75,14 @@ class Label:
         generation = response_body.get('generation')
         logging.info(f"AI response:\n{generation}")
 
-        tsv_data = self.get_tsv_data_if_valid(generation, rubric, student_id, reraise=True)
+        data = self.get_json_data_if_valid(generation, rubric, student_id)
 
         return {
             'metadata': {
-                'agent': 'openai',
-                'request': data,
+                'agent': 'meta',
+                'request': body,
             },
-            'data': tsv_data,
+            'data': data,
         }
 
     def compute_meta_prompt(self, prompt, rubric, student_code, examples=[]):
@@ -229,6 +229,36 @@ class Label:
             messages.append({'role': 'assistant', 'content': example_rubric})
         messages.append({'role': 'user', 'content': student_code})
         return messages
+
+    def get_json_data_if_valid(self, response_text, rubric, student_id):
+        # ensure that the first non-whitespace character is '['
+        if not response_text or response_text.strip()[0] != '[':
+            logging.error(f"{student_id} Response does not start with '[': {response_text}")
+            return None
+
+        # capture all data from the first '[' to the first ']', inclusive
+        match = re.match(r'(\[[^\]]+\])', response_text)
+        if not match:
+            logging.error(f"{student_id} Invalid response: no valid JSON data: {response_text}")
+            return None
+        json_text = match.group(1)
+
+        # parse the JSON data
+        try:
+            data = json.loads(json_text)
+        except json.JSONDecodeError as e:
+            logging.error(f"{student_id} JSON decoding error: {e}\n{json_text}")
+            return None
+
+        # rename Grade to Label
+        for row in data:
+            if "Grade" in row.keys():
+                row['Label'] = row['Grade']
+                del row['Grade']
+
+        # TODO: sanitize and validate json
+
+        return data
 
     def get_tsv_data_if_valid(self, response_text, rubric, student_id, choice_index=None, reraise=False):
         choice_text = f"Choice {choice_index}: " if choice_index is not None else ''
