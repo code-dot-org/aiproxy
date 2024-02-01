@@ -63,6 +63,12 @@ set python 3.11 for the aiproxy repo:
 create a python virtual environment at the top of the directory:
 * `python -m venv .venv`
 
+ensure aws access for accessing aws bedrock models:
+* from the code-dot-org repo root, run:
+  * `bin/aws_access`
+* from this repo's root, run: 
+  * `gem install aws-google`
+  
 #### run
 
 Activate the virtual environment:
