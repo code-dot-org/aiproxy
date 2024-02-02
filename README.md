@@ -42,6 +42,8 @@ You will need to rebuild when you change the source.
 
 * To run the app locally, use `docker compose up` from the repo root.
 
+* To validate if the local environment is running successfully, run `bin\assessment-test.rb` It should print the response for a test assessment.
+
 This will run a webserver accessible at <http://localhost>.
 
 **Note**: You need to provide the API keys in the `config.txt` file
