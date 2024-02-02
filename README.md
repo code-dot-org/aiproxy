@@ -35,7 +35,7 @@ from happening. Most logging happens at `INFO`, which is the default setting.
 ## Local Development
 
 * Install docker 
-** If you are on WSL, installing docker on the linux system wouldn't work as linux itself is running in a container. Install docker desktop instead following these instructions: https://learn.microsoft.com/en-us/windows/wsl/tutorials/wsl-containers
+  * If you are on WSL, installing docker on the linux system wouldn't work as linux itself is running in a container. Install docker desktop instead following these instructions: https://learn.microsoft.com/en-us/windows/wsl/tutorials/wsl-containers
 
 * To build the app, use `docker compose build`.
 You will need to rebuild when you change the source.
