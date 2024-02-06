@@ -10,8 +10,9 @@ from multiprocessing import Pool
 import concurrent.futures
 import io
 import logging
-import gdown
 import pprint
+import boto3
+import subprocess
 
 from sklearn.metrics import accuracy_score, confusion_matrix
 from collections import defaultdict
@@ -30,6 +31,9 @@ base_dir = 'lesson_data'
 cache_dir_name = 'cached_responses'
 accuracy_threshold_file = 'accuracy_thresholds.json'
 accuracy_threshold_dir = 'tests/data'
+s3_bucket = 'cdo-ai'
+s3_prefix = 'teaching_assistant/lessons-new'
+params_file = 'params.json'
 
 pp = pprint.PrettyPrinter(indent=2)
 
@@ -37,7 +41,7 @@ def command_line_options():
     parser = argparse.ArgumentParser(description='Usage')
 
     parser.add_argument('--lesson-names', type=str,
-                        help=f"Comma-separated list of lesson names to run. Supported lessons {', '.join(LESSONS.keys())}. Defaults to all lessons.")
+                        help=f"Comma-separated list of lesson names to run. Supported lessons {', '.join(LESSONS)}. Defaults to all lessons.")
     parser.add_argument('-o', '--output-filename', type=str, default='report.html',
                         help='Output filename within output directory')
     parser.add_argument('-c', '--use-cached', action='store_true',
@@ -58,6 +62,7 @@ def command_line_options():
                         help='re-download lesson files, overwriting previous files')
     parser.add_argument('-a', '--accuracy', action='store_true',
                         help='Run against accuracy thresholds')
+    parser.add_argument('--params', action='store_true', help="Use params from lesson data files")
 
     args = parser.parse_args()
 
@@ -72,11 +77,11 @@ def command_line_options():
     if args.lesson_names:
         args.lesson_names = args.lesson_names.split(',')
     else:
-        args.lesson_names = LESSONS.keys()
+        args.lesson_names = LESSONS
 
-    unsupported_lessons = list(filter(lambda x: x not in LESSONS.keys(), args.lesson_names))
+    unsupported_lessons = list(filter(lambda x: x not in LESSONS, args.lesson_names))
     if len(unsupported_lessons) > 0:
-        raise Exception(f"Unsupported Lesson names: {', '.join(unsupported_lessons)}. Supported lessons are: {', '.join(LESSONS.keys())}")
+        raise Exception(f"Unsupported Lesson names: {', '.join(unsupported_lessons)}. Supported lessons are: {', '.join(LESSONS)}")
 
     return args
 
@@ -97,6 +102,19 @@ def read_inputs(prompt_file, standard_rubric_file, prefix):
 
     return prompt, standard_rubric
 
+def get_params(prefix):
+    params = {}
+    with open(os.path.join(prefix, params_file), 'r') as f:
+        params = json.load(f)
+        for k in params.keys():
+            if k == 'model':
+                continue
+            elif k == 'temperature':
+                params[k] = float(params[k])
+            else:
+                params[k] = int(params[k])
+            
+    return params
 
 def get_student_files(max_num_students, prefix, student_ids=None):
     if student_ids:
@@ -134,6 +152,16 @@ def get_examples(prefix):
         examples.append((example_code, example_rubric))
     return examples
 
+def get_s3_folder(s3, lesson_name, prefix):
+    bucket = s3.Bucket(s3_bucket)
+    for obj in bucket.objects.filter(Prefix="/".join([s3_prefix, lesson_name])):
+        target = os.path.join(prefix, os.path.relpath(obj.key, "/".join([s3_prefix, lesson_name])))
+        print(f"Copy {obj.key} to {target}")
+        if not os.path.exists(os.path.dirname(target)):
+            os.makedirs(os.path.dirname(target))
+        if obj.key[-1] == '/': #recursively download
+            continue
+        bucket.download_file(obj.key, target)
 
 def validate_rubrics(actual_labels, standard_rubric):
     actual_concepts = sorted(list(list(actual_labels.values())[0].keys())[1:])
@@ -191,7 +219,7 @@ def compute_accuracy(actual_labels, predicted_labels, passing_labels):
     return accuracy_by_criteria, overall_accuracy, confusion_by_criteria, overall_confusion, label_names
 
 
-def label_student_work(prompt, rubric, student_file, examples, options, prefix):
+def label_student_work(prompt, rubric, student_file, examples, options, params, prefix):
     student_id = os.path.splitext(os.path.basename(student_file))[0]
     with open(student_file, 'r') as f:
         student_code = f.read()
@@ -204,9 +232,10 @@ def label_student_work(prompt, rubric, student_file, examples, options, prefix):
         examples=examples,
         use_cached=options.use_cached,
         write_cached=True,
-        num_responses=options.num_responses,
-        temperature=options.temperature,
-        llm_model=options.llm_model,
+        num_responses=params['num_responses'] if 'num_responses' in params else options.num_responses,
+        temperature=params['temperature'] if 'temperature' in params else options.temperature,
+        llm_model=params['model'] if 'model' in params else options.llm_model,
+        remove_comments=params['remove_comments'] if 'remove_comments' in params else False,
         cache_prefix=prefix
     )
     return student_id, labels
@@ -222,30 +251,39 @@ def main():
     accuracy_failures = {}
     accuracy_pass = True
     accuracy_thresholds = None
-
-    print(options)
+    params = {}
 
     if options.accuracy:
         accuracy_thresholds = get_accuracy_thresholds()
 
     for lesson in options.lesson_names:
         prefix = os.path.join(base_dir, lesson)
+        data_prefix = os.path.join(prefix, "data")
 
         # download lesson files
         if not os.path.exists(prefix) or options.download:
             try:
-                gdown.download_folder(id=LESSONS[lesson], output=prefix)
+                result = subprocess.run('aws sts get-caller-identity', shell=True, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                print(f"AWS access configured: {result.stdout}")
+            except subprocess.CalledProcessError as e:
+                print(f"AWS access not configured: {e} {e.stderr}Please see README.md and make sure you ran `gem install aws-google` and `bin/aws_access`")
+                exit(1)
+            try:
+                s3 = boto3.resource("s3")
+                get_s3_folder(s3, lesson, prefix)
             except Exception as e:
                 print(f"Could not download lesson {lesson}")
                 logging.error(e)
 
         # read in lesson files, validate them
+        if options.params:
+            params = get_params(prefix)
         prompt, standard_rubric = read_inputs(prompt_file, standard_rubric_file, prefix)
-        student_files = get_student_files(options.max_num_students, prefix, student_ids=options.student_ids)
-        if os.path.exists(os.path.join(prefix, actual_labels_file_old)):
-            actual_labels = get_actual_labels(actual_labels_file_old, prefix)
+        student_files = get_student_files(options.max_num_students, data_prefix, student_ids=options.student_ids)
+        if os.path.exists(os.path.join(data_prefix, actual_labels_file_old)):
+            actual_labels = get_actual_labels(actual_labels_file_old, data_prefix)
         else:
-            actual_labels = get_actual_labels(actual_labels_file, prefix)
+            actual_labels = get_actual_labels(actual_labels_file, data_prefix)
         examples = get_examples(prefix)
 
         validate_rubrics(actual_labels, standard_rubric)
@@ -262,7 +300,7 @@ def main():
 
         # call label function to either call openAI or read from cache
         with concurrent.futures.ThreadPoolExecutor(max_workers=7) as executor:
-            predicted_labels = list(executor.map(lambda student_file: label_student_work(prompt, rubric, student_file, examples, options, prefix), student_files))
+            predicted_labels = list(executor.map(lambda student_file: label_student_work(prompt, rubric, student_file, examples, options, params, prefix), student_files))
 
         errors = [student_id for student_id, labels in predicted_labels if not labels]
         # predicted_labels contains metadata and data (labels), we care about the data key
