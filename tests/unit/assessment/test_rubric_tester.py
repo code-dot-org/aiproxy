@@ -47,6 +47,7 @@ class TestLabelStudentWork:
             student_file=f"blah/{student_id}.js",
             examples=examples(rubric),
             options=options,
+            params={},
             prefix=""
         )
 
