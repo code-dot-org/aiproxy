@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+# Make sure the caller sees a helpful error message if they try to run this script with Python 2
+f"This script requires {'Python 3'}. Please be sure to activate your virtual environment via `source .venv/bin/activate`."
+
 import argparse
 import csv
 import glob
