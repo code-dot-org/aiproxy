@@ -4,6 +4,9 @@ __pycache__
 # pyenv config
 .python-version
 
+# Mac OS files
+.DS_Store
+
 # Local editor settings
 .vscode
 .idea
