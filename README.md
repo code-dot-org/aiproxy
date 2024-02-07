@@ -47,7 +47,7 @@ before the service runs. See the above "Configuration" section.
 
 This will run a webserver accessible at <http://localhost>.
 
-* To validate if the local environment is running successfully, run `bin\assessment-test.rb` It should print the response for a test assessment.
+* To validate if the local environment is running successfully, run `bin/assessment-test.rb` It should print the response for a test assessment.
 
 ### Rubric Tester
 To run the rubric tester locally:
