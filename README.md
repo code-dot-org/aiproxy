@@ -2,6 +2,13 @@
 
 Python-based API layer for LLM API's, implemented as an HTTP API in ECS Fargate.
 
+All of our server code is written using [Flask](https://flask.palletsprojects.com/en/2.3.x/).
+
+The Flask web service exists within `/src`. The `__init__.py` is the
+entry point for the app. The other files provide the routes.
+
+Other related Python code that implement features are within `/lib`.
+
 To Do:
 * [x] validate cicd infra (using placeholder app template)
 * [x] validate pr validation
@@ -27,22 +34,20 @@ from happening. Most logging happens at `INFO`, which is the default setting.
 
 ## Local Development
 
-All of our server code is written using [Flask](https://flask.palletsprojects.com/en/2.3.x/).
+* Install docker 
+  * If you are on WSL, installing docker on the linux system wouldn't work as linux itself is running in a container. Install docker desktop instead following these instructions: https://learn.microsoft.com/en-us/windows/wsl/tutorials/wsl-containers
 
-The Flask web service exists within `/src`. The `__init__.py` is the
-entry point for the app. The other files provide the routes.
-
-Other related Python code that implement features are within `/lib`.
-
-To build the app, use `docker compose build`.
+* To build the app, use `docker compose build`.
 You will need to rebuild when you change the source.
 
-To run the app locally, use `docker compose up` from the repo root.
-
-This will run a webserver accessible at <http://localhost:5000>.
+* To run the app locally, use `docker compose up` from the repo root.
 
 **Note**: You need to provide the API keys in the `config.txt` file
 before the service runs. See the above "Configuration" section.
+
+This will run a webserver accessible at <http://localhost>.
+
+* To validate if the local environment is running successfully, run `bin/assessment-test.rb` It should print the response for a test assessment.
 
 ### Rubric Tester
 To run the rubric tester locally:
