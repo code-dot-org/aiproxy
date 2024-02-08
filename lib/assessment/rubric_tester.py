@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+# Make sure the caller sees a helpful error message if they try to run this script with Python 2
+f"This script requires {'Python 3'}. Please be sure to activate your virtual environment via `source .venv/bin/activate`."
+
 import argparse
 import csv
 import glob
@@ -17,7 +20,7 @@ import subprocess
 from sklearn.metrics import accuracy_score, confusion_matrix
 from collections import defaultdict
 
-from lib.assessment.config import SUPPORTED_MODELS, DEFAULT_MODEL, VALID_LABELS, LESSONS
+from lib.assessment.config import SUPPORTED_MODELS, DEFAULT_MODEL, VALID_LABELS, LESSONS, DEFAULT_DATASET_NAME, DEFAULT_EXPERIMENT_NAME
 from lib.assessment.label import Label
 from lib.assessment.report import Report
 
@@ -27,12 +30,13 @@ standard_rubric_file = 'standard_rubric.csv'
 actual_labels_file_old = 'expected_grades.csv'
 actual_labels_file = 'actual_labels.csv'
 output_dir_name = 'output'
-base_dir = 'lesson_data'
+datasets_dir = 'datasets'
+experiments_dir = 'experiments'
 cache_dir_name = 'cached_responses'
 accuracy_threshold_file = 'accuracy_thresholds.json'
 accuracy_threshold_dir = 'tests/data'
 s3_bucket = 'cdo-ai'
-s3_prefix = 'teaching_assistant/lessons-new'
+s3_root = 'teaching_assistant'
 params_file = 'params.json'
 
 pp = pprint.PrettyPrinter(indent=2)
@@ -42,6 +46,10 @@ def command_line_options():
 
     parser.add_argument('--lesson-names', type=str,
                         help=f"Comma-separated list of lesson names to run. Supported lessons {', '.join(LESSONS)}. Defaults to all lessons.")
+    parser.add_argument('--dataset-name', type=str, default=DEFAULT_DATASET_NAME,
+                        help=f"Name of dataset directory in S3 to load from. Default: {DEFAULT_DATASET_NAME}.")
+    parser.add_argument('-e', '--experiment-name', type=str, default=DEFAULT_EXPERIMENT_NAME,
+                        help=f"Name of experiment directory in S3 to load from. Default: {DEFAULT_EXPERIMENT_NAME}.")
     parser.add_argument('-o', '--output-filename', type=str, default='report.html',
                         help='Output filename within output directory')
     parser.add_argument('-c', '--use-cached', action='store_true',
@@ -152,10 +160,12 @@ def get_examples(prefix):
         examples.append((example_code, example_rubric))
     return examples
 
-def get_s3_folder(s3, lesson_name, prefix):
+# path_from_s3_root is the path to the source folder relative to s3_root, and is also used as the local destination
+# folder relative to the repo root.
+def get_s3_folder(s3, path_from_s3_root):
     bucket = s3.Bucket(s3_bucket)
-    for obj in bucket.objects.filter(Prefix="/".join([s3_prefix, lesson_name])):
-        target = os.path.join(prefix, os.path.relpath(obj.key, "/".join([s3_prefix, lesson_name])))
+    for obj in bucket.objects.filter(Prefix="/".join([s3_root, path_from_s3_root])):
+        target = os.path.join(path_from_s3_root, os.path.relpath(obj.key, "/".join([s3_root, path_from_s3_root])))
         print(f"Copy {obj.key} to {target}")
         if not os.path.exists(os.path.dirname(target)):
             os.makedirs(os.path.dirname(target))
@@ -257,50 +267,55 @@ def main():
         accuracy_thresholds = get_accuracy_thresholds()
 
     for lesson in options.lesson_names:
-        prefix = os.path.join(base_dir, lesson)
-        data_prefix = os.path.join(prefix, "data")
+        experiment_lesson_prefix = os.path.join(experiments_dir, options.experiment_name, lesson)
+        dataset_lesson_prefix = os.path.join(datasets_dir, options.dataset_name, lesson)
 
-        # download lesson files
-        if not os.path.exists(prefix) or options.download:
-            try:
-                result = subprocess.run('aws sts get-caller-identity', shell=True, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                print(f"AWS access configured: {result.stdout}")
-            except subprocess.CalledProcessError as e:
-                print(f"AWS access not configured: {e} {e.stderr}Please see README.md and make sure you ran `gem install aws-google` and `bin/aws_access`")
-                exit(1)
+        # download dataset files
+        if not os.path.exists(dataset_lesson_prefix) or options.download:
+            check_aws_access()
             try:
                 s3 = boto3.resource("s3")
-                get_s3_folder(s3, lesson, prefix)
+                get_s3_folder(s3, dataset_lesson_prefix)
             except Exception as e:
-                print(f"Could not download lesson {lesson}")
+                print(f"Could not download dataset {options.dataset_name} lesson {lesson}")
+                logging.error(e)
+
+        # download experiment files
+        if not os.path.exists(experiment_lesson_prefix) or options.download:
+            check_aws_access()
+            try:
+                s3 = boto3.resource("s3")
+                get_s3_folder(s3, experiment_lesson_prefix)
+            except Exception as e:
+                print(f"Could not download experiment {options.experiment_name} lesson {lesson}")
                 logging.error(e)
 
         # read in lesson files, validate them
         if options.params:
-            params = get_params(prefix)
-        prompt, standard_rubric = read_inputs(prompt_file, standard_rubric_file, prefix)
-        student_files = get_student_files(options.max_num_students, data_prefix, student_ids=options.student_ids)
-        if os.path.exists(os.path.join(data_prefix, actual_labels_file_old)):
-            actual_labels = get_actual_labels(actual_labels_file_old, data_prefix)
+            params = get_params(experiment_lesson_prefix)
+        prompt, standard_rubric = read_inputs(prompt_file, standard_rubric_file, experiment_lesson_prefix)
+        student_files = get_student_files(options.max_num_students, dataset_lesson_prefix, student_ids=options.student_ids)
+        if os.path.exists(os.path.join(dataset_lesson_prefix, actual_labels_file_old)):
+            actual_labels = get_actual_labels(actual_labels_file_old, dataset_lesson_prefix)
         else:
-            actual_labels = get_actual_labels(actual_labels_file, data_prefix)
-        examples = get_examples(prefix)
+            actual_labels = get_actual_labels(actual_labels_file, dataset_lesson_prefix)
+        examples = get_examples(experiment_lesson_prefix)
 
         validate_rubrics(actual_labels, standard_rubric)
         validate_students(student_files, actual_labels)
         rubric = standard_rubric
 
         # set up output and cache directories
-        output_file = os.path.join(prefix, output_dir_name, options.output_filename)
+        output_file = os.path.join(experiment_lesson_prefix, output_dir_name, options.output_filename)
         os.makedirs(os.path.dirname(output_file), exist_ok=True)
-        os.makedirs(os.path.join(prefix, cache_dir_name), exist_ok=True)
+        os.makedirs(os.path.join(experiment_lesson_prefix, cache_dir_name), exist_ok=True)
         if not options.use_cached:
-            for file in glob.glob(f'{os.path.join(prefix, cache_dir_name)}/*'):
+            for file in glob.glob(f'{os.path.join(experiment_lesson_prefix, cache_dir_name)}/*'):
                 os.remove(file)
 
         # call label function to either call openAI or read from cache
         with concurrent.futures.ThreadPoolExecutor(max_workers=7) as executor:
-            predicted_labels = list(executor.map(lambda student_file: label_student_work(prompt, rubric, student_file, examples, options, params, prefix), student_files))
+            predicted_labels = list(executor.map(lambda student_file: label_student_work(prompt, rubric, student_file, examples, options, params, experiment_lesson_prefix), student_files))
 
         errors = [student_id for student_id, labels in predicted_labels if not labels]
         # predicted_labels contains metadata and data (labels), we care about the data key
@@ -321,11 +336,12 @@ def main():
             passing_labels=options.passing_labels,
             accuracy_by_criteria=accuracy_by_criteria_percent,
             errors=errors,
+            dataset_name=options.dataset_name,
             command_line=command_line,
             confusion_by_criteria=confusion_by_criteria,
             overall_confusion=overall_confusion,
             label_names=label_names,
-            prefix=prefix
+            prefix=experiment_lesson_prefix
         )
         logging.info(f"main finished in {int(time.time() - main_start_time)} seconds")
 
@@ -353,6 +369,13 @@ def main():
 
     return accuracy_pass
 
+def check_aws_access():
+    try:
+        result = subprocess.run('aws sts get-caller-identity', shell=True, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        print(f"AWS access configured: {result.stdout}")
+    except subprocess.CalledProcessError as e:
+        print(f"AWS access not configured: {e} {e.stderr}Please see README.md and make sure you ran `gem install aws-google` and `bin/aws_access`")
+        exit(1)
 
 def init():
     if __name__ == '__main__':

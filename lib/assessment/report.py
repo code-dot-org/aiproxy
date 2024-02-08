@@ -82,7 +82,7 @@ class Report:
         confusion_table += '</table>'
         return confusion_table
 
-    def generate_html_output(self, output_file, prompt, rubric, accuracy=None, predicted_labels=None, actual_labels=None, passing_labels=None, accuracy_by_criteria=None, errors=[], command_line=None, confusion_by_criteria=None, overall_confusion=None, label_names=None, prefix='sample_code'):
+    def generate_html_output(self, output_file, prompt, rubric, accuracy=None, predicted_labels=None, actual_labels=None, passing_labels=None, accuracy_by_criteria=None, errors=[], dataset_name=None, command_line=None, confusion_by_criteria=None, overall_confusion=None, label_names=None, prefix='sample_code'):
         link_base_url = f'file://{os.getcwd()}/{prefix}'
 
         with open(output_file, 'w+') as file:
@@ -101,6 +101,10 @@ class Report:
             if len(errors) > 0:
                 file.write(f'  <h2 style="color: red">Errors: {len(errors)}</h2>\n')
                 file.write(f'  <p style="color: red">{", ".join(errors)} failed to load</p>\n')
+
+            if dataset_name:
+                file.write('  <h2>Dataset:</h2>\n')
+                file.write(f'  <pre>{dataset_name}</pre>\n')
 
             if command_line:
                 file.write('  <h2>Command Line:</h2>\n')
