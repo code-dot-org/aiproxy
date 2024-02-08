@@ -30,7 +30,7 @@ standard_rubric_file = 'standard_rubric.csv'
 actual_labels_file_old = 'expected_grades.csv'
 actual_labels_file = 'actual_labels.csv'
 output_dir_name = 'output'
-base_dir = 'experiments'
+experiments_dir = 'experiments'
 cache_dir_name = 'cached_responses'
 accuracy_threshold_file = 'accuracy_thresholds.json'
 accuracy_threshold_dir = 'tests/data'
@@ -263,7 +263,7 @@ def main():
         accuracy_thresholds = get_accuracy_thresholds()
 
     for lesson in options.lesson_names:
-        prefix = os.path.join(base_dir, options.experiment_name, lesson)
+        prefix = os.path.join(experiments_dir, options.experiment_name, lesson)
         data_prefix = os.path.join(prefix, "data")
 
         # download lesson files
