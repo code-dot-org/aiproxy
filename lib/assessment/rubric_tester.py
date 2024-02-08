@@ -157,10 +157,12 @@ def get_examples(prefix):
         examples.append((example_code, example_rubric))
     return examples
 
-def get_s3_experiment_folder(s3, experiment_lesson_prefix, experiment_name, lesson_name):
+# path_from_s3_root is the path to the source folder relative to s3_root, and is also used as the local destination
+# folder relative to the repo root.
+def get_s3_folder(s3, path_from_s3_root):
     bucket = s3.Bucket(s3_bucket)
-    for obj in bucket.objects.filter(Prefix="/".join([s3_root, experiments_dir, experiment_name, lesson_name])):
-        target = os.path.join(experiment_lesson_prefix, os.path.relpath(obj.key, "/".join([s3_root, experiments_dir, experiment_name, lesson_name])))
+    for obj in bucket.objects.filter(Prefix="/".join([s3_root, path_from_s3_root])):
+        target = os.path.join(path_from_s3_root, os.path.relpath(obj.key, "/".join([s3_root, path_from_s3_root])))
         print(f"Copy {obj.key} to {target}")
         if not os.path.exists(os.path.dirname(target)):
             os.makedirs(os.path.dirname(target))
@@ -275,7 +277,7 @@ def main():
                 exit(1)
             try:
                 s3 = boto3.resource("s3")
-                get_s3_experiment_folder(s3, experiment_lesson_prefix, options.experiment_name, lesson)
+                get_s3_folder(s3, experiment_lesson_prefix)
             except Exception as e:
                 print(f"Could not download experiment {options.experiment_name} lesson {lesson}")
                 logging.error(e)
