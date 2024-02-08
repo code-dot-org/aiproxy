@@ -13,5 +13,6 @@ __pycache__
 .venv/
 
 # Ignore rubric testing files
+datasets/
 experiments/
 lesson_data/

@@ -20,7 +20,7 @@ import subprocess
 from sklearn.metrics import accuracy_score, confusion_matrix
 from collections import defaultdict
 
-from lib.assessment.config import SUPPORTED_MODELS, DEFAULT_MODEL, VALID_LABELS, LESSONS, DEFAULT_EXPERIMENT_NAME
+from lib.assessment.config import SUPPORTED_MODELS, DEFAULT_MODEL, VALID_LABELS, LESSONS, DEFAULT_DATASET_NAME, DEFAULT_EXPERIMENT_NAME
 from lib.assessment.label import Label
 from lib.assessment.report import Report
 
@@ -30,6 +30,7 @@ standard_rubric_file = 'standard_rubric.csv'
 actual_labels_file_old = 'expected_grades.csv'
 actual_labels_file = 'actual_labels.csv'
 output_dir_name = 'output'
+datasets_dir = 'datasets'
 experiments_dir = 'experiments'
 cache_dir_name = 'cached_responses'
 accuracy_threshold_file = 'accuracy_thresholds.json'
@@ -45,6 +46,8 @@ def command_line_options():
 
     parser.add_argument('--lesson-names', type=str,
                         help=f"Comma-separated list of lesson names to run. Supported lessons {', '.join(LESSONS)}. Defaults to all lessons.")
+    parser.add_argument('--dataset-name', type=str, default=DEFAULT_DATASET_NAME,
+                        help=f"Name of dataset directory in S3 to load from. Default: {DEFAULT_DATASET_NAME}.")
     parser.add_argument('-e', '--experiment-name', type=str, default=DEFAULT_EXPERIMENT_NAME,
                         help=f"Name of experiment directory in S3 to load from. Default: {DEFAULT_EXPERIMENT_NAME}.")
     parser.add_argument('-o', '--output-filename', type=str, default='report.html',
@@ -265,9 +268,19 @@ def main():
 
     for lesson in options.lesson_names:
         experiment_lesson_prefix = os.path.join(experiments_dir, options.experiment_name, lesson)
-        data_prefix = os.path.join(experiment_lesson_prefix, "data")
+        dataset_lesson_prefix = os.path.join(datasets_dir, options.dataset_name, lesson)
 
-        # download lesson files
+        # download dataset files
+        if not os.path.exists(dataset_lesson_prefix) or options.download:
+            check_aws_access()
+            try:
+                s3 = boto3.resource("s3")
+                get_s3_folder(s3, dataset_lesson_prefix)
+            except Exception as e:
+                print(f"Could not download dataset {options.dataset_name} lesson {lesson}")
+                logging.error(e)
+
+        # download experiment files
         if not os.path.exists(experiment_lesson_prefix) or options.download:
             check_aws_access()
             try:
@@ -281,11 +294,11 @@ def main():
         if options.params:
             params = get_params(experiment_lesson_prefix)
         prompt, standard_rubric = read_inputs(prompt_file, standard_rubric_file, experiment_lesson_prefix)
-        student_files = get_student_files(options.max_num_students, data_prefix, student_ids=options.student_ids)
-        if os.path.exists(os.path.join(data_prefix, actual_labels_file_old)):
-            actual_labels = get_actual_labels(actual_labels_file_old, data_prefix)
+        student_files = get_student_files(options.max_num_students, dataset_lesson_prefix, student_ids=options.student_ids)
+        if os.path.exists(os.path.join(dataset_lesson_prefix, actual_labels_file_old)):
+            actual_labels = get_actual_labels(actual_labels_file_old, dataset_lesson_prefix)
         else:
-            actual_labels = get_actual_labels(actual_labels_file, data_prefix)
+            actual_labels = get_actual_labels(actual_labels_file, dataset_lesson_prefix)
         examples = get_examples(experiment_lesson_prefix)
 
         validate_rubrics(actual_labels, standard_rubric)
