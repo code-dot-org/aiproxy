@@ -157,10 +157,10 @@ def get_examples(prefix):
         examples.append((example_code, example_rubric))
     return examples
 
-def get_s3_experiment_folder(s3, experiment_prefix, experiment_name, lesson_name):
+def get_s3_experiment_folder(s3, experiment_lesson_prefix, experiment_name, lesson_name):
     bucket = s3.Bucket(s3_bucket)
     for obj in bucket.objects.filter(Prefix="/".join([s3_root, experiments_dir, experiment_name, lesson_name])):
-        target = os.path.join(experiment_prefix, os.path.relpath(obj.key, "/".join([s3_root, experiments_dir, experiment_name, lesson_name])))
+        target = os.path.join(experiment_lesson_prefix, os.path.relpath(obj.key, "/".join([s3_root, experiments_dir, experiment_name, lesson_name])))
         print(f"Copy {obj.key} to {target}")
         if not os.path.exists(os.path.dirname(target)):
             os.makedirs(os.path.dirname(target))
@@ -262,11 +262,11 @@ def main():
         accuracy_thresholds = get_accuracy_thresholds()
 
     for lesson in options.lesson_names:
-        experiment_prefix = os.path.join(experiments_dir, options.experiment_name, lesson)
-        data_prefix = os.path.join(experiment_prefix, "data")
+        experiment_lesson_prefix = os.path.join(experiments_dir, options.experiment_name, lesson)
+        data_prefix = os.path.join(experiment_lesson_prefix, "data")
 
         # download lesson files
-        if not os.path.exists(experiment_prefix) or options.download:
+        if not os.path.exists(experiment_lesson_prefix) or options.download:
             try:
                 result = subprocess.run('aws sts get-caller-identity', shell=True, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 print(f"AWS access configured: {result.stdout}")
@@ -275,37 +275,37 @@ def main():
                 exit(1)
             try:
                 s3 = boto3.resource("s3")
-                get_s3_experiment_folder(s3, experiment_prefix, options.experiment_name, lesson)
+                get_s3_experiment_folder(s3, experiment_lesson_prefix, options.experiment_name, lesson)
             except Exception as e:
                 print(f"Could not download experiment {options.experiment_name} lesson {lesson}")
                 logging.error(e)
 
         # read in lesson files, validate them
         if options.params:
-            params = get_params(experiment_prefix)
-        prompt, standard_rubric = read_inputs(prompt_file, standard_rubric_file, experiment_prefix)
+            params = get_params(experiment_lesson_prefix)
+        prompt, standard_rubric = read_inputs(prompt_file, standard_rubric_file, experiment_lesson_prefix)
         student_files = get_student_files(options.max_num_students, data_prefix, student_ids=options.student_ids)
         if os.path.exists(os.path.join(data_prefix, actual_labels_file_old)):
             actual_labels = get_actual_labels(actual_labels_file_old, data_prefix)
         else:
             actual_labels = get_actual_labels(actual_labels_file, data_prefix)
-        examples = get_examples(experiment_prefix)
+        examples = get_examples(experiment_lesson_prefix)
 
         validate_rubrics(actual_labels, standard_rubric)
         validate_students(student_files, actual_labels)
         rubric = standard_rubric
 
         # set up output and cache directories
-        output_file = os.path.join(experiment_prefix, output_dir_name, options.output_filename)
+        output_file = os.path.join(experiment_lesson_prefix, output_dir_name, options.output_filename)
         os.makedirs(os.path.dirname(output_file), exist_ok=True)
-        os.makedirs(os.path.join(experiment_prefix, cache_dir_name), exist_ok=True)
+        os.makedirs(os.path.join(experiment_lesson_prefix, cache_dir_name), exist_ok=True)
         if not options.use_cached:
-            for file in glob.glob(f'{os.path.join(experiment_prefix, cache_dir_name)}/*'):
+            for file in glob.glob(f'{os.path.join(experiment_lesson_prefix, cache_dir_name)}/*'):
                 os.remove(file)
 
         # call label function to either call openAI or read from cache
         with concurrent.futures.ThreadPoolExecutor(max_workers=7) as executor:
-            predicted_labels = list(executor.map(lambda student_file: label_student_work(prompt, rubric, student_file, examples, options, params, experiment_prefix), student_files))
+            predicted_labels = list(executor.map(lambda student_file: label_student_work(prompt, rubric, student_file, examples, options, params, experiment_lesson_prefix), student_files))
 
         errors = [student_id for student_id, labels in predicted_labels if not labels]
         # predicted_labels contains metadata and data (labels), we care about the data key
@@ -330,7 +330,7 @@ def main():
             confusion_by_criteria=confusion_by_criteria,
             overall_confusion=overall_confusion,
             label_names=label_names,
-            prefix=experiment_prefix
+            prefix=experiment_lesson_prefix
         )
         logging.info(f"main finished in {int(time.time() - main_start_time)} seconds")
 
