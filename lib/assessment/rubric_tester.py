@@ -263,11 +263,11 @@ def main():
         accuracy_thresholds = get_accuracy_thresholds()
 
     for lesson in options.lesson_names:
-        prefix = os.path.join(experiments_dir, options.experiment_name, lesson)
-        data_prefix = os.path.join(prefix, "data")
+        experiment_prefix = os.path.join(experiments_dir, options.experiment_name, lesson)
+        data_prefix = os.path.join(experiment_prefix, "data")
 
         # download lesson files
-        if not os.path.exists(prefix) or options.download:
+        if not os.path.exists(experiment_prefix) or options.download:
             try:
                 result = subprocess.run('aws sts get-caller-identity', shell=True, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 print(f"AWS access configured: {result.stdout}")
@@ -276,37 +276,37 @@ def main():
                 exit(1)
             try:
                 s3 = boto3.resource("s3")
-                get_s3_folder(s3, options.experiment_name, lesson, prefix)
+                get_s3_folder(s3, options.experiment_name, lesson, experiment_prefix)
             except Exception as e:
                 print(f"Could not download lesson {lesson}")
                 logging.error(e)
 
         # read in lesson files, validate them
         if options.params:
-            params = get_params(prefix)
-        prompt, standard_rubric = read_inputs(prompt_file, standard_rubric_file, prefix)
+            params = get_params(experiment_prefix)
+        prompt, standard_rubric = read_inputs(prompt_file, standard_rubric_file, experiment_prefix)
         student_files = get_student_files(options.max_num_students, data_prefix, student_ids=options.student_ids)
         if os.path.exists(os.path.join(data_prefix, actual_labels_file_old)):
             actual_labels = get_actual_labels(actual_labels_file_old, data_prefix)
         else:
             actual_labels = get_actual_labels(actual_labels_file, data_prefix)
-        examples = get_examples(prefix)
+        examples = get_examples(experiment_prefix)
 
         validate_rubrics(actual_labels, standard_rubric)
         validate_students(student_files, actual_labels)
         rubric = standard_rubric
 
         # set up output and cache directories
-        output_file = os.path.join(prefix, output_dir_name, options.output_filename)
+        output_file = os.path.join(experiment_prefix, output_dir_name, options.output_filename)
         os.makedirs(os.path.dirname(output_file), exist_ok=True)
-        os.makedirs(os.path.join(prefix, cache_dir_name), exist_ok=True)
+        os.makedirs(os.path.join(experiment_prefix, cache_dir_name), exist_ok=True)
         if not options.use_cached:
-            for file in glob.glob(f'{os.path.join(prefix, cache_dir_name)}/*'):
+            for file in glob.glob(f'{os.path.join(experiment_prefix, cache_dir_name)}/*'):
                 os.remove(file)
 
         # call label function to either call openAI or read from cache
         with concurrent.futures.ThreadPoolExecutor(max_workers=7) as executor:
-            predicted_labels = list(executor.map(lambda student_file: label_student_work(prompt, rubric, student_file, examples, options, params, prefix), student_files))
+            predicted_labels = list(executor.map(lambda student_file: label_student_work(prompt, rubric, student_file, examples, options, params, experiment_prefix), student_files))
 
         errors = [student_id for student_id, labels in predicted_labels if not labels]
         # predicted_labels contains metadata and data (labels), we care about the data key
@@ -331,7 +331,7 @@ def main():
             confusion_by_criteria=confusion_by_criteria,
             overall_confusion=overall_confusion,
             label_names=label_names,
-            prefix=prefix
+            prefix=experiment_prefix
         )
         logging.info(f"main finished in {int(time.time() - main_start_time)} seconds")
 
