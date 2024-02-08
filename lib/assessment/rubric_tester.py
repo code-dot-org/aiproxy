@@ -336,6 +336,7 @@ def main():
             passing_labels=options.passing_labels,
             accuracy_by_criteria=accuracy_by_criteria_percent,
             errors=errors,
+            dataset_name=options.dataset_name,
             command_line=command_line,
             confusion_by_criteria=confusion_by_criteria,
             overall_confusion=overall_confusion,
