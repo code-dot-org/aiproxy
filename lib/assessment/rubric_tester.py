@@ -269,12 +269,7 @@ def main():
 
         # download lesson files
         if not os.path.exists(experiment_lesson_prefix) or options.download:
-            try:
-                result = subprocess.run('aws sts get-caller-identity', shell=True, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                print(f"AWS access configured: {result.stdout}")
-            except subprocess.CalledProcessError as e:
-                print(f"AWS access not configured: {e} {e.stderr}Please see README.md and make sure you ran `gem install aws-google` and `bin/aws_access`")
-                exit(1)
+            check_aws_access()
             try:
                 s3 = boto3.resource("s3")
                 get_s3_folder(s3, experiment_lesson_prefix)
@@ -360,6 +355,13 @@ def main():
 
     return accuracy_pass
 
+def check_aws_access():
+    try:
+        result = subprocess.run('aws sts get-caller-identity', shell=True, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        print(f"AWS access configured: {result.stdout}")
+    except subprocess.CalledProcessError as e:
+        print(f"AWS access not configured: {e} {e.stderr}Please see README.md and make sure you ran `gem install aws-google` and `bin/aws_access`")
+        exit(1)
 
 def init():
     if __name__ == '__main__':
