@@ -20,7 +20,7 @@ import subprocess
 from sklearn.metrics import accuracy_score, confusion_matrix
 from collections import defaultdict
 
-from lib.assessment.config import SUPPORTED_MODELS, DEFAULT_MODEL, VALID_LABELS, LESSONS
+from lib.assessment.config import SUPPORTED_MODELS, DEFAULT_MODEL, VALID_LABELS, LESSONS, DEFAULT_EXPERIMENT_NAME
 from lib.assessment.label import Label
 from lib.assessment.report import Report
 
@@ -30,12 +30,12 @@ standard_rubric_file = 'standard_rubric.csv'
 actual_labels_file_old = 'expected_grades.csv'
 actual_labels_file = 'actual_labels.csv'
 output_dir_name = 'output'
-base_dir = 'lesson_data'
+base_dir = 'experiments'
 cache_dir_name = 'cached_responses'
 accuracy_threshold_file = 'accuracy_thresholds.json'
 accuracy_threshold_dir = 'tests/data'
 s3_bucket = 'cdo-ai'
-s3_prefix = 'teaching_assistant/lessons-new'
+s3_prefix = 'teaching_assistant/experiments'
 params_file = 'params.json'
 
 pp = pprint.PrettyPrinter(indent=2)
@@ -45,6 +45,8 @@ def command_line_options():
 
     parser.add_argument('--lesson-names', type=str,
                         help=f"Comma-separated list of lesson names to run. Supported lessons {', '.join(LESSONS)}. Defaults to all lessons.")
+    parser.add_argument('-e', '--experiment-name', type=str, default=DEFAULT_EXPERIMENT_NAME,
+                        help=f"Name of experiment directory in S3 to load from. Default: {DEFAULT_EXPERIMENT_NAME}.")
     parser.add_argument('-o', '--output-filename', type=str, default='report.html',
                         help='Output filename within output directory')
     parser.add_argument('-c', '--use-cached', action='store_true',
@@ -155,10 +157,11 @@ def get_examples(prefix):
         examples.append((example_code, example_rubric))
     return examples
 
-def get_s3_folder(s3, lesson_name, prefix):
+def get_s3_folder(s3, experiment_name, lesson_name, prefix):
+    print("get_s3_folder args:", experiment_name, lesson_name, prefix)
     bucket = s3.Bucket(s3_bucket)
-    for obj in bucket.objects.filter(Prefix="/".join([s3_prefix, lesson_name])):
-        target = os.path.join(prefix, os.path.relpath(obj.key, "/".join([s3_prefix, lesson_name])))
+    for obj in bucket.objects.filter(Prefix="/".join([s3_prefix, experiment_name, lesson_name])):
+        target = os.path.join(prefix, os.path.relpath(obj.key, "/".join([s3_prefix, experiment_name, lesson_name])))
         print(f"Copy {obj.key} to {target}")
         if not os.path.exists(os.path.dirname(target)):
             os.makedirs(os.path.dirname(target))
@@ -260,7 +263,7 @@ def main():
         accuracy_thresholds = get_accuracy_thresholds()
 
     for lesson in options.lesson_names:
-        prefix = os.path.join(base_dir, lesson)
+        prefix = os.path.join(base_dir, options.experiment_name, lesson)
         data_prefix = os.path.join(prefix, "data")
 
         # download lesson files
@@ -273,7 +276,7 @@ def main():
                 exit(1)
             try:
                 s3 = boto3.resource("s3")
-                get_s3_folder(s3, lesson, prefix)
+                get_s3_folder(s3, options.experiment_name, lesson, prefix)
             except Exception as e:
                 print(f"Could not download lesson {lesson}")
                 logging.error(e)
