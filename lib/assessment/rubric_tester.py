@@ -35,7 +35,7 @@ cache_dir_name = 'cached_responses'
 accuracy_threshold_file = 'accuracy_thresholds.json'
 accuracy_threshold_dir = 'tests/data'
 s3_bucket = 'cdo-ai'
-s3_prefix = 'teaching_assistant/experiments'
+s3_root = 'teaching_assistant'
 params_file = 'params.json'
 
 pp = pprint.PrettyPrinter(indent=2)
@@ -160,8 +160,8 @@ def get_examples(prefix):
 def get_s3_folder(s3, experiment_name, lesson_name, prefix):
     print("get_s3_folder args:", experiment_name, lesson_name, prefix)
     bucket = s3.Bucket(s3_bucket)
-    for obj in bucket.objects.filter(Prefix="/".join([s3_prefix, experiment_name, lesson_name])):
-        target = os.path.join(prefix, os.path.relpath(obj.key, "/".join([s3_prefix, experiment_name, lesson_name])))
+    for obj in bucket.objects.filter(Prefix="/".join([s3_root, experiments_dir, experiment_name, lesson_name])):
+        target = os.path.join(prefix, os.path.relpath(obj.key, "/".join([s3_root, experiments_dir, experiment_name, lesson_name])))
         print(f"Copy {obj.key} to {target}")
         if not os.path.exists(os.path.dirname(target)):
             os.makedirs(os.path.dirname(target))
