@@ -45,7 +45,7 @@ def command_line_options():
     parser = argparse.ArgumentParser(description='Usage')
 
     parser.add_argument('--lesson-names', type=str,
-                        help=f"Comma-separated list of lesson names to run. Supported lessons {', '.join(LESSONS)}. Defaults to all lessons.")
+                        help=f"Comma-separated list of lesson names to run. Supported lessons {','.join(LESSONS)}. Defaults to all lessons.")
     parser.add_argument('--dataset-name', type=str, default=DEFAULT_DATASET_NAME,
                         help=f"Name of dataset directory in S3 to load from. Default: {DEFAULT_DATASET_NAME}.")
     parser.add_argument('-e', '--experiment-name', type=str, default=DEFAULT_EXPERIMENT_NAME,
@@ -267,6 +267,7 @@ def main():
         accuracy_thresholds = get_accuracy_thresholds()
 
     for lesson in options.lesson_names:
+        logging.info(f"Evaluating lesson {lesson} for dataset {options.dataset_name} and experiment {options.experiment_name}...")
         experiment_lesson_prefix = os.path.join(experiments_dir, options.experiment_name, lesson)
         dataset_lesson_prefix = os.path.join(datasets_dir, options.dataset_name, lesson)
 
@@ -343,7 +344,7 @@ def main():
             label_names=label_names,
             prefix=experiment_lesson_prefix
         )
-        logging.info(f"main finished in {int(time.time() - main_start_time)} seconds")
+        logging.info(f"lesson {lesson} finished in {int(time.time() - main_start_time)} seconds")
 
         if options.accuracy and accuracy_thresholds is not None:
             if overall_accuracy < accuracy_thresholds[lesson]['overall']:
