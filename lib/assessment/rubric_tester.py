@@ -113,6 +113,7 @@ def get_params(prefix):
     params = {}
     with open(os.path.join(prefix, params_file), 'r') as f:
         params = json.load(f)
+        validate_params(params)
         for k in params.keys():
             if k == 'model':
                 continue
@@ -122,6 +123,21 @@ def get_params(prefix):
                 params[k] = int(params[k])
             
     return params
+
+def validate_params(params):
+    required_keys = ['model']
+    allowed_keys = ['model', 'num-responses', 'temperature', 'remove-comments', 'num-passing-grades']
+    deprecated_keys = ['num-passing-grades']
+    for k in required_keys:
+        if k not in params:
+            raise Exception(f"Missing required key {k} in params.json")
+    for k in params.keys():
+        if k not in allowed_keys:
+            raise Exception(f"Unsupported key {k} in params.json. Supported keys are: {', '.join(allowed_keys)}")
+        if k in deprecated_keys:
+            logging.info(f"Deprecated key {k} in params.json. Please remove as this key has no effect.")
+    if params['model'] not in SUPPORTED_MODELS:
+        raise Exception(f"Unsupported LLM model: {params['model']}. Supported models are: {', '.join(SUPPORTED_MODELS)}")
 
 def get_student_files(max_num_students, prefix, student_ids=None):
     if student_ids:
