@@ -234,20 +234,25 @@ def read_and_label_student_work(prompt, rubric, student_file, examples, options,
     with open(student_file, 'r') as f:
         student_code = f.read()
     label = Label()
-    labels = label.label_student_work(
-        prompt,
-        rubric,
-        student_code,
-        student_id,
-        examples=examples,
-        use_cached=options.use_cached,
-        write_cached=True,
-        num_responses=params['num_responses'] if 'num_responses' in params else options.num_responses,
-        temperature=params['temperature'] if 'temperature' in params else options.temperature,
-        llm_model=params['model'] if 'model' in params else options.llm_model,
-        remove_comments=params['remove_comments'] if 'remove_comments' in params else False,
-        cache_prefix=prefix
-    )
+    try:
+        labels = label.label_student_work(
+            prompt,
+            rubric,
+            student_code,
+            student_id,
+            examples=examples,
+            use_cached=options.use_cached,
+            write_cached=True,
+            num_responses=params['num_responses'] if 'num_responses' in params else options.num_responses,
+            temperature=params['temperature'] if 'temperature' in params else options.temperature,
+            llm_model=params['model'] if 'model' in params else options.llm_model,
+            remove_comments=params['remove_comments'] if 'remove_comments' in params else False,
+            cache_prefix=prefix
+        )
+    except Exception as e:
+        logging.error(f"Error in labeling student {student_id}: {e}")
+        labels = None
+
     return student_id, labels
 
 
