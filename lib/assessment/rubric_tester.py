@@ -258,10 +258,10 @@ def read_and_label_student_work(prompt, rubric, student_file, examples, options,
             examples=examples,
             use_cached=options.use_cached,
             write_cached=True,
-            num_responses=params['num_responses'] if 'num_responses' in params else options.num_responses,
+            num_responses=params['num-responses'] if 'num-responses' in params else options.num_responses,
             temperature=params['temperature'] if 'temperature' in params else options.temperature,
             llm_model=params['model'] if 'model' in params else options.llm_model,
-            remove_comments=params['remove_comments'] if 'remove_comments' in params else False,
+            remove_comments=params['remove-comments'] if 'remove-comments' in params else False,
             cache_prefix=prefix
         )
     except InvalidResponseError as e:
