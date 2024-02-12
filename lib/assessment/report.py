@@ -108,7 +108,8 @@ class Report:
                 file.write(f'  <p style="color: red">{", ".join(errors)} failed to load</p>\n')
 
             accuracy = 'N/A' if accuracy is None or math.isnan(accuracy) else f'{int(accuracy)}%'
-            file.write(f'  <h2>Overall Accuracy: {accuracy}</h2>\n')
+            report_type = 'Pass/Fail' if passing_labels else 'Exact Match'
+            file.write(f'  <h2>Overall Accuracy ({report_type}): {accuracy}</h2>\n')
             
             if accuracy_by_criteria is not None:
                 file.write('  <h2>Accuracy by Key Concept:</h2>\n')
