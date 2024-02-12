@@ -70,6 +70,8 @@ def command_line_options():
                         help='re-download lesson files, overwriting previous files')
     parser.add_argument('-a', '--accuracy', action='store_true',
                         help='Run against accuracy thresholds')
+    parser.add_argument('-r', '--remove-comments', action='store_true',
+                        help='Remove comments from student code before evaluating')
 
     args = parser.parse_args()
 
@@ -258,7 +260,7 @@ def read_and_label_student_work(prompt, rubric, student_file, examples, options,
             num_responses=options.num_responses or params['num-responses'],
             temperature=options.temperature or params['temperature'],
             llm_model=options.llm_model or params['model'],
-            remove_comments=params['remove-comments'] if 'remove-comments' in params else False,
+            remove_comments=options.remove_comments or params.get('remove-comments', False),
             cache_prefix=prefix
         )
     except InvalidResponseError as e:
