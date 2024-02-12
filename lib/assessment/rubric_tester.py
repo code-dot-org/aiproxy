@@ -54,27 +54,24 @@ def command_line_options():
                         help='Output filename within output directory')
     parser.add_argument('-c', '--use-cached', action='store_true',
                         help='Use cached responses from the API.')
-    parser.add_argument('-l', '--llm-model', type=str, default=DEFAULT_MODEL,
-                        help=f"Which LLM model to use. Supported models: {', '.join(SUPPORTED_MODELS)}. Default: {DEFAULT_MODEL}")
-    parser.add_argument('-n', '--num-responses', type=int, default=1,
-                        help='Number of responses to generate for each student. Defaults to 1.')
+    parser.add_argument('-l', '--llm-model', type=str, default=None,
+                        help=f"Which LLM model to use. Supported models: {', '.join(SUPPORTED_MODELS)}. Defaults to required params.json value.")
+    parser.add_argument('-n', '--num-responses', type=int, default=None,
+                        help=F"Number of responses to generate for each student. Defaults to required params.json value.")
     parser.add_argument('-p', '--num-passing-labels', type=int,
                         help='Number of labels which are considered passing.')
     parser.add_argument('-s', '--max-num-students', type=int, default=100,
                         help='Maximum number of students to label. Defaults to 100 students.')
     parser.add_argument('--student-ids', type=str,
                         help='Comma-separated list of student ids to label. Defaults to all students.')
-    parser.add_argument('-t', '--temperature', type=float, default=0.0,
-                        help='Temperature of the LLM. Defaults to 0.0.')
+    parser.add_argument('-t', '--temperature', type=float, default=None,
+                        help=f"Temperature of the LLM. Defaults to required params.json value.")
     parser.add_argument('-d', '--download', action='store_true',
                         help='re-download lesson files, overwriting previous files')
     parser.add_argument('-a', '--accuracy', action='store_true',
                         help='Run against accuracy thresholds')
 
     args = parser.parse_args()
-
-    if args.llm_model not in SUPPORTED_MODELS:
-        raise Exception(f"Unsupported LLM model: {args.llm_model}. Supported models are: {', '.join(SUPPORTED_MODELS)}")
 
     args.passing_labels = get_passing_labels(args.num_passing_labels)
 
@@ -125,7 +122,7 @@ def get_params(prefix):
     return params
 
 def validate_params(params):
-    required_keys = ['model']
+    required_keys = ['model', 'num-responses', 'temperature']
     allowed_keys = ['model', 'num-responses', 'temperature', 'remove-comments', 'num-passing-grades']
     deprecated_keys = ['num-passing-grades']
     for k in required_keys:
@@ -258,9 +255,9 @@ def read_and_label_student_work(prompt, rubric, student_file, examples, options,
             examples=examples,
             use_cached=options.use_cached,
             write_cached=True,
-            num_responses=params['num-responses'] if 'num-responses' in params else options.num_responses,
-            temperature=params['temperature'] if 'temperature' in params else options.temperature,
-            llm_model=params['model'] if 'model' in params else options.llm_model,
+            num_responses=options.num_responses or params['num-responses'],
+            temperature=options.temperature or params['temperature'],
+            llm_model=options.llm_model or params['model'],
             remove_comments=params['remove-comments'] if 'remove-comments' in params else False,
             cache_prefix=prefix
         )
