@@ -347,6 +347,17 @@ def main():
         accuracy_by_criteria, overall_accuracy, confusion_by_criteria, overall_confusion, label_names = compute_accuracy(actual_labels, predicted_labels, options.passing_labels)
         overall_accuracy_percent = overall_accuracy * 100
         accuracy_by_criteria_percent = {k:v*100 for k,v in accuracy_by_criteria.items()}
+        input_params = {
+            "dataset_name": options.dataset_name,
+            "experiment_name": options.experiment_name,
+            "lesson_name": lesson,
+            "model_params": {
+                "model": options.llm_model or params['model'],
+                "num_responses": options.num_responses or params['num-responses'],
+                "temperature": options.temperature or params['temperature'],
+                "remove_comments": options.remove_comments or params.get('remove-comments', False)
+            }
+        }
         report = Report()
         report.generate_html_output(
             output_file,
@@ -358,8 +369,7 @@ def main():
             passing_labels=options.passing_labels,
             accuracy_by_criteria=accuracy_by_criteria_percent,
             errors=errors,
-            dataset_name=options.dataset_name,
-            command_line=command_line,
+            input_params=input_params,
             confusion_by_criteria=confusion_by_criteria,
             overall_confusion=overall_confusion,
             label_names=label_names,
