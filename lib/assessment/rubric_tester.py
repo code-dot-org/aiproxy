@@ -70,7 +70,6 @@ def command_line_options():
                         help='re-download lesson files, overwriting previous files')
     parser.add_argument('-a', '--accuracy', action='store_true',
                         help='Run against accuracy thresholds')
-    parser.add_argument('--params', action='store_true', help="Use params from lesson data files")
 
     args = parser.parse_args()
 
@@ -300,8 +299,7 @@ def main():
                 logging.error(e)
 
         # read in lesson files, validate them
-        if options.params:
-            params = get_params(experiment_lesson_prefix)
+        params = get_params(experiment_lesson_prefix)
         prompt, standard_rubric = read_inputs(prompt_file, standard_rubric_file, experiment_lesson_prefix)
         student_files = get_student_files(options.max_num_students, dataset_lesson_prefix, student_ids=options.student_ids)
         if os.path.exists(os.path.join(dataset_lesson_prefix, actual_labels_file_old)):
