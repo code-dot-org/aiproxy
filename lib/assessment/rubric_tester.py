@@ -50,8 +50,6 @@ def command_line_options():
                         help=f"Name of dataset directory in S3 to load from. Default: {DEFAULT_DATASET_NAME}.")
     parser.add_argument('-e', '--experiment-name', type=str, default=DEFAULT_EXPERIMENT_NAME,
                         help=f"Name of experiment directory in S3 to load from. Default: {DEFAULT_EXPERIMENT_NAME}.")
-    parser.add_argument('-o', '--output-filename', type=str, default='report.html',
-                        help='Output filename within output directory')
     parser.add_argument('-c', '--use-cached', action='store_true',
                         help='Use cached responses from the API.')
     parser.add_argument('-l', '--llm-model', type=str, default=None,
@@ -76,6 +74,8 @@ def command_line_options():
     args = parser.parse_args()
 
     args.passing_labels = get_passing_labels(args.num_passing_labels)
+
+    args.output_filename = 'report-pass-fail.html' if args.passing_labels else 'report-exact-match.html'
 
     if args.student_ids:
         args.student_ids = args.student_ids.split(',')
