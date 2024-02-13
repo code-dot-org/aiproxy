@@ -195,7 +195,12 @@ class Label:
             return None
         text = response_text.strip()
 
-        response_data = self.parse_non_json_response(text)
+        # assume the response should be json, logging errors if it is not
+        response_data = self.parse_json_response(text, student_id)
+
+        # if the response is not json, try to parse it as non-json
+        if response_data is None:
+            response_data = self.parse_non_json_response(text)
 
         try:
             self._sanitize_server_response(response_data)
@@ -206,6 +211,22 @@ class Label:
             if reraise:
                 raise e
             return None
+
+    def parse_json_response(self, response_text, student_id):
+        # capture all data from the first '[' to the first ']', inclusive
+        match = re.search(r'(\[[^\]]+\])', response_text)
+        if not match:
+            logging.error(f"{student_id} Invalid response: no valid JSON data:\n{response_text}")
+            return None
+        json_text = match.group(1)
+
+        try:
+            data = json.loads(json_text)
+        except json.JSONDecodeError as e:
+            logging.error(f"{student_id} JSON decoding error: {e}\n{json_text}")
+            return None
+
+        return data
 
     # parse response data in tsv, csv or markdown format.
     def parse_non_json_response(self, text):
