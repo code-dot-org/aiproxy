@@ -74,7 +74,7 @@ class Label:
 
         info = response.json()
 
-        tsv_data = self.tsv_data_from_choices(info, rubric, student_id)
+        tsv_data = self.response_data_from_choices(info, rubric, student_id)
 
         return {
             'metadata': {
@@ -158,7 +158,7 @@ class Label:
 
         return student_code
 
-    def tsv_data_from_choices(self, info, rubric, student_id):
+    def response_data_from_choices(self, info, rubric, student_id):
         max_index = len(info['choices']) - 1
         tsv_data_choices = []
         for index, choice in enumerate(info['choices']):
