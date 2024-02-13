@@ -195,18 +195,28 @@ class Label:
             return None
         text = response_text.strip()
 
+        response_data = self.parse_non_json_response(text)
+
+        try:
+            self._sanitize_server_response(response_data)
+            self._validate_server_response(response_data, rubric)
+            return [row for row in response_data]
+        except InvalidResponseError as e:
+            logging.error(f"{student_id} {choice_text} Invalid response: {str(e)}\n{response_text}")
+            if reraise:
+                raise e
+            return None
+
+    def parse_non_json_response(self, text):
         # Remove anything up to the first column name
         if "\nKey Concept" in text:
             index = text.index("\nKey Concept")
             text = text[index:].strip()
-
         # Replace escaped tabs
         if '\\t' in text:
             text = text.replace("\\t", "\t")
-
         # Replace double tabs... ugh
         text = text.replace("\t\t", "\t")
-
         # If there is a tab, it is probably TSV
         if '\t' not in text:
             if ' | ' in text:
@@ -225,16 +235,7 @@ class Label:
         else:
             # Let's assume it is TSV
             response_data = list(csv.DictReader(StringIO(text), delimiter='\t'))
-
-        try:
-            self._sanitize_server_response(response_data)
-            self._validate_server_response(response_data, rubric)
-            return [row for row in response_data]
-        except InvalidResponseError as e:
-            logging.error(f"{student_id} {choice_text} Invalid response: {str(e)}\n{response_text}")
-            if reraise:
-                raise e
-            return None
+        return response_data
 
     def _sanitize_server_response(self, response_data):
         # Strip whitespace and quotes from fields
