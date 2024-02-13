@@ -626,7 +626,7 @@ class TestlabelStudentWork:
 
 class TestGetConsensusResponse:
     @pytest.fixture
-    def tsv_data_choices(self, label, openai_gpt_response):
+    def response_data_choices(self, label, openai_gpt_response):
         def gen_tsv_data_choices(rubric, student_id, num_responses=3, disagreements=1):
             # Disagreements always happen in the first choice... so they always
             # mean an 'outvote'
@@ -637,8 +637,8 @@ class TestGetConsensusResponse:
 
         yield gen_tsv_data_choices
 
-    def test_should_coalesce_votes(self, label, tsv_data_choices, rubric, student_id):
-        choices = tsv_data_choices(rubric, student_id)
+    def test_should_coalesce_votes(self, label, response_data_choices, rubric, student_id):
+        choices = response_data_choices(rubric, student_id)
         result = label.get_consensus_response(choices, student_id)
 
         # It should have the same number of rows as the rubric has key concepts
@@ -661,10 +661,10 @@ class TestGetConsensusResponse:
         # in the choice list.
         assert all(labels[entry['Key Concept']].count(entry['Label']) >= 2 for entry in result)
 
-    def test_should_log_outvoting(self, caplog, label, tsv_data_choices, rubric, student_id):
+    def test_should_log_outvoting(self, caplog, label, response_data_choices, rubric, student_id):
         caplog.set_level(logging.INFO)
 
-        choices = tsv_data_choices(rubric, student_id)
+        choices = response_data_choices(rubric, student_id)
         result = label.get_consensus_response(choices, student_id)
 
         # It should have the same number of rows as the rubric has key concepts
@@ -672,12 +672,12 @@ class TestGetConsensusResponse:
 
         assert any(filter(lambda x: (f'outvoted {student_id}' in x.message) and x.levelno == logging.INFO, caplog.records))
 
-    def test_reason_should_include_disagreeing_votes(self, label, tsv_data_choices, short_rubric, student_id):
-        choices = tsv_data_choices(short_rubric, student_id, num_responses=3, disagreements=1)
+    def test_reason_should_include_disagreeing_votes(self, label, response_data_choices, short_rubric, student_id):
+        choices = response_data_choices(short_rubric, student_id, num_responses=3, disagreements=1)
         result = label.get_consensus_response(choices, student_id)
         assert 'Votes' in result[0]['Reason']
 
-    def test_reason_should_exclude_agreeing_votes(self, label, tsv_data_choices, short_rubric, student_id):
-        choices = tsv_data_choices(short_rubric, student_id, num_responses=3, disagreements=0)
+    def test_reason_should_exclude_agreeing_votes(self, label, response_data_choices, short_rubric, student_id):
+        choices = response_data_choices(short_rubric, student_id, num_responses=3, disagreements=0)
         result = label.get_consensus_response(choices, student_id)
         assert 'Votes' not in result[0]['Reason']

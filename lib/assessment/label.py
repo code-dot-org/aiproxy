@@ -160,22 +160,22 @@ class Label:
 
     def response_data_from_choices(self, info, rubric, student_id):
         max_index = len(info['choices']) - 1
-        tsv_data_choices = []
+        response_data_choices = []
         for index, choice in enumerate(info['choices']):
             # If all choices result in an InvalidResponseError, reraise the last one.
-            reraise = len(tsv_data_choices) == 0 and index == max_index
+            reraise = len(response_data_choices) == 0 and index == max_index
 
             if choice['message']['content']:
                 tsv_data = self.get_tsv_data_if_valid(choice['message']['content'], rubric, student_id, choice_index=index, reraise=reraise)
                 if tsv_data:
-                    tsv_data_choices.append(tsv_data)
+                    response_data_choices.append(tsv_data)
 
-        if len(tsv_data_choices) == 0:
+        if len(response_data_choices) == 0:
             raise InvalidResponseError("No valid responses. An InvalidResponseError should have been raised earlier.")
-        elif len(tsv_data_choices) == 1:
-            tsv_data = tsv_data_choices[0]
+        elif len(response_data_choices) == 1:
+            tsv_data = response_data_choices[0]
         else:
-            tsv_data = self.get_consensus_response(tsv_data_choices, student_id)
+            tsv_data = self.get_consensus_response(response_data_choices, student_id)
         return tsv_data
 
     def compute_messages(self, prompt, rubric, student_code, examples=[]):
