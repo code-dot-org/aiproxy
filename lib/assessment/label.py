@@ -166,7 +166,7 @@ class Label:
             reraise = len(response_data_choices) == 0 and index == max_index
 
             if choice['message']['content']:
-                response_data = self.get_tsv_data_if_valid(choice['message']['content'], rubric, student_id, choice_index=index, reraise=reraise)
+                response_data = self.get_response_data_if_valid(choice['message']['content'], rubric, student_id, choice_index=index, reraise=reraise)
                 if response_data:
                     response_data_choices.append(response_data)
 
@@ -188,7 +188,7 @@ class Label:
         messages.append({'role': 'user', 'content': student_code})
         return messages
 
-    def get_tsv_data_if_valid(self, response_text, rubric, student_id, choice_index=None, reraise=False):
+    def get_response_data_if_valid(self, response_text, rubric, student_id, choice_index=None, reraise=False):
         choice_text = f"Choice {choice_index}: " if choice_index is not None else ''
         if not response_text:
             logging.error(f"{student_id} {choice_text} Invalid response: empty response")
