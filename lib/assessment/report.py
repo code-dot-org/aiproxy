@@ -85,6 +85,8 @@ class Report:
 
     def generate_html_output(self, output_file, prompt, rubric, accuracy=None, predicted_labels=None, actual_labels=None, passing_labels=None, accuracy_by_criteria=None, errors=[], input_params={}, confusion_by_criteria=None, overall_confusion=None, label_names=None, prefix='sample_code'):
         link_base_url = f'file://{os.getcwd()}/{prefix}'
+        title_suffix = 'pass-fail' if passing_labels else 'exact-match'
+        doc_title = f"{input_params['lesson_name']}-{title_suffix}"
 
         with open(output_file, 'w+') as file:
             file.write('<!DOCTYPE html>\n')
@@ -92,7 +94,7 @@ class Report:
             file.write('<head>\n')
             file.write('  <meta charset="UTF-8">\n')
             file.write('  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n')
-            file.write('  <title>Rubric Test Results</title>\n')
+            file.write(f'  <title>{doc_title}</title>\n')
             file.write('</head>\n')
             file.write('<body style="-webkit-print-color-adjust: exact;">\n')
             file.write('  <h2>Prompt:</h2>\n')
