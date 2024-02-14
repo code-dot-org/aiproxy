@@ -213,8 +213,8 @@ class Label:
             return None
 
     def parse_json_response(self, response_text, student_id):
-        # capture all data from the first '[' to the first ']', inclusive
-        match = re.search(r'(\[[^\]]+\])', response_text)
+        # capture all data from the first '[' to the last ']', inclusive
+        match = re.search(r'(\[.*\])', response_text,re.DOTALL)
         if not match:
             logging.error(f"{student_id} Invalid response: no valid JSON data:\n{response_text}")
             return None
