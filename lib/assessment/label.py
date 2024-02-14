@@ -207,6 +207,7 @@ class Label:
                 raise e
             return None
 
+    # parse response data in tsv, csv or markdown format.
     def parse_non_json_response(self, text):
         # Remove anything up to the first column name
         if "\nKey Concept" in text:
