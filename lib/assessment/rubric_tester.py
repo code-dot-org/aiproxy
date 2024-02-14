@@ -114,7 +114,7 @@ def get_params(prefix):
         params = json.load(f)
         validate_params(params)
         for k in params.keys():
-            if k == 'model':
+            if k in ['model', 'response-type']:
                 continue
             elif k == 'temperature':
                 params[k] = float(params[k])
