@@ -6,7 +6,7 @@ from unittest import mock
 from types import SimpleNamespace
 
 from lib.assessment.rubric_tester import (
-    label_student_work,
+    read_and_label_student_work,
     get_passing_labels,
     read_inputs,
     get_student_files,
@@ -41,7 +41,7 @@ class TestLabelStudentWork:
         labels = ['good data']
         label_student_work_mock.return_value = labels
 
-        result = label_student_work(
+        result = read_and_label_student_work(
             prompt=prompt,
             rubric=rubric,
             student_file=f"blah/{student_id}.js",

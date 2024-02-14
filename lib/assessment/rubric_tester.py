@@ -21,7 +21,7 @@ from sklearn.metrics import accuracy_score, confusion_matrix
 from collections import defaultdict
 
 from lib.assessment.config import SUPPORTED_MODELS, DEFAULT_MODEL, VALID_LABELS, LESSONS, DEFAULT_DATASET_NAME, DEFAULT_EXPERIMENT_NAME
-from lib.assessment.label import Label
+from lib.assessment.label import Label, InvalidResponseError
 from lib.assessment.report import Report
 
 #globals
@@ -45,7 +45,7 @@ def command_line_options():
     parser = argparse.ArgumentParser(description='Usage')
 
     parser.add_argument('--lesson-names', type=str,
-                        help=f"Comma-separated list of lesson names to run. Supported lessons {', '.join(LESSONS)}. Defaults to all lessons.")
+                        help=f"Comma-separated list of lesson names to run. Supported lessons {','.join(LESSONS)}. Defaults to all lessons.")
     parser.add_argument('--dataset-name', type=str, default=DEFAULT_DATASET_NAME,
                         help=f"Name of dataset directory in S3 to load from. Default: {DEFAULT_DATASET_NAME}.")
     parser.add_argument('-e', '--experiment-name', type=str, default=DEFAULT_EXPERIMENT_NAME,
@@ -229,25 +229,33 @@ def compute_accuracy(actual_labels, predicted_labels, passing_labels):
     return accuracy_by_criteria, overall_accuracy, confusion_by_criteria, overall_confusion, label_names
 
 
-def label_student_work(prompt, rubric, student_file, examples, options, params, prefix):
+def read_and_label_student_work(prompt, rubric, student_file, examples, options, params, prefix):
     student_id = os.path.splitext(os.path.basename(student_file))[0]
     with open(student_file, 'r') as f:
         student_code = f.read()
     label = Label()
-    labels = label.label_student_work(
-        prompt,
-        rubric,
-        student_code,
-        student_id,
-        examples=examples,
-        use_cached=options.use_cached,
-        write_cached=True,
-        num_responses=params['num_responses'] if 'num_responses' in params else options.num_responses,
-        temperature=params['temperature'] if 'temperature' in params else options.temperature,
-        llm_model=params['model'] if 'model' in params else options.llm_model,
-        remove_comments=params['remove_comments'] if 'remove_comments' in params else False,
-        cache_prefix=prefix
-    )
+    try:
+        labels = label.label_student_work(
+            prompt,
+            rubric,
+            student_code,
+            student_id,
+            examples=examples,
+            use_cached=options.use_cached,
+            write_cached=True,
+            num_responses=params['num_responses'] if 'num_responses' in params else options.num_responses,
+            temperature=params['temperature'] if 'temperature' in params else options.temperature,
+            llm_model=params['model'] if 'model' in params else options.llm_model,
+            remove_comments=params['remove_comments'] if 'remove_comments' in params else False,
+            cache_prefix=prefix
+        )
+    except InvalidResponseError as e:
+        # these error details have already been logged
+        labels = None
+    except Exception as e:
+        logging.error(f"Error in labeling student {student_id}: {e}")
+        labels = None
+
     return student_id, labels
 
 
@@ -267,6 +275,7 @@ def main():
         accuracy_thresholds = get_accuracy_thresholds()
 
     for lesson in options.lesson_names:
+        logging.info(f"Evaluating lesson {lesson} for dataset {options.dataset_name} and experiment {options.experiment_name}...")
         experiment_lesson_prefix = os.path.join(experiments_dir, options.experiment_name, lesson)
         dataset_lesson_prefix = os.path.join(datasets_dir, options.dataset_name, lesson)
 
@@ -315,7 +324,7 @@ def main():
 
         # call label function to either call openAI or read from cache
         with concurrent.futures.ThreadPoolExecutor(max_workers=7) as executor:
-            predicted_labels = list(executor.map(lambda student_file: label_student_work(prompt, rubric, student_file, examples, options, params, experiment_lesson_prefix), student_files))
+            predicted_labels = list(executor.map(lambda student_file: read_and_label_student_work(prompt, rubric, student_file, examples, options, params, experiment_lesson_prefix), student_files))
 
         errors = [student_id for student_id, labels in predicted_labels if not labels]
         # predicted_labels contains metadata and data (labels), we care about the data key
@@ -343,7 +352,7 @@ def main():
             label_names=label_names,
             prefix=experiment_lesson_prefix
         )
-        logging.info(f"main finished in {int(time.time() - main_start_time)} seconds")
+        logging.info(f"lesson {lesson} finished in {int(time.time() - main_start_time)} seconds")
 
         if options.accuracy and accuracy_thresholds is not None:
             if overall_accuracy < accuracy_thresholds[lesson]['overall']:

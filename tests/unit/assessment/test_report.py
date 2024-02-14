@@ -65,7 +65,7 @@ class TestGenerateHtmlOutput:
             output_file,
             prompt,
             rubric,
-            accuracy="42",
+            accuracy=42.0,
             command_line="./assess.py",
         )
 
@@ -83,7 +83,7 @@ class TestGenerateHtmlOutput:
             output_file,
             prompt,
             rubric,
-            accuracy="42",
+            accuracy=42.0,
             command_line="./assess.py",
         )
 
@@ -105,7 +105,7 @@ class TestGenerateHtmlOutput:
             output_file,
             prompt,
             rubric,
-            accuracy="42",
+            accuracy=42.0,
             command_line="./assess.py",
         )
 

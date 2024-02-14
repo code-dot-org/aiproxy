@@ -2,6 +2,7 @@ import os
 import csv
 import io
 import json
+import math
 from typing import List, Dict, Any
 from lib.assessment.config import VALID_LABELS
 
@@ -110,7 +111,7 @@ class Report:
                 file.write('  <h2>Command Line:</h2>\n')
                 file.write(f'  <pre>{command_line}</pre>\n')
 
-            accuracy = 'N/A' if accuracy is None else f'{int(accuracy)}%'
+            accuracy = 'N/A' if accuracy is None or math.isnan(accuracy) else f'{int(accuracy)}%'
             file.write(f'  <h2>Overall Accuracy: {accuracy}</h2>\n')
             
             if accuracy_by_criteria is not None:
