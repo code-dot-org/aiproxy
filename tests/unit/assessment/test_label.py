@@ -627,7 +627,7 @@ class TestlabelStudentWork:
 class TestGetConsensusResponse:
     @pytest.fixture
     def response_data_choices(self, label, openai_gpt_response):
-        def gen_tsv_data_choices(rubric, student_id, num_responses=3, disagreements=1):
+        def gen_response_data_choices(rubric, student_id, num_responses=3, disagreements=1):
             # Disagreements always happen in the first choice... so they always
             # mean an 'outvote'
             ai_response = openai_gpt_response(rubric, num_responses=num_responses, disagreements=disagreements, output_type='tsv')
@@ -635,7 +635,7 @@ class TestGetConsensusResponse:
             # return [list(csv.DictReader(StringIO(x), delimiter='\t')) for x in responses]
             return responses
 
-        yield gen_tsv_data_choices
+        yield gen_response_data_choices
 
     def test_should_coalesce_votes(self, label, response_data_choices, rubric, student_id):
         choices = response_data_choices(rubric, student_id)
