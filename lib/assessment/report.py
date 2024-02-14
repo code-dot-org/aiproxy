@@ -83,8 +83,10 @@ class Report:
         confusion_table += '</table>'
         return confusion_table
 
-    def generate_html_output(self, output_file, prompt, rubric, accuracy=None, predicted_labels=None, actual_labels=None, passing_labels=None, accuracy_by_criteria=None, errors=[], dataset_name=None, command_line=None, confusion_by_criteria=None, overall_confusion=None, label_names=None, prefix='sample_code'):
+    def generate_html_output(self, output_file, prompt, rubric, accuracy=None, predicted_labels=None, actual_labels=None, passing_labels=None, accuracy_by_criteria=None, errors=[], input_params={}, confusion_by_criteria=None, overall_confusion=None, label_names=None, prefix='sample_code'):
         link_base_url = f'file://{os.getcwd()}/{prefix}'
+        title_suffix = 'pass-fail' if passing_labels else 'exact-match'
+        doc_title = f"{input_params['lesson_name']}-{title_suffix}"
 
         with open(output_file, 'w+') as file:
             file.write('<!DOCTYPE html>\n')
@@ -92,27 +94,24 @@ class Report:
             file.write('<head>\n')
             file.write('  <meta charset="UTF-8">\n')
             file.write('  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n')
-            file.write('  <title>Rubric Test Results</title>\n')
+            file.write(f'  <title>{doc_title}</title>\n')
             file.write('</head>\n')
             file.write('<body style="-webkit-print-color-adjust: exact;">\n')
             file.write('  <h2>Prompt:</h2>\n')
             file.write(f'  <pre>{prompt}</pre>\n')
             file.write('  <h2>Rubric:</h2>\n')
             file.write(self._rubric_to_html_table(rubric) + '\n')
+
+            file.write('  <h2>Input Params:</h2>\n')
+            file.write(f'  <pre>{json.dumps(input_params, indent=2)}</pre>\n')
+
             if len(errors) > 0:
                 file.write(f'  <h2 style="color: red">Errors: {len(errors)}</h2>\n')
                 file.write(f'  <p style="color: red">{", ".join(errors)} failed to load</p>\n')
 
-            if dataset_name:
-                file.write('  <h2>Dataset:</h2>\n')
-                file.write(f'  <pre>{dataset_name}</pre>\n')
-
-            if command_line:
-                file.write('  <h2>Command Line:</h2>\n')
-                file.write(f'  <pre>{command_line}</pre>\n')
-
             accuracy = 'N/A' if accuracy is None or math.isnan(accuracy) else f'{int(accuracy)}%'
-            file.write(f'  <h2>Overall Accuracy: {accuracy}</h2>\n')
+            report_type = 'Pass/Fail' if passing_labels else 'Exact Match'
+            file.write(f'  <h2>Overall Accuracy ({report_type}): {accuracy}</h2>\n')
             
             if accuracy_by_criteria is not None:
                 file.write('  <h2>Accuracy by Key Concept:</h2>\n')

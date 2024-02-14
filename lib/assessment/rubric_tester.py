@@ -50,34 +50,32 @@ def command_line_options():
                         help=f"Name of dataset directory in S3 to load from. Default: {DEFAULT_DATASET_NAME}.")
     parser.add_argument('-e', '--experiment-name', type=str, default=DEFAULT_EXPERIMENT_NAME,
                         help=f"Name of experiment directory in S3 to load from. Default: {DEFAULT_EXPERIMENT_NAME}.")
-    parser.add_argument('-o', '--output-filename', type=str, default='report.html',
-                        help='Output filename within output directory')
     parser.add_argument('-c', '--use-cached', action='store_true',
                         help='Use cached responses from the API.')
-    parser.add_argument('-l', '--llm-model', type=str, default=DEFAULT_MODEL,
-                        help=f"Which LLM model to use. Supported models: {', '.join(SUPPORTED_MODELS)}. Default: {DEFAULT_MODEL}")
-    parser.add_argument('-n', '--num-responses', type=int, default=1,
-                        help='Number of responses to generate for each student. Defaults to 1.')
+    parser.add_argument('-l', '--llm-model', type=str, default=None,
+                        help=f"Which LLM model to use. Supported models: {', '.join(SUPPORTED_MODELS)}. Defaults to required params.json value.")
+    parser.add_argument('-n', '--num-responses', type=int, default=None,
+                        help='Number of responses to generate for each student. Defaults to required params.json value.')
     parser.add_argument('-p', '--num-passing-labels', type=int,
                         help='Number of labels which are considered passing.')
     parser.add_argument('-s', '--max-num-students', type=int, default=100,
                         help='Maximum number of students to label. Defaults to 100 students.')
     parser.add_argument('--student-ids', type=str,
                         help='Comma-separated list of student ids to label. Defaults to all students.')
-    parser.add_argument('-t', '--temperature', type=float, default=0.0,
-                        help='Temperature of the LLM. Defaults to 0.0.')
+    parser.add_argument('-t', '--temperature', type=float, default=None,
+                        help='Temperature of the LLM. Defaults to required params.json value.')
     parser.add_argument('-d', '--download', action='store_true',
                         help='re-download lesson files, overwriting previous files')
     parser.add_argument('-a', '--accuracy', action='store_true',
                         help='Run against accuracy thresholds')
-    parser.add_argument('--params', action='store_true', help="Use params from lesson data files")
+    parser.add_argument('-r', '--remove-comments', action='store_true',
+                        help='Remove comments from student code before evaluating')
 
     args = parser.parse_args()
 
-    if args.llm_model not in SUPPORTED_MODELS:
-        raise Exception(f"Unsupported LLM model: {args.llm_model}. Supported models are: {', '.join(SUPPORTED_MODELS)}")
-
     args.passing_labels = get_passing_labels(args.num_passing_labels)
+
+    args.output_filename = 'report-pass-fail.html' if args.passing_labels else 'report-exact-match.html'
 
     if args.student_ids:
         args.student_ids = args.student_ids.split(',')
@@ -114,6 +112,7 @@ def get_params(prefix):
     params = {}
     with open(os.path.join(prefix, params_file), 'r') as f:
         params = json.load(f)
+        validate_params(params)
         for k in params.keys():
             if k == 'model':
                 continue
@@ -123,6 +122,21 @@ def get_params(prefix):
                 params[k] = int(params[k])
             
     return params
+
+def validate_params(params):
+    required_keys = ['model', 'num-responses', 'temperature']
+    allowed_keys = ['model', 'num-responses', 'temperature', 'remove-comments', 'num-passing-grades']
+    deprecated_keys = ['num-passing-grades']
+    for k in required_keys:
+        if k not in params:
+            raise Exception(f"Missing required key {k} in params.json")
+    for k in params.keys():
+        if k not in allowed_keys:
+            raise Exception(f"Unsupported key {k} in params.json. Supported keys are: {', '.join(allowed_keys)}")
+        if k in deprecated_keys:
+            logging.info(f"Deprecated key {k} in params.json. Please remove as this key has no effect.")
+    if params['model'] not in SUPPORTED_MODELS:
+        raise Exception(f"Unsupported LLM model: {params['model']}. Supported models are: {', '.join(SUPPORTED_MODELS)}")
 
 def get_student_files(max_num_students, prefix, student_ids=None):
     if student_ids:
@@ -243,10 +257,10 @@ def read_and_label_student_work(prompt, rubric, student_file, examples, options,
             examples=examples,
             use_cached=options.use_cached,
             write_cached=True,
-            num_responses=params['num_responses'] if 'num_responses' in params else options.num_responses,
-            temperature=params['temperature'] if 'temperature' in params else options.temperature,
-            llm_model=params['model'] if 'model' in params else options.llm_model,
-            remove_comments=params['remove_comments'] if 'remove_comments' in params else False,
+            num_responses=options.num_responses or params['num-responses'],
+            temperature=options.temperature or params['temperature'],
+            llm_model=options.llm_model or params['model'],
+            remove_comments=options.remove_comments or params.get('remove-comments', False),
             cache_prefix=prefix
         )
     except InvalidResponseError as e:
@@ -300,8 +314,7 @@ def main():
                 logging.error(e)
 
         # read in lesson files, validate them
-        if options.params:
-            params = get_params(experiment_lesson_prefix)
+        params = get_params(experiment_lesson_prefix)
         prompt, standard_rubric = read_inputs(prompt_file, standard_rubric_file, experiment_lesson_prefix)
         student_files = get_student_files(options.max_num_students, dataset_lesson_prefix, student_ids=options.student_ids)
         if os.path.exists(os.path.join(dataset_lesson_prefix, actual_labels_file_old)):
@@ -334,6 +347,17 @@ def main():
         accuracy_by_criteria, overall_accuracy, confusion_by_criteria, overall_confusion, label_names = compute_accuracy(actual_labels, predicted_labels, options.passing_labels)
         overall_accuracy_percent = overall_accuracy * 100
         accuracy_by_criteria_percent = {k:v*100 for k,v in accuracy_by_criteria.items()}
+        input_params = {
+            "dataset_name": options.dataset_name,
+            "experiment_name": options.experiment_name,
+            "lesson_name": lesson,
+            "model_params": {
+                "model": options.llm_model or params['model'],
+                "num_responses": options.num_responses or params['num-responses'],
+                "temperature": options.temperature or params['temperature'],
+                "remove_comments": options.remove_comments or params.get('remove-comments', False)
+            }
+        }
         report = Report()
         report.generate_html_output(
             output_file,
@@ -345,8 +369,7 @@ def main():
             passing_labels=options.passing_labels,
             accuracy_by_criteria=accuracy_by_criteria_percent,
             errors=errors,
-            dataset_name=options.dataset_name,
-            command_line=command_line,
+            input_params=input_params,
             confusion_by_criteria=confusion_by_criteria,
             overall_confusion=overall_confusion,
             label_names=label_names,

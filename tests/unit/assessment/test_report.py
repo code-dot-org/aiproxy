@@ -66,7 +66,7 @@ class TestGenerateHtmlOutput:
             prompt,
             rubric,
             accuracy=42.0,
-            command_line="./assess.py",
+            input_params={'lesson_name': 'my-lesson'},
         )
 
         mock_file.assert_called_with(output_file, 'w+')
@@ -84,7 +84,7 @@ class TestGenerateHtmlOutput:
             prompt,
             rubric,
             accuracy=42.0,
-            command_line="./assess.py",
+            input_params={'lesson_name': 'my-lesson'},
         )
 
         output = self._get_output(mock_file)
@@ -106,7 +106,7 @@ class TestGenerateHtmlOutput:
             prompt,
             rubric,
             accuracy=42.0,
-            command_line="./assess.py",
+            input_params={'lesson_name': 'my-lesson'},
         )
 
         output = self._get_output(mock_file)
@@ -128,12 +128,12 @@ class TestGenerateHtmlOutput:
             output_file,
             prompt,
             rubric,
-            command_line="./assess.py",
+            input_params={'lesson_name': 'my-lesson'},
         )
 
         output = self._get_output(mock_file)
 
-        assert "Accuracy: N/A" in output
+        assert "Accuracy (Exact Match): N/A" in output
 
     def test_should_report_accuracy_table(self, mocker, report, prompt, rubric, randomstring):
         # Generate a random output filename
@@ -164,7 +164,7 @@ class TestGenerateHtmlOutput:
             prompt,
             rubric,
             accuracy_by_criteria=accuracy_by_criteria,
-            command_line="./assess.py",
+            input_params={'lesson_name': 'my-lesson'},
         )
 
         output = self._get_output(mock_file)
@@ -196,7 +196,7 @@ class TestGenerateHtmlOutput:
             output_file,
             prompt,
             rubric,
-            command_line="./assess.py",
+            input_params={'lesson_name': 'my-lesson'},
             overall_confusion=overall_confusion,
             confusion_by_criteria=confusion_by_criteria,
             label_names=labels,
@@ -243,7 +243,7 @@ class TestGenerateHtmlOutput:
             rubric,
             predicted_labels=predicted_labels,
             actual_labels=actual_labels,
-            command_line="./assess.py",
+            input_params={'lesson_name': 'my-lesson'},
         )
 
         output = self._get_output(mock_file)
@@ -292,7 +292,7 @@ class TestGenerateHtmlOutput:
             predicted_labels=predicted_labels,
             actual_labels=actual_labels,
             passing_labels=passing_labels,
-            command_line="./assess.py",
+            input_params={'lesson_name': 'my-lesson'},
         )
 
         output = self._get_output(mock_file)
@@ -321,7 +321,7 @@ class TestGenerateHtmlOutput:
             prompt,
             rubric,
             errors=errors,
-            command_line="./assess.py",
+            input_params={'lesson_name': 'my-lesson'},
         )
 
         output = self._get_output(mock_file)

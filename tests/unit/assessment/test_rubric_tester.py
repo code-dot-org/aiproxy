@@ -23,7 +23,7 @@ from lib.assessment.label import Label, InvalidResponseError
 
 
 class TestLabelStudentWork:
-    def test_should_pass_arguments_through(self, mocker, code, prompt, rubric, examples, student_id, temperature, llm_model):
+    def test_should_pass_arguments_through(self, mocker, code, prompt, rubric, examples, student_id, temperature, llm_model, remove_comments):
         label_student_work_mock = mocker.patch.object(Label, 'label_student_work')
 
         # Mock the file read
@@ -35,7 +35,8 @@ class TestLabelStudentWork:
             write_cached=False,
             num_responses=random.randint(1, 3),
             temperature=temperature,
-            llm_model=llm_model
+            llm_model=llm_model,
+            remove_comments=remove_comments
         )
 
         labels = ['good data']
