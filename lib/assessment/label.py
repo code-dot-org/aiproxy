@@ -198,7 +198,7 @@ class Label:
         if response_type == 'json':
             response_data = self.parse_json_response(text, student_id)
         elif response_type == 'tsv':
-            response_data = self.parse_non_json_response(text, student_id)
+            response_data = self.parse_non_json_response(text)
         else:
             raise ValueError(f"Invalid response type: {response_type}")
 

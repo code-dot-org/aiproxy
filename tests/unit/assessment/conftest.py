@@ -171,6 +171,13 @@ def remove_comments():
 
 
 @pytest.fixture
+def response_type():
+    """ Creates a valid response_type value.
+    """
+
+    yield 'json'
+
+@pytest.fixture
 def student_id():
     """ Returns a reasonable student user id.
     """

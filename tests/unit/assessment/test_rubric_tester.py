@@ -23,7 +23,7 @@ from lib.assessment.label import Label, InvalidResponseError
 
 
 class TestLabelStudentWork:
-    def test_should_pass_arguments_through(self, mocker, code, prompt, rubric, examples, student_id, temperature, llm_model, remove_comments):
+    def test_should_pass_arguments_through(self, mocker, code, prompt, rubric, examples, student_id, temperature, llm_model, remove_comments, response_type):
         label_student_work_mock = mocker.patch.object(Label, 'label_student_work')
 
         # Mock the file read
@@ -36,7 +36,7 @@ class TestLabelStudentWork:
             num_responses=random.randint(1, 3),
             temperature=temperature,
             llm_model=llm_model,
-            remove_comments=remove_comments
+            remove_comments=remove_comments,
         )
 
         labels = ['good data']
@@ -49,7 +49,8 @@ class TestLabelStudentWork:
             examples=examples(rubric),
             options=options,
             params={},
-            prefix=""
+            prefix="",
+            response_type=response_type,
         )
 
         assert result[0] == student_id
@@ -178,7 +179,7 @@ class TestGetExamples:
         glob_mock = mocker.patch('glob.glob')
         glob_mock.return_value = [f'examples/{x}.js' for x in range(0, len(examples_set))]
 
-        result = get_examples("")
+        result = get_examples("", response_type='tsv')
 
         assert len(result) == len(examples_set)
 
