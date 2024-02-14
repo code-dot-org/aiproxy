@@ -55,7 +55,7 @@ def command_line_options():
     parser.add_argument('-l', '--llm-model', type=str, default=None,
                         help=f"Which LLM model to use. Supported models: {', '.join(SUPPORTED_MODELS)}. Defaults to required params.json value.")
     parser.add_argument('-n', '--num-responses', type=int, default=None,
-                        help=F"Number of responses to generate for each student. Defaults to required params.json value.")
+                        help='Number of responses to generate for each student. Defaults to required params.json value.')
     parser.add_argument('-p', '--num-passing-labels', type=int,
                         help='Number of labels which are considered passing.')
     parser.add_argument('-s', '--max-num-students', type=int, default=100,
@@ -63,7 +63,7 @@ def command_line_options():
     parser.add_argument('--student-ids', type=str,
                         help='Comma-separated list of student ids to label. Defaults to all students.')
     parser.add_argument('-t', '--temperature', type=float, default=None,
-                        help=f"Temperature of the LLM. Defaults to required params.json value.")
+                        help='Temperature of the LLM. Defaults to required params.json value.')
     parser.add_argument('-d', '--download', action='store_true',
                         help='re-download lesson files, overwriting previous files')
     parser.add_argument('-a', '--accuracy', action='store_true',
