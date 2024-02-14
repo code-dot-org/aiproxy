@@ -245,7 +245,7 @@ def compute_accuracy(actual_labels, predicted_labels, passing_labels):
     return accuracy_by_criteria, overall_accuracy, confusion_by_criteria, overall_confusion, label_names
 
 
-def read_and_label_student_work(prompt, rubric, student_file, examples, options, params, prefix):
+def read_and_label_student_work(prompt, rubric, student_file, examples, options, params, prefix, response_type):
     student_id = os.path.splitext(os.path.basename(student_file))[0]
     with open(student_file, 'r') as f:
         student_code = f.read()
@@ -263,6 +263,7 @@ def read_and_label_student_work(prompt, rubric, student_file, examples, options,
             temperature=options.temperature or params['temperature'],
             llm_model=options.llm_model or params['model'],
             remove_comments=options.remove_comments or params.get('remove-comments', False),
+            response_type=response_type,
             cache_prefix=prefix
         )
     except InvalidResponseError as e:
@@ -340,7 +341,7 @@ def main():
 
         # call label function to either call openAI or read from cache
         with concurrent.futures.ThreadPoolExecutor(max_workers=7) as executor:
-            predicted_labels = list(executor.map(lambda student_file: read_and_label_student_work(prompt, rubric, student_file, examples, options, params, experiment_lesson_prefix), student_files))
+            predicted_labels = list(executor.map(lambda student_file: read_and_label_student_work(prompt, rubric, student_file, examples, options, params, experiment_lesson_prefix, response_type), student_files))
 
         errors = [student_id for student_id, labels in predicted_labels if not labels]
         # predicted_labels contains metadata and data (labels), we care about the data key
