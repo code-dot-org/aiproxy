@@ -5,6 +5,8 @@ import csv
 import time
 import requests
 import logging
+import boto3
+from threading import Lock
 
 from typing import List, Dict, Any
 from lib.assessment.config import VALID_LABELS
@@ -15,6 +17,9 @@ class InvalidResponseError(Exception):
     pass
 
 class Label:
+    _bedrock_client = None
+    _bedrock_lock = Lock()
+
     def __init__(self):
         pass
 
@@ -48,6 +53,30 @@ class Label:
         return None
 
     def ai_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model="", response_type='tsv'):
+        if llm_model.startswith("gpt"):
+            return self.openai_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model, response_type='tsv')
+        elif llm_model.startswith("bedrock.meta"):
+            return self.bedrock_meta_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
+        else:
+            raise Exception("Unknown model: {}".format(llm_model))
+
+    def bedrock_meta_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model=""):
+        bedrock = self.get_bedrock_client(student_id)
+
+        print(f"bedrock initialized: {bedrock}")
+
+    # make sure only one client is created, otherwise we sometimes end up with a corrupt .aws/credentials file
+    # when rubric tester calls this function multiple times in parallel.
+    @classmethod
+    def get_bedrock_client(cls, student_id):
+        if cls._bedrock_client is None:
+            with cls._bedrock_lock:
+                if cls._bedrock_client is None:
+                    logging.info(f"creating bedrock client. student_id: {student_id}")
+                    cls._bedrock_client = boto3.client(service_name='bedrock-runtime')
+        return cls._bedrock_client
+
+    def openai_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model="", response_type='tsv'):
         # Determine the OpenAI URL and headers
         api_url = 'https://api.openai.com/v1/chat/completions'
         headers = {
