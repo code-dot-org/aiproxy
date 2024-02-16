@@ -127,13 +127,13 @@ class TestComputeMessages:
 
 class TestGetTsvDataIfValid:
     def test_should_return_none_if_the_response_is_blank(self, label, rubric, student_id):
-        result = label.get_tsv_data_if_valid("", rubric, student_id)
+        result = label.get_response_data_if_valid("", rubric, student_id)
 
         assert result is None
 
     def test_should_log_the_choice_index_if_the_response_is_blank(self, caplog, label, rubric, student_id):
         index = random.randint(0, 5)
-        label.get_tsv_data_if_valid("", rubric, student_id, choice_index=index)
+        label.get_response_data_if_valid("", rubric, student_id, choice_index=index)
 
         assert any(filter(lambda x: (f'Choice {index}' in x.message) and x.levelno == logging.ERROR, caplog.records))
 
@@ -147,7 +147,7 @@ class TestGetTsvDataIfValid:
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
         # It should parse them out to get the same number of rows as the rubric
-        result = label.get_tsv_data_if_valid(response, rubric, student_id)
+        result = label.get_response_data_if_valid(response, rubric, student_id)
         assert result is not None
         assert len(result) == len(parsed_rubric)
 
@@ -161,7 +161,7 @@ class TestGetTsvDataIfValid:
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
         # It should parse them out to get the same number of rows as the rubric
-        result = label.get_tsv_data_if_valid(response, rubric, student_id)
+        result = label.get_response_data_if_valid(response, rubric, student_id)
         assert result is not None
         assert len(result) == len(parsed_rubric)
 
@@ -173,7 +173,7 @@ class TestGetTsvDataIfValid:
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
         # It should parse them out to get the same number of rows as the rubric
-        result = label.get_tsv_data_if_valid(response, rubric, student_id)
+        result = label.get_response_data_if_valid(response, rubric, student_id)
         assert result is not None
         assert len(result) == len(parsed_rubric)
 
@@ -188,7 +188,7 @@ class TestGetTsvDataIfValid:
 
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
-        result = label.get_tsv_data_if_valid(response, rubric, student_id)
+        result = label.get_response_data_if_valid(response, rubric, student_id)
         assert result is not None
         assert len(result) == len(parsed_rubric)
 
@@ -207,7 +207,7 @@ class TestGetTsvDataIfValid:
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
         # Should be fine
-        result = label.get_tsv_data_if_valid(response, rubric, student_id)
+        result = label.get_response_data_if_valid(response, rubric, student_id)
         assert result is not None
         assert len(result) == len(parsed_rubric)
 
@@ -225,7 +225,7 @@ class TestGetTsvDataIfValid:
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
         # Should be fine
-        result = label.get_tsv_data_if_valid(response, rubric, student_id)
+        result = label.get_response_data_if_valid(response, rubric, student_id)
         assert result is not None
         assert len(result) == len(parsed_rubric)
 
@@ -238,7 +238,7 @@ class TestGetTsvDataIfValid:
         # We can invalidate the response
         response = response.replace("Key Concept", "Bogus Weasel")
 
-        result = label.get_tsv_data_if_valid(response, rubric, student_id)
+        result = label.get_response_data_if_valid(response, rubric, student_id)
         assert result is None
 
     def test_should_return_none_when_the_columns_are_invalid(self, mocker, label, rubric, student_id, openai_gpt_response):
@@ -250,7 +250,7 @@ class TestGetTsvDataIfValid:
         # We can invalidate the response
         response = response.replace("Observations", "Things I notice")
 
-        result = label.get_tsv_data_if_valid(response, rubric, student_id)
+        result = label.get_response_data_if_valid(response, rubric, student_id)
         assert result is None
 
     def test_should_return_none_when_a_key_concept_is_missing(self, mocker, label, rubric, student_id, openai_gpt_response):
@@ -266,7 +266,7 @@ class TestGetTsvDataIfValid:
 
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
-        result = label.get_tsv_data_if_valid(response, rubric, student_id)
+        result = label.get_response_data_if_valid(response, rubric, student_id)
         assert result is None
 
     def test_should_return_none_when_a_different_key_concept_is_found(self, mocker, label, rubric, student_id, openai_gpt_response):
@@ -285,7 +285,7 @@ class TestGetTsvDataIfValid:
 
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
-        result = label.get_tsv_data_if_valid(response, rubric, student_id)
+        result = label.get_response_data_if_valid(response, rubric, student_id)
         assert result is None
 
     def test_should_return_none_when_there_is_an_invalid_label(self, mocker, label, rubric, student_id, openai_gpt_response):
@@ -305,7 +305,7 @@ class TestGetTsvDataIfValid:
 
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
-        result = label.get_tsv_data_if_valid(response, rubric, student_id)
+        result = label.get_response_data_if_valid(response, rubric, student_id)
         assert result is None
 
 
@@ -349,7 +349,7 @@ class TestAiLabelStudentWork:
         )
 
         # Mock the validator to invalidate everything
-        mocker.patch.object(Label, 'get_tsv_data_if_valid').return_value = None
+        mocker.patch.object(Label, 'get_response_data_if_valid').return_value = None
 
         with pytest.raises(InvalidResponseError):
             label.ai_label_student_work(
@@ -626,19 +626,19 @@ class TestlabelStudentWork:
 
 class TestGetConsensusResponse:
     @pytest.fixture
-    def tsv_data_choices(self, label, openai_gpt_response):
-        def gen_tsv_data_choices(rubric, student_id, num_responses=3, disagreements=1):
+    def response_data_choices(self, label, openai_gpt_response):
+        def gen_response_data_choices(rubric, student_id, num_responses=3, disagreements=1):
             # Disagreements always happen in the first choice... so they always
             # mean an 'outvote'
             ai_response = openai_gpt_response(rubric, num_responses=num_responses, disagreements=disagreements, output_type='tsv')
-            responses = [label.get_tsv_data_if_valid(x['message']['content'], rubric, student_id) for x in ai_response['choices']]
+            responses = [label.get_response_data_if_valid(x['message']['content'], rubric, student_id) for x in ai_response['choices']]
             # return [list(csv.DictReader(StringIO(x), delimiter='\t')) for x in responses]
             return responses
 
-        yield gen_tsv_data_choices
+        yield gen_response_data_choices
 
-    def test_should_coalesce_votes(self, label, tsv_data_choices, rubric, student_id):
-        choices = tsv_data_choices(rubric, student_id)
+    def test_should_coalesce_votes(self, label, response_data_choices, rubric, student_id):
+        choices = response_data_choices(rubric, student_id)
         result = label.get_consensus_response(choices, student_id)
 
         # It should have the same number of rows as the rubric has key concepts
@@ -661,10 +661,10 @@ class TestGetConsensusResponse:
         # in the choice list.
         assert all(labels[entry['Key Concept']].count(entry['Label']) >= 2 for entry in result)
 
-    def test_should_log_outvoting(self, caplog, label, tsv_data_choices, rubric, student_id):
+    def test_should_log_outvoting(self, caplog, label, response_data_choices, rubric, student_id):
         caplog.set_level(logging.INFO)
 
-        choices = tsv_data_choices(rubric, student_id)
+        choices = response_data_choices(rubric, student_id)
         result = label.get_consensus_response(choices, student_id)
 
         # It should have the same number of rows as the rubric has key concepts
@@ -672,12 +672,12 @@ class TestGetConsensusResponse:
 
         assert any(filter(lambda x: (f'outvoted {student_id}' in x.message) and x.levelno == logging.INFO, caplog.records))
 
-    def test_reason_should_include_disagreeing_votes(self, label, tsv_data_choices, short_rubric, student_id):
-        choices = tsv_data_choices(short_rubric, student_id, num_responses=3, disagreements=1)
+    def test_reason_should_include_disagreeing_votes(self, label, response_data_choices, short_rubric, student_id):
+        choices = response_data_choices(short_rubric, student_id, num_responses=3, disagreements=1)
         result = label.get_consensus_response(choices, student_id)
         assert 'Votes' in result[0]['Reason']
 
-    def test_reason_should_exclude_agreeing_votes(self, label, tsv_data_choices, short_rubric, student_id):
-        choices = tsv_data_choices(short_rubric, student_id, num_responses=3, disagreements=0)
+    def test_reason_should_exclude_agreeing_votes(self, label, response_data_choices, short_rubric, student_id):
+        choices = response_data_choices(short_rubric, student_id, num_responses=3, disagreements=0)
         result = label.get_consensus_response(choices, student_id)
         assert 'Votes' not in result[0]['Reason']
