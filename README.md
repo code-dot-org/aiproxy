@@ -49,10 +49,45 @@ This will run a webserver accessible at <http://localhost>.
 
 * To validate if the local environment is running successfully, run `bin/assessment-test.rb` It should print the response for a test assessment.
 
-### Rubric Tester
-To run the rubric tester locally:
+## Rubric Tester
 
-#### setup
+### background
+
+Rubric Tester is a tool used to measure the accuracy of our ai evaluation system against labels provided by human annotators.
+
+Config for rubric tester is stored in S3:
+```
+s3://cdo-ai/teaching_assistant/datasets/
+s3://cdo-ai/teaching_assistant/experiments/
+s3://cdo-ai/teaching_assistant/releases/
+```
+
+Within each of these directories, there are named config directories each containing one subdirectory for each lesson:
+```
+datasets/contractor-grades-batch-1-fall-2023/csd3-2023-L11/
+datasets/contractor-grades-batch-1-fall-2023/csd3-2023-L14/
+datasets/contractor-grades-batch-1-fall-2023/...
+...
+experiments/ai-rubrics-pilot-baseline/csd3-2023-L11/
+...
+releases/2024-02-01-ai-rubrics-pilot-baseline/csd3-2023-L11/
+...
+```
+
+The mental model for each of these directories is:
+* `datasets/`: student code samples (`*.js`) with labels provided by human graders (`actual_labels.csv`)
+* `experiments/`: configuration for ai evaluation in development 
+  * `params.json`: model parameters including model name, num_responses, temperature
+  * `system_prompt.txt`
+  * `standard_rubric.csv`
+  * `examples/` (optional)
+* `releases/`: configuration for ai evaluation in production. similar to `experiments/`, but each directory will also contain `confidence.json` which indicates low/medium/high confidence for each learning goal in each lesson.
+
+When you run rubric tester, the datasets and experiments you use will be copied locally, after which you can easily take a closer look at the contents of these files by running `find datasets experiments` from the repo root.
+
+### setup
+
+To set up rubric tester to run locally:
 
 install pyenv: https://github.com/pyenv/pyenv?tab=readme-ov-file#installation
 * Mac: `brew install pyenv`
@@ -74,7 +109,7 @@ ensure aws access for accessing aws bedrock models:
 * from this repo's root, run: 
   * `gem install aws-google`
   
-#### run
+### run
 
 Activate the virtual environment:
 * `source .venv/bin/activate`
@@ -88,6 +123,39 @@ Export the following environment variables (or add them once to your shell profi
 
 See rubric tester options with:
 * `python lib/assessment/rubric_tester.py --help`
+
+### example usage
+
+When running rubric tester locally, you will pick a dataset to measure accuracy against, an experiment to define the ai config, and other optional config parameters. with no params, an experiment using gpt-3.5-turbo is used to evaluate all 6 ai-enabled lessons in CSD Unit 3, measuring accuracy against the default dataset which contains about 20 labeled student projects per lesson. 
+
+GPT 3.5 Turbo is the default because a complete test run with that model costs only $0.20 whereas a complete test run with GPT 4 (classic) costs about $12.00.
+
+A recommended first run is to use default experiment and dataset, limited to 1 lesson:
+```
+(.venv) Dave-MBP:~/src/aiproxy (rt-recover-from-bad-llm-responses)$ python ./lib/assessment/rubric_tester.py --lesson-names csd3-2023-L11 
+2024-02-13 20:15:30,127: INFO: Evaluating lesson csd3-2023-L11 for dataset contractor-grades-batch-1-fall-2023 and experiment ai-rubrics-pilot-gpt-3.5-turbo...
+```
+
+When you do this, you'll likely notice a mix of successes and errors on the command line:
+
+```
+2024-02-13 20:15:32,384: ERROR: student_12 Choice 0:  Invalid response: invalid label value: 'The program has no sequencing errors.'
+2024-02-13 20:17:24,313: INFO: student_15 request succeeded in 2 seconds. 1305 tokens used.
+```
+
+The report that gets generated will contain a count of how many errors there were:
+
+![Screenshot 2024-02-13 at 8 20 47 PM](https://github.com/code-dot-org/aiproxy/assets/8001765/4613414c-3bff-4209-ac0c-fdda5ec0b370)
+
+In order to rerun only the failed student projects, you can pass the `-c` (`--use-cached`) option:
+
+```commandline
+(.venv) Dave-MBP:~/src/aiproxy (rt-recover-from-bad-llm-responses)$ python ./lib/assessment/rubric_tester.py --lesson-names csd3-2023-L11 -c
+```
+
+![Screenshot 2024-02-13 at 8 24 31 PM](https://github.com/code-dot-org/aiproxy/assets/8001765/ff560302-94b9-4966-a5d6-7d9a9fa54892)
+
+After enough reruns, you'll have a complete accuracy measurement for the lesson. NOTE: the very high number of errors in this example is because we are using a weak model (GPT 3.5 Turbo) by default. Stronger models often complete an entire lesson without errors, but in case of errors the same principle applies to getting complete test results.
 
 ## Logging
 
