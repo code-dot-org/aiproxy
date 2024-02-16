@@ -204,12 +204,6 @@ def openai_gpt_response(randomstring):
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
         key_concepts = set(x['Key Concept'] for x in parsed_rubric)
 
-        def gen_rubric_response_header(delimiter='\t'):
-            return f"Key Concept{delimiter}Observations{delimiter}Grade{delimiter}Reason\n"
-
-        def gen_rubric_response_row(key_concept, label, delimiter='\t'):
-            return f"{key_concept}{delimiter}{randomstring(10)}{delimiter}{label}{delimiter}{randomstring(10)}\n"
-
         delimiter = '\t'
 
         if output_type == 'markdown':
@@ -229,8 +223,7 @@ def openai_gpt_response(randomstring):
 
         disagreements_left = disagreements
         for i in range(0, num_responses):
-            content = gen_rubric_response_header(delimiter)
-
+            choice_data = []
             for key_concept in key_concepts:
                 label = assigned_labels[key_concept]
 
@@ -244,7 +237,9 @@ def openai_gpt_response(randomstring):
                     ]) - set([label])))
                     disagreements_left -= 1
 
-                content += gen_rubric_response_row(key_concept, label, delimiter)
+                choice_data.append(gen_rubric_row_data(key_concept, label))
+
+            content = gen_tabular_response(choice_data, delimiter)
 
             gpt_response['choices'].append({
                 'index': i,
@@ -256,5 +251,25 @@ def openai_gpt_response(randomstring):
             })
 
         return gpt_response
-        
+
+    def gen_rubric_row_data(key_concept, label):
+        return {
+            'Key Concept': key_concept,
+            'Observations': randomstring(10),
+            'Grade': label,
+            'Reason': randomstring(10)
+        }
+
+    def gen_tabular_response(choice_data, delimiter):
+        content = gen_tabular_response_header(delimiter)
+        for row_data in choice_data:
+            content += gen_tabular_response_row(row_data, delimiter)
+        return content
+
+    def gen_tabular_response_header(delimiter='\t'):
+        return f"Key Concept{delimiter}Observations{delimiter}Grade{delimiter}Reason\n"
+
+    def gen_tabular_response_row(data, delimiter='\t'):
+        return f"{data['Key Concept']}{delimiter}{data['Observations']}{delimiter}{data['Grade']}{delimiter}{data['Reason']}\n"
+
     return gen_gpt_response

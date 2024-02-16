@@ -219,8 +219,8 @@ class TestGetResponseDataIfValid:
 
         # Slide a nonsense line within the response (2nd to last entry)
         lines = response.splitlines()
-        delimeter = "\n--------\t---------\t--------\t---------\n"
-        response = delimeter.join(lines)
+        delimiter = "\n--------\t---------\t--------\t---------\n"
+        response = delimiter.join(lines)
 
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
