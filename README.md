@@ -157,6 +157,32 @@ In order to rerun only the failed student projects, you can pass the `-c` (`--us
 
 After enough reruns, you'll have a complete accuracy measurement for the lesson. NOTE: the very high number of errors in this example is because we are using a weak model (GPT 3.5 Turbo) by default. Stronger models often complete an entire lesson without errors, but in case of errors the same principle applies to getting complete test results.
 
+### creating a new experiment
+
+generally speaking, new experiments will be created as follows:
+* download an existing experiment from S3
+* create a local copy
+* make local changes and measure accuracy
+* once satisfied, upload the experiment dir back to S3, including output/ and cached_responses/ directories
+
+a similar process can be followed for new releases.
+
+### regenerating example LLM responses
+
+rubric tester supports sending example user requests (js) and LLM responses (json) so that the LLM can use few-shot learning to give better results. Once you have identified js that you want to use as examples, here is how you can leverage the rubric tester to have the LLM do most of the work of generating these responses for you on your local machine:
+
+1. create a new experiment you want to add examples to
+2. craft example js and desired labels into a temporary new dataset
+    * copy your example `*.js` files into the dataset
+    * create an `actual_labels.csv` containing desired labels for each student and each learning goal
+3. use LLM to generate new json responses as a starting point
+    * temporarily modify `label.py` to log each `response_data` it receives
+    * use rubric tester to run the new experiment against the temp dataset using GPT 4 classic (e.g. `gpt-4-0613`), and record the report html and log output
+4. in your experiment, create the example responses
+    * copy your example js from the temp dataset into `examples/*.js`
+    * clean the log output and paste it into `examples/*.json`
+    * use the report html to identify any errors the LLM made, and correct any issues in the Observations, Reason, or Grade fields in the new `examples/*.json`
+
 ## Logging
 
 Logging is done via the normal Python `logging` library.
