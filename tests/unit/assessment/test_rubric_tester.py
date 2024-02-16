@@ -22,7 +22,7 @@ from lib.assessment.rubric_tester import (
 from lib.assessment.label import Label, InvalidResponseError
 
 
-class TestLabelStudentWork:
+class TestReadAndLabelStudentWork:
     def test_should_pass_arguments_through(self, mocker, code, prompt, rubric, examples, student_id, temperature, llm_model, remove_comments, response_type):
         label_student_work_mock = mocker.patch.object(Label, 'label_student_work')
 

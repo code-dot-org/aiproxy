@@ -125,7 +125,7 @@ class TestComputeMessages:
             assert example_set[i][1] in assistant_message['content']
 
 
-class TestGetTsvDataIfValid:
+class TestGetResponseDataIfValid:
     def test_should_return_none_if_the_response_is_blank(self, label, rubric, student_id):
         result = label.get_response_data_if_valid("", rubric, student_id)
 
