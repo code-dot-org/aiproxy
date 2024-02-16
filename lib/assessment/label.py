@@ -74,7 +74,7 @@ class Label:
         # logging.info(f"meta_prompt:\n{meta_prompt}")
         body = json.dumps({
             "prompt": meta_prompt,
-            "max_gen_len": 1024,
+            "max_gen_len": 1536,
             "temperature": temperature,
         })
         accept = 'application/json'
