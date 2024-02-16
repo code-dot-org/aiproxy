@@ -63,7 +63,38 @@ class Label:
     def bedrock_meta_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model=""):
         bedrock = self.get_bedrock_client(student_id)
 
-        print(f"bedrock initialized: {bedrock}")
+        # strip 'bedrock.' from the model name
+        bedrock_model = llm_model[8:]
+
+        # raise if the model name does not start with 'meta'
+        if not bedrock_model.startswith("meta."):
+            raise Exception(f"Error parsing llm_model: {llm_model} bedrock_model: {bedrock_model}")
+
+        meta_prompt = self.compute_meta_prompt(prompt, rubric, student_code, examples=examples)
+        # logging.info(f"meta_prompt:\n{meta_prompt}")
+        body = json.dumps({
+            "prompt": meta_prompt,
+            "max_gen_len": 1024,
+            "temperature": temperature,
+        })
+        accept = 'application/json'
+        content_type = 'application/json'
+        response = bedrock.invoke_model(body=body, modelId=bedrock_model, accept=accept, contentType=content_type)
+
+        response_body = json.loads(response.get('body').read())
+        # logging.info(f"raw AI response:\n{response_body}")
+        generation = response_body.get('generation')
+
+        data = self.get_response_data_if_valid(generation, rubric, student_id, response_type='json')
+        # logging.info(f"AI response_data json:\n{json.dumps(data, indent=2)}")
+
+        return {
+            'metadata': {
+                'agent': 'meta',
+                'request': body,
+            },
+            'data': data,
+        }
 
     # make sure only one client is created, otherwise we sometimes end up with a corrupt .aws/credentials file
     # when rubric tester calls this function multiple times in parallel.
@@ -206,6 +237,17 @@ class Label:
         else:
             response_data = self.get_consensus_response(response_data_choices, student_id)
         return response_data
+
+    def compute_meta_prompt(self, prompt, rubric, student_code, examples=[]):
+        # here is the documentation for code llama and llama 2 prompting:
+        # https://huggingface.co/blog/llama2#how-to-prompt-llama-2
+        # https://huggingface.co/blog/codellama#conversational-instructions
+        #
+        # that documentation says that the prompt should be in the following format:
+        # return f"<s>[INST]<<SYS>>{prompt}<</SYS>>\n\nRubric:\n{rubric}\n\nStudent Code:\n{student_code}\n\nEvaluation (JSON):\n[/INST]"
+        #
+        # but that format does not consistently lead to valid JSON output. The following format works more reliably:
+        return f"[INST]{prompt}[/INST]\n\nRubric:\n{rubric}\n\nStudent Code:\n{student_code}\n\nEvaluation (JSON):\n"
 
     def compute_messages(self, prompt, rubric, student_code, examples=[]):
         messages = [
