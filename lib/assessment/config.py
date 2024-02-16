@@ -1,6 +1,7 @@
 VALID_LABELS = ["Extensive Evidence", "Convincing Evidence", "Limited Evidence", "No Evidence"]
 # do not include gpt-4, so that we always know what version of the model we are using.
 SUPPORTED_MODELS = [
+    'bedrock.anthropic.claude-v2',
     'bedrock.meta.llama2-13b-chat-v1',
     'bedrock.meta.llama2-70b-chat-v1',
     'gpt-3.5-turbo-0125',
