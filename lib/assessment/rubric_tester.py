@@ -318,7 +318,7 @@ def main():
 
         # read in lesson files, validate them
         params = get_params(experiment_lesson_prefix)
-        response_type = params['response-type']
+        response_type = params.get('response-type', 'tsv')
         prompt, standard_rubric = read_inputs(prompt_file, standard_rubric_file, experiment_lesson_prefix)
         student_files = get_student_files(options.max_num_students, dataset_lesson_prefix, student_ids=options.student_ids)
         if os.path.exists(os.path.join(dataset_lesson_prefix, actual_labels_file_old)):
