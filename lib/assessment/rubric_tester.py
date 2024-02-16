@@ -137,7 +137,7 @@ def validate_params(params):
             logging.info(f"Deprecated key {k} in params.json. Please remove as this key has no effect.")
     if params['model'] not in SUPPORTED_MODELS:
         raise Exception(f"Unsupported LLM model: {params['model']}. Supported models are: {', '.join(SUPPORTED_MODELS)}")
-    if params['response-type'] not in ['json', 'tsv']:
+    if params.get('response-type', 'tsv') not in ['json', 'tsv']:
         raise Exception(f"Unsupported response type: {params['response-type']}. Supported response types are: json, tsv")
 
 def get_student_files(max_num_students, prefix, student_ids=None):
