@@ -157,6 +157,13 @@ In order to rerun only the failed student projects, you can pass the `-c` (`--us
 
 After enough reruns, you'll have a complete accuracy measurement for the lesson. NOTE: the very high number of errors in this example is because we are using a weak model (GPT 3.5 Turbo) by default. Stronger models often complete an entire lesson without errors, but in case of errors the same principle applies to getting complete test results.
 
+### using cached responses
+
+experiments run against GPT 4, GPT 4 Turbo and other pricey models should include report html and cached response data. this allows you to quickly view reports for these datasets either by looking directly at the `output/report*html` files or by regenerating the report against cached data via a command like:
+```commandline
+python ./lib/assessment/rubric_tester.py --experiment-name ai-rubrics-pilot-baseline-gpt-4-turbo --use-cached
+```
+
 ### creating a new experiment
 
 generally speaking, new experiments will be created as follows:
