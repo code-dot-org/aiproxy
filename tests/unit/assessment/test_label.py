@@ -151,6 +151,20 @@ class TestGetResponseDataIfValid:
         assert result is not None
         assert len(result) == len(parsed_rubric)
 
+    def test_should_work_for_json_response_type(self, label, rubric, student_id, openai_gpt_response, output_type='json'):
+        # We will generate fake openai gpt responses where it gave us the labeled
+        # rubrics in CSV or markdown (even though we told it NOT TO grr)
+        ai_response = openai_gpt_response(rubric, num_responses=1, output_type=output_type)
+        response = ai_response['choices'][0]['message']['content']
+
+        parsed_rubric = list(csv.DictReader(rubric.splitlines()))
+
+        # It should parse them out to get the same number of rows as the rubric
+        result = label.get_response_data_if_valid(response, rubric, student_id, response_type='json')
+        assert result is not None
+        assert len(result) == len(parsed_rubric)
+
+
     @pytest.mark.parametrize("output_type", ['tsv', 'csv', 'markdown'])
     def test_should_work_for_different_output_types_with_leading_text(self, label, rubric, student_id, openai_gpt_response, output_type):
         # We will generate fake openai gpt responses where it gave us the labeled
