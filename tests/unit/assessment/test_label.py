@@ -152,8 +152,6 @@ class TestGetResponseDataIfValid:
         assert len(result) == len(parsed_rubric)
 
     def test_should_work_for_json_response_type(self, label, rubric, student_id, openai_gpt_response, output_type='json'):
-        # We will generate fake openai gpt responses where it gave us the labeled
-        # rubrics in CSV or markdown (even though we told it NOT TO grr)
         ai_response = openai_gpt_response(rubric, num_responses=1, output_type=output_type)
         response = ai_response['choices'][0]['message']['content']
 
