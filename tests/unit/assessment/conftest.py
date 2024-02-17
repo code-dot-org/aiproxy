@@ -239,7 +239,10 @@ def openai_gpt_response(randomstring):
 
                 choice_data.append(gen_rubric_row_data(key_concept, label))
 
-            content = gen_tabular_response(choice_data, delimiter)
+            if output_type == 'json':
+                content = json.dumps(choice_data, indent=4)
+            else:
+                content = gen_tabular_response(choice_data, delimiter)
 
             gpt_response['choices'].append({
                 'index': i,
