@@ -204,14 +204,6 @@ def openai_gpt_response(randomstring):
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
         key_concepts = set(x['Key Concept'] for x in parsed_rubric)
 
-        delimiter = '\t'
-
-        if output_type == 'markdown':
-            delimiter = ' | '
-
-        if output_type == 'csv':
-            delimiter = ','
-
         assigned_labels = {}
         for key_concept in key_concepts:
             assigned_labels[key_concept] = random.choice([
@@ -242,7 +234,7 @@ def openai_gpt_response(randomstring):
             if output_type == 'json':
                 content = json.dumps(choice_data, indent=4)
             else:
-                content = gen_tabular_response(choice_data, delimiter)
+                content = gen_tabular_response(choice_data, output_type)
 
             gpt_response['choices'].append({
                 'index': i,
@@ -263,7 +255,15 @@ def openai_gpt_response(randomstring):
             'Reason': randomstring(10)
         }
 
-    def gen_tabular_response(choice_data, delimiter):
+    def gen_tabular_response(choice_data, output_type):
+        delimiter = '\t'
+
+        if output_type == 'markdown':
+            delimiter = ' | '
+
+        if output_type == 'csv':
+            delimiter = ','
+
         content = gen_tabular_response_header(delimiter)
         for row_data in choice_data:
             content += gen_tabular_response_row(row_data, delimiter)
