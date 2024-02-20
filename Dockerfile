@@ -10,4 +10,4 @@ COPY ./lib /app/lib
 COPY ./src /app/src
 
 EXPOSE 80
-CMD ["waitress-serve", "--host=0.0.0.0", "--port=80", "--call", "src:create_app"]
+CMD ["waitress-serve", "--host=0.0.0.0", "--port=80", "--call", "app:create_app"]

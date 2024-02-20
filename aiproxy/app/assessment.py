@@ -7,12 +7,13 @@ import os
 import openai
 import json
 
-from lib.assessment.config import DEFAULT_MODEL
+from aiproxy.assessment.config import DEFAULT_MODEL
 
 # Our assessment code
-from lib.assessment import assess
-from lib.assessment.assess import KeyConceptError
-from lib.assessment.label import InvalidResponseError
+from aiproxy.assessment import assess
+from aiproxy.assessment import assess
+from aiproxy.assessment.assess import KeyConceptError
+from aiproxy.assessment.label import InvalidResponseError
 
 assessment_routes = Blueprint('assessment_routes', __name__)
 

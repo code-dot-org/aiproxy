@@ -7,7 +7,7 @@ import requests
 import logging
 
 from typing import List, Dict, Any
-from lib.assessment.config import VALID_LABELS
+from .config import VALID_LABELS
 
 from io import StringIO
 
