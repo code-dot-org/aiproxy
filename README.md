@@ -119,7 +119,6 @@ Install requirements to the virtual environment with pip:
 
 Export the following environment variables (or add them once to your shell profile)
 * `export OPENAI_API_KEY=<your API key>`
-* `export PYTHONPATH=<path to aiproxy root>`
 
 See rubric tester options with:
 * `bin/rubric_tester --help`
