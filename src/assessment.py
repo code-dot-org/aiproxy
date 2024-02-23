@@ -170,3 +170,39 @@ def test_assessment_examples():
         return "response from AI or service not valid", 400
 
     return labels
+
+@assessment_routes.route('/test/cfe_with_static_analysis', methods=['GET', 'POST'])
+def test_assessment_examples():
+    openai.api_key = os.getenv('OPENAI_API_KEY')
+
+    with open('tests/data/cfe_sa_sample.js', 'r') as f:
+        code = f.read()
+
+    with open('tests/data/cfe_sa_prompt.txt', 'r') as f:
+        prompt = f.read()
+
+    with open('tests/data/cfe_sa_rubric.csv', 'r') as f:
+        rubric = f.read()
+
+    try:
+        labels = assess.label(
+            code=code,
+            prompt=prompt,
+            rubric=rubric,
+            api_key=request.values.get("api-key", openai.api_key),
+            llm_model=request.values.get("model", DEFAULT_MODEL),
+            remove_comments=(request.values.get("remove-comments", "0") != "0"),
+            num_responses=int(request.values.get("num-responses", "1")),
+            temperature=float(request.values.get("temperature", "0.2")),
+        )
+    except ValueError as e:
+        return "One of the arguments is not parseable as a number: {}".format(str(e)), 400
+    except openai.error.InvalidRequestError as e:
+        return str(e), 400
+    except KeyConceptError as e:
+        return str(e), 400
+    
+    if not isinstance(labels, dict) or not isinstance(labels.get("data"), list):
+        return "response from AI or service not valid", 400
+
+    return labels

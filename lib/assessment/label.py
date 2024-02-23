@@ -8,6 +8,7 @@ import logging
 
 from typing import List, Dict, Any
 from lib.assessment.config import VALID_LABELS
+from lib.assessment.code_feature_extractor import CodeFeatures
 
 from io import StringIO
 
@@ -43,6 +44,27 @@ class Label:
                     )
                 )
             }
+        
+        results = {{"metadata": {
+                            "agent": []
+                        },
+                        "data": []
+                }}
+    
+        for row in csv.DictReader(rubric.splitlines()):
+            if 'CFE' in row["instructions"]:
+                cfe = CodeFeatures()
+                features, assessment = cfe.extract_code_features(student_code, row)
+                return {"metadata": {
+                            "agent": ["code feature extractor", "static analysis"]
+                        },
+                        "data": {
+                            "Label": assessment,
+                            "Key Concept": row["key_concept"],
+                            "Observations": features,
+                            "Reason": row[assessment],
+                        }
+                }
 
         # We can't assess this statically
         return None
@@ -108,6 +130,9 @@ class Label:
             except requests.exceptions.ReadTimeout:
                 logging.error(f"{student_id} request timed out in {(time.time() - start_time):.0f} seconds.")
                 result = None
+        elif result["metadata"]["agent"] == ["code feature extractor", "static analysis"]:
+            try:
+                result = self.ai_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
 
         # No assessment was possible
         if result is None:
