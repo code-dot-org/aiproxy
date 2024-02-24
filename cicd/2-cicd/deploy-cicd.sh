@@ -39,7 +39,7 @@ TEMPLATE_FILE=cicd/2-cicd/cicd.template.yml
 echo Validating cloudformation template...
 aws cloudformation validate-template \
   --template-body file://${TEMPLATE_FILE} \
-  | cat
+  > /dev/null
 
 ACCOUNT=$(aws sts get-caller-identity --query "Account" --output text)
 

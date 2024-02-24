@@ -40,8 +40,11 @@ Conditions:
 
 Resources:
 
-  # The Elastic Container Registry Repository will store our built docker
-  # images.
+  #-------------------------------------
+  # Elastic Container Registry (ECR)
+  # - Store built docker images
+  #-------------------------------------
+
   EcrRepository:
     Type: AWS::ECR::Repository
     Properties: 
@@ -112,6 +115,10 @@ Resources:
               - 'kms:GenerateDataKey'
               - 'kms:GenerateDataKeyWithoutPlaintext'
             Resource: '*'
+
+  #-------------------------------------
+  # CodeBuild Projects
+  #-------------------------------------
 
   # The CodeBuild Project is triggered by pull requests targeting $GitHubBranch
   # It will perform any steps defined in the pr-buildspec.yml file.
@@ -191,32 +198,9 @@ Resources:
       Artifacts:
         Type: CODEPIPELINE
 
-  # Grant the AiProxy CodeBuild Role additional permissions for resources in
-  # this template. This allows us to avoid granting permission to * resources.
-  AiProxyRolePolicy:
-    Type: 'AWS::IAM::Policy'
-    Properties:
-      PolicyName: !Sub "${AWS::StackName}-codebuild-policy"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Action:
-              - codebuild:*
-            Resource:
-              - !GetAtt AppBuildProject.Arn
-              - !GetAtt IntegrationTestBuildProject.Arn
-          - Effect: Allow
-            Action:
-              - codebuild:CreateReportGroup
-              - codebuild:CreateReport
-              - codebuild:UpdateReport
-              - codebuild:BatchPutTestCases
-              - codebuild:BatchPutCodeCoverage
-            Resource:
-              - !Sub arn:aws:codebuild:us-east-1:165336972514:report-group/${AWS::StackName}-${GitHubBranch}-pr-build
-      Roles:
-        - !ImportValue AiProxyCodeBuildRoleName
+  #-------------------------------------
+  # Pipeline
+  #-------------------------------------
 
   Pipeline:
     Type: AWS::CodePipeline::Pipeline
@@ -278,11 +262,25 @@ Resources:
                   ActionMode: CREATE_UPDATE
                   TemplatePath: appBuildResults::packaged-app-template.yml
                   TemplateConfiguration: appBuildResults::cicd/3-app/aiproxy/dev.config.json
+                  # ParameterOverrides must be a JSON string, not an object
                   ParameterOverrides: !Join
-                      - ''
-                      - - '{ "SubdomainName": "'
-                        - !Sub "aiproxy-dev-${GitHubBranch}"
-                        - '" }'
+                    - ''
+                    - - '{'
+                      - !Sub '"SubdomainName": "aiproxy-dev-${GitHubBranch}",'
+                      # - !Sub '"ECRRepositoryArn": "${EcrRepository.Arn}",'
+                      - !Sub
+                        - '"VPC": "${VPCValue}",'
+                        - { VPCValue: !ImportValue VPC }
+                      - !Sub
+                        - '"SecurityGroup": "${SecurityGroupValue}",'
+                        - { SecurityGroupValue: !ImportValue VPC-ELBSecurityGroup }
+                      - !Sub
+                        - '"PublicSubnets": "${PublicSubnetsValue}",'
+                        - { PublicSubnetsValue: !Join [",", [!ImportValue VPC-PublicSubnetB, !ImportValue VPC-PublicSubnetC, !ImportValue VPC-PublicSubnetD, !ImportValue VPC-PublicSubnetE]] }
+                      - !Sub
+                        - '"PrivateSubnets": "${PrivateSubnetsValue}"'
+                        - { PrivateSubnetsValue: !Join [",", [!ImportValue VPC-SubnetB, !ImportValue VPC-SubnetC, !ImportValue VPC-SubnetD, !ImportValue VPC-SubnetE]] }
+                      - '}'
                   Capabilities: CAPABILITY_AUTO_EXPAND,CAPABILITY_IAM
                   RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/admin/CloudFormationService
           - !Ref AWS::NoValue
@@ -304,11 +302,27 @@ Resources:
                   ActionMode: CREATE_UPDATE
                   TemplatePath: appBuildResults::packaged-app-template.yml
                   TemplateConfiguration: appBuildResults::cicd/3-app/aiproxy/test.config.json
+                  # ParameterOverrides must be a JSON string, not an object
                   ParameterOverrides: !Join
                     - ''
-                    - - '{ "SubdomainName": "'
-                      - !If [ TargetsMainBranch, 'aiproxy-test', !Sub 'aiproxy-test-${GitHubBranch}' ]
-                      - '" }'
+                    - - '{'
+                      - !Sub
+                        - '"SubdomainName": "${SubdomainName}",'
+                        - { SubdomainName: !If [ TargetsMainBranch, 'aiproxy-test', !Sub 'aiproxy-test-${GitHubBranch}' ] }
+                      - !Sub '"ECRRepositoryArn": "${EcrRepository.Arn}",'
+                      - !Sub
+                        - '"VPC": "${VPCValue}",'
+                        - { VPCValue: !ImportValue VPC }
+                      - !Sub
+                        - '"SecurityGroup": "${SecurityGroupValue}",'
+                        - { SecurityGroupValue: !ImportValue VPC-ELBSecurityGroup }
+                      - !Sub
+                        - '"PublicSubnets": "[${PublicSubnetsValue}]",'
+                        - { PublicSubnetsValue: !Join [",", [!ImportValue VPC-PublicSubnetB, !ImportValue VPC-PublicSubnetC, !ImportValue VPC-PublicSubnetD, !ImportValue VPC-PublicSubnetE]] }
+                      - !Sub
+                        - '"PrivateSubnets": "[${PrivateSubnetsValue}]"'
+                        - { PrivateSubnetsValue: !Join [",", [!ImportValue VPC-SubnetB, !ImportValue VPC-SubnetC, !ImportValue VPC-SubnetD, !ImportValue VPC-SubnetE]] }
+                      - '}'
                   Capabilities: CAPABILITY_AUTO_EXPAND,CAPABILITY_IAM
                   RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/admin/CloudFormationService
           - !Ref AWS::NoValue
@@ -353,11 +367,27 @@ Resources:
                   ActionMode: CREATE_UPDATE
                   TemplatePath: appBuildResults::packaged-app-template.yml
                   TemplateConfiguration: appBuildResults::cicd/3-app/aiproxy/production.config.json
+                  # ParameterOverrides must be a JSON string, not an object
                   ParameterOverrides: !Join
                     - ''
-                    - - '{ "SubdomainName": "'
-                      - !If [ TargetsMainBranch, 'aiproxy', !Sub 'aiproxy-${GitHubBranch}' ]
-                      - '" }'
+                    - - '{'
+                      - !Sub
+                        - '"SubdomainName": "${SubdomainName}",'
+                        - { SubdomainName: !If [ TargetsMainBranch, 'aiproxy', !Sub 'aiproxy-${GitHubBranch}' ] }
+                      - !Sub '"ECRRepositoryArn": "${EcrRepository.Arn}",'
+                      - !Sub
+                        - '"VPC": "${VPCValue}",'
+                        - { VPCValue: !ImportValue VPC }
+                      - !Sub
+                        - '"SecurityGroup": "${SecurityGroupValue}",'
+                        - { SecurityGroupValue: !ImportValue VPC-ELBSecurityGroup }
+                      - !Sub
+                        - '"PublicSubnets": "[${PublicSubnetsValue}]",'
+                        - { PublicSubnetsValue: !Join [",", [!ImportValue VPC-PublicSubnetB, !ImportValue VPC-PublicSubnetC, !ImportValue VPC-PublicSubnetD, !ImportValue VPC-PublicSubnetE]] }
+                      - !Sub
+                        - '"PrivateSubnets": "[${PrivateSubnetsValue}]"'
+                        - { PrivateSubnetsValue: !Join [",", [!ImportValue VPC-SubnetB, !ImportValue VPC-SubnetC, !ImportValue VPC-SubnetD, !ImportValue VPC-SubnetE]] }
+                      - '}'
                   Capabilities: CAPABILITY_AUTO_EXPAND,CAPABILITY_IAM
                   RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/admin/CloudFormationService
           - !Ref AWS::NoValue
@@ -384,6 +414,42 @@ Resources:
                   - Name: smokeTestResults
           - !Ref AWS::NoValue
   
+
+  #-------------------------------------
+  # IAM Roles & Policies
+  #-------------------------------------
+
+  # Grant the AiProxy CodeBuild Role additional permissions for resources in
+  # this template. This allows us to avoid granting permission to * resources.
+  AiProxyRolePolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: !Sub "${AWS::StackName}-codebuild-policy"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - codebuild:*
+            Resource:
+              - !GetAtt AppBuildProject.Arn
+              - !GetAtt IntegrationTestBuildProject.Arn
+          - Effect: Allow
+            Action:
+              - codebuild:CreateReportGroup
+              - codebuild:CreateReport
+              - codebuild:UpdateReport
+              - codebuild:BatchPutTestCases
+              - codebuild:BatchPutCodeCoverage
+            Resource:
+              - !Sub arn:aws:codebuild:us-east-1:165336972514:report-group/${AWS::StackName}-${GitHubBranch}-pr-build
+      Roles:
+        - !ImportValue AiProxyCodeBuildRoleName
+
+  #-------------------------------------
+  # Metrics & Notifications
+  #-------------------------------------
+
   # Send pipeline events to an SNS topic.
   # Note:
   # Integration with Slack via AWS ChatBot is configured manually via AWS
