@@ -2,6 +2,13 @@
 
 Python-based API layer for LLM API's, implemented as an HTTP API in ECS Fargate.
 
+All of our server code is written using [Flask](https://flask.palletsprojects.com/en/2.3.x/).
+
+The Flask web service exists within `/src`. The `__init__.py` is the
+entry point for the app. The other files provide the routes.
+
+Other related Python code that implement features are within `/lib`.
+
 To Do:
 * [x] validate cicd infra (using placeholder app template)
 * [x] validate pr validation
@@ -27,39 +34,128 @@ from happening. Most logging happens at `INFO`, which is the default setting.
 
 ## Local Development
 
-All of our server code is written using [Flask](https://flask.palletsprojects.com/en/2.3.x/).
+* Install docker 
+  * If you are on WSL, installing docker on the linux system wouldn't work as linux itself is running in a container. Install docker desktop instead following these instructions: https://learn.microsoft.com/en-us/windows/wsl/tutorials/wsl-containers
 
-The Flask web service exists within `/src`. The `__init__.py` is the
-entry point for the app. The other files provide the routes.
-
-Other related Python code that implement features are within `/lib`.
-
-To build the app, use `docker compose build`.
+* To build the app, use `docker compose build`.
 You will need to rebuild when you change the source.
 
-To run the app locally, use `docker compose up` from the repo root.
-
-This will run a webserver accessible at <http://localhost:5000>.
+* To run the app locally, use `docker compose up` from the repo root.
 
 **Note**: You need to provide the API keys in the `config.txt` file
 before the service runs. See the above "Configuration" section.
 
-### Rubric Tester
-To run the rubric tester locally, create a python virtual environment at the top of the directory with:
-`python -m venv .venv`
+This will run a webserver accessible at <http://localhost>.
+
+* To validate if the local environment is running successfully, run `bin/assessment-test.rb` It should print the response for a test assessment.
+
+## Rubric Tester
+
+### background
+
+Rubric Tester is a tool used to measure the accuracy of our ai evaluation system against labels provided by human annotators.
+
+Config for rubric tester is stored in S3:
+```
+s3://cdo-ai/teaching_assistant/datasets/
+s3://cdo-ai/teaching_assistant/experiments/
+s3://cdo-ai/teaching_assistant/releases/
+```
+
+Within each of these directories, there are named config directories each containing one subdirectory for each lesson:
+```
+datasets/contractor-grades-batch-1-fall-2023/csd3-2023-L11/
+datasets/contractor-grades-batch-1-fall-2023/csd3-2023-L14/
+datasets/contractor-grades-batch-1-fall-2023/...
+...
+experiments/ai-rubrics-pilot-baseline/csd3-2023-L11/
+...
+releases/2024-02-01-ai-rubrics-pilot-baseline/csd3-2023-L11/
+...
+```
+
+The mental model for each of these directories is:
+* `datasets/`: student code samples (`*.js`) with labels provided by human graders (`actual_labels.csv`)
+* `experiments/`: configuration for ai evaluation in development 
+  * `params.json`: model parameters including model name, num_responses, temperature
+  * `system_prompt.txt`
+  * `standard_rubric.csv`
+  * `examples/` (optional)
+* `releases/`: configuration for ai evaluation in production. similar to `experiments/`, but each directory will also contain `confidence.json` which indicates low/medium/high confidence for each learning goal in each lesson.
+
+When you run rubric tester, the datasets and experiments you use will be copied locally, after which you can easily take a closer look at the contents of these files by running `find datasets experiments` from the repo root.
+
+### setup
+
+To set up rubric tester to run locally:
+
+install pyenv: https://github.com/pyenv/pyenv?tab=readme-ov-file#installation
+* Mac: `brew install pyenv`
+* Ubuntu: `curl https://pyenv.run | bash`
+
+install python 3.11:
+* `pyenv install 3.11.7`
+
+set python 3.11 for the aiproxy repo:
+* `cd aiproxy`
+* `pyenv local 3.11.7`
+
+create a python virtual environment at the top of the directory:
+* `python -m venv .venv`
+
+ensure aws access for accessing aws bedrock models:
+* from the code-dot-org repo root, run:
+  * `bin/aws_access`
+* from this repo's root, run: 
+  * `gem install aws-google`
+  
+### run
 
 Activate the virtual environment:
-`source .venv/bin/activate`
+* `source .venv/bin/activate`
 
 Install requirements to the virtual environment with pip:
-`pip install -r requirements.txt`
+* `pip install -r requirements.txt`
 
-Export the following environment variables
-`export OPENAI_API_KEY=<your API key>`
-`export PYTHONPATH=<path to aiproxy root>`
+Export the following environment variables (or add them once to your shell profile)
+* `export OPENAI_API_KEY=<your API key>`
+* `export PYTHONPATH=<path to aiproxy root>`
 
 See rubric tester options with:
-`python lib/assessment/rubric_tester.py --help`
+* `python lib/assessment/rubric_tester.py --help`
+
+### example usage
+
+When running rubric tester locally, you will pick a dataset to measure accuracy against, an experiment to define the ai config, and other optional config parameters. with no params, an experiment using gpt-3.5-turbo is used to evaluate all 6 ai-enabled lessons in CSD Unit 3, measuring accuracy against the default dataset which contains about 20 labeled student projects per lesson. 
+
+GPT 3.5 Turbo is the default because a complete test run with that model costs only $0.20 whereas a complete test run with GPT 4 (classic) costs about $12.00.
+
+A recommended first run is to use default experiment and dataset, limited to 1 lesson:
+```
+(.venv) Dave-MBP:~/src/aiproxy (rt-recover-from-bad-llm-responses)$ python ./lib/assessment/rubric_tester.py --lesson-names csd3-2023-L11 
+2024-02-13 20:15:30,127: INFO: Evaluating lesson csd3-2023-L11 for dataset contractor-grades-batch-1-fall-2023 and experiment ai-rubrics-pilot-gpt-3.5-turbo...
+```
+
+When you do this, you'll likely notice a mix of successes and errors on the command line:
+
+```
+2024-02-13 20:15:32,384: ERROR: student_12 Choice 0:  Invalid response: invalid label value: 'The program has no sequencing errors.'
+2024-02-13 20:17:24,313: INFO: student_15 request succeeded in 2 seconds. 1305 tokens used.
+```
+
+The report that gets generated will contain a count of how many errors there were:
+
+![Screenshot 2024-02-13 at 8 20 47 PM](https://github.com/code-dot-org/aiproxy/assets/8001765/4613414c-3bff-4209-ac0c-fdda5ec0b370)
+
+In order to rerun only the failed student projects, you can pass the `-c` (`--use-cached`) option:
+
+```commandline
+(.venv) Dave-MBP:~/src/aiproxy (rt-recover-from-bad-llm-responses)$ python ./lib/assessment/rubric_tester.py --lesson-names csd3-2023-L11 -c
+```
+
+![Screenshot 2024-02-13 at 8 24 31 PM](https://github.com/code-dot-org/aiproxy/assets/8001765/ff560302-94b9-4966-a5d6-7d9a9fa54892)
+
+After enough reruns, you'll have a complete accuracy measurement for the lesson. NOTE: the very high number of errors in this example is because we are using a weak model (GPT 3.5 Turbo) by default. Stronger models often complete an entire lesson without errors, but in case of errors the same principle applies to getting complete test results.
 
 ## Logging
 

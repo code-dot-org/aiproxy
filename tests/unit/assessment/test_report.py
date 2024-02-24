@@ -65,8 +65,8 @@ class TestGenerateHtmlOutput:
             output_file,
             prompt,
             rubric,
-            accuracy="42",
-            command_line="./assess.py",
+            accuracy=42.0,
+            input_params={'lesson_name': 'my-lesson'},
         )
 
         mock_file.assert_called_with(output_file, 'w+')
@@ -83,8 +83,8 @@ class TestGenerateHtmlOutput:
             output_file,
             prompt,
             rubric,
-            accuracy="42",
-            command_line="./assess.py",
+            accuracy=42.0,
+            input_params={'lesson_name': 'my-lesson'},
         )
 
         output = self._get_output(mock_file)
@@ -105,8 +105,8 @@ class TestGenerateHtmlOutput:
             output_file,
             prompt,
             rubric,
-            accuracy="42",
-            command_line="./assess.py",
+            accuracy=42.0,
+            input_params={'lesson_name': 'my-lesson'},
         )
 
         output = self._get_output(mock_file)
@@ -128,12 +128,12 @@ class TestGenerateHtmlOutput:
             output_file,
             prompt,
             rubric,
-            command_line="./assess.py",
+            input_params={'lesson_name': 'my-lesson'},
         )
 
         output = self._get_output(mock_file)
 
-        assert "Accuracy: N/A" in output
+        assert "Accuracy (Exact Match): N/A" in output
 
     def test_should_report_accuracy_table(self, mocker, report, prompt, rubric, randomstring):
         # Generate a random output filename
@@ -164,7 +164,7 @@ class TestGenerateHtmlOutput:
             prompt,
             rubric,
             accuracy_by_criteria=accuracy_by_criteria,
-            command_line="./assess.py",
+            input_params={'lesson_name': 'my-lesson'},
         )
 
         output = self._get_output(mock_file)
@@ -196,7 +196,7 @@ class TestGenerateHtmlOutput:
             output_file,
             prompt,
             rubric,
-            command_line="./assess.py",
+            input_params={'lesson_name': 'my-lesson'},
             overall_confusion=overall_confusion,
             confusion_by_criteria=confusion_by_criteria,
             label_names=labels,
@@ -227,7 +227,7 @@ class TestGenerateHtmlOutput:
                 {
                     'Key Concept': key_concept,
                     'Observations': 'What I see',
-                    'Grade': random_label_generator(),
+                    'Label': random_label_generator(),
                     'Reason': 'Why I think so'
                 },
                 key_concepts
@@ -243,7 +243,7 @@ class TestGenerateHtmlOutput:
             rubric,
             predicted_labels=predicted_labels,
             actual_labels=actual_labels,
-            command_line="./assess.py",
+            input_params={'lesson_name': 'my-lesson'},
         )
 
         output = self._get_output(mock_file)
@@ -253,7 +253,7 @@ class TestGenerateHtmlOutput:
                 key_concept = label['Key Concept']
 
                 assert re.search(fr'<td>{key_concept}</td>.*>{actual_labels[student_id][key_concept]}<', output)
-                assert re.search(fr'<td>{key_concept}</td>.*>{label["Grade"]}<', output)
+                assert re.search(fr'<td>{key_concept}</td>.*>{label["Label"]}<', output)
 
     def test_should_report_generated_label_report_with_pass_fail(self, mocker, report, prompt, rubric, random_label_generator, randomstring):
         # Generate a random output filename
@@ -274,7 +274,7 @@ class TestGenerateHtmlOutput:
                 {
                     'Key Concept': key_concept,
                     'Observations': 'What I see',
-                    'Grade': random_label_generator(),
+                    'Label': random_label_generator(),
                     'Reason': 'Why I think so'
                 },
                 key_concepts
@@ -292,7 +292,7 @@ class TestGenerateHtmlOutput:
             predicted_labels=predicted_labels,
             actual_labels=actual_labels,
             passing_labels=passing_labels,
-            command_line="./assess.py",
+            input_params={'lesson_name': 'my-lesson'},
         )
 
         output = self._get_output(mock_file)
@@ -302,7 +302,7 @@ class TestGenerateHtmlOutput:
                 key_concept = label['Key Concept']
 
                 assert re.search(fr'<td>{key_concept}</td>.*>{actual_labels[student_id][key_concept]}<', output)
-                assert re.search(fr'<td>{key_concept}</td>.*>{label["Grade"]}<', output)
+                assert re.search(fr'<td>{key_concept}</td>.*>{label["Label"]}<', output)
 
     def test_should_report_errors(self, mocker, report, prompt, rubric, random_label_generator, randomstring):
         # Generate a random output filename
@@ -321,7 +321,7 @@ class TestGenerateHtmlOutput:
             prompt,
             rubric,
             errors=errors,
-            command_line="./assess.py",
+            input_params={'lesson_name': 'my-lesson'},
         )
 
         output = self._get_output(mock_file)

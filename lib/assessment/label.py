@@ -14,7 +14,7 @@ from io import StringIO
 class InvalidResponseError(Exception):
     pass
 
-class Grade:
+class Label:
     def __init__(self):
         pass
 
@@ -34,7 +34,7 @@ class Grade:
                 'data': list(
                     map(
                         lambda key_concept: {
-                            "Grade": "No Evidence",
+                            "Label": "No Evidence",
                             "Key Concept": key_concept,
                             "Observations": "The program is empty.",
                             "Reason": "The program is empty.",
@@ -74,7 +74,7 @@ class Grade:
 
         info = response.json()
 
-        tsv_data = self.tsv_data_from_choices(info, rubric, student_id)
+        response_data = self.response_data_from_choices(info, rubric, student_id)
 
         return {
             'metadata': {
@@ -82,10 +82,10 @@ class Grade:
                 'usage': info['usage'],
                 'request': data,
             },
-            'data': tsv_data,
+            'data': response_data,
         }
 
-    def grade_student_work(self, prompt, rubric, student_code, student_id, examples=[], use_cached=False, write_cached=False, num_responses=0, temperature=0.0, llm_model="", remove_comments=False, cache_prefix=""):
+    def label_student_work(self, prompt, rubric, student_code, student_id, examples=[], use_cached=False, write_cached=False, num_responses=0, temperature=0.0, llm_model="", remove_comments=False, cache_prefix=""):
         if use_cached and os.path.exists(os.path.join(cache_prefix, f"cached_responses/{student_id}.json")):
             with open(os.path.join(cache_prefix, f"cached_responses/{student_id}.json"), 'r') as f:
                 return json.load(f)
@@ -158,25 +158,25 @@ class Grade:
 
         return student_code
 
-    def tsv_data_from_choices(self, info, rubric, student_id):
+    def response_data_from_choices(self, info, rubric, student_id):
         max_index = len(info['choices']) - 1
-        tsv_data_choices = []
+        response_data_choices = []
         for index, choice in enumerate(info['choices']):
             # If all choices result in an InvalidResponseError, reraise the last one.
-            reraise = len(tsv_data_choices) == 0 and index == max_index
+            reraise = len(response_data_choices) == 0 and index == max_index
 
             if choice['message']['content']:
-                tsv_data = self.get_tsv_data_if_valid(choice['message']['content'], rubric, student_id, choice_index=index, reraise=reraise)
-                if tsv_data:
-                    tsv_data_choices.append(tsv_data)
+                response_data = self.get_response_data_if_valid(choice['message']['content'], rubric, student_id, choice_index=index, reraise=reraise)
+                if response_data:
+                    response_data_choices.append(response_data)
 
-        if len(tsv_data_choices) == 0:
+        if len(response_data_choices) == 0:
             raise InvalidResponseError("No valid responses. An InvalidResponseError should have been raised earlier.")
-        elif len(tsv_data_choices) == 1:
-            tsv_data = tsv_data_choices[0]
+        elif len(response_data_choices) == 1:
+            response_data = response_data_choices[0]
         else:
-            tsv_data = self.get_consensus_response(tsv_data_choices, student_id)
-        return tsv_data
+            response_data = self.get_consensus_response(response_data_choices, student_id)
+        return response_data
 
     def compute_messages(self, prompt, rubric, student_code, examples=[]):
         messages = [
@@ -188,25 +188,36 @@ class Grade:
         messages.append({'role': 'user', 'content': student_code})
         return messages
 
-    def get_tsv_data_if_valid(self, response_text, rubric, student_id, choice_index=None, reraise=False):
+    def get_response_data_if_valid(self, response_text, rubric, student_id, choice_index=None, reraise=False):
         choice_text = f"Choice {choice_index}: " if choice_index is not None else ''
         if not response_text:
             logging.error(f"{student_id} {choice_text} Invalid response: empty response")
             return None
         text = response_text.strip()
 
+        response_data = self.parse_non_json_response(text)
+
+        try:
+            self._sanitize_server_response(response_data)
+            self._validate_server_response(response_data, rubric)
+            return [row for row in response_data]
+        except InvalidResponseError as e:
+            logging.error(f"{student_id} {choice_text} Invalid response: {str(e)}\n{response_text}")
+            if reraise:
+                raise e
+            return None
+
+    # parse response data in tsv, csv or markdown format.
+    def parse_non_json_response(self, text):
         # Remove anything up to the first column name
         if "\nKey Concept" in text:
             index = text.index("\nKey Concept")
             text = text[index:].strip()
-
         # Replace escaped tabs
         if '\\t' in text:
             text = text.replace("\\t", "\t")
-
         # Replace double tabs... ugh
         text = text.replace("\t\t", "\t")
-
         # If there is a tab, it is probably TSV
         if '\t' not in text:
             if ' | ' in text:
@@ -217,28 +228,19 @@ class Grade:
                 text = "\n".join(lines)
                 logging.info("response was markdown and not tsv, delimiting by '|'")
 
-                tsv_data = list(csv.DictReader(StringIO(text), delimiter='|'))
+                response_data = list(csv.DictReader(StringIO(text), delimiter='|'))
             else:
                 # Let's assume it is CSV
                 logging.info("response had no tabs so is not tsv, delimiting by ','")
-                tsv_data = list(csv.DictReader(StringIO(text), delimiter=','))
+                response_data = list(csv.DictReader(StringIO(text), delimiter=','))
         else:
             # Let's assume it is TSV
-            tsv_data = list(csv.DictReader(StringIO(text), delimiter='\t'))
+            response_data = list(csv.DictReader(StringIO(text), delimiter='\t'))
+        return response_data
 
-        try:
-            self._sanitize_server_response(tsv_data)
-            self._validate_server_response(tsv_data, rubric)
-            return [row for row in tsv_data]
-        except InvalidResponseError as e:
-            logging.error(f"{student_id} {choice_text} Invalid response: {str(e)}\n{response_text}")
-            if reraise:
-                raise e
-            return None
-
-    def _sanitize_server_response(self, tsv_data):
+    def _sanitize_server_response(self, response_data):
         # Strip whitespace and quotes from fields
-        for row in tsv_data:
+        for row in response_data:
             for key in list(row.keys()):
                 if isinstance(row[key], str):
                     row[key] = row[key].strip().strip('"')
@@ -249,23 +251,28 @@ class Grade:
                         del row[key]
 
         # Remove rows that don't start with reasonable things
-        for row in tsv_data:
+        for row in response_data:
             if "Key Concept" in row:
                 if not row["Key Concept"][0:1].isalnum():
-                    tsv_data.remove(row)
+                    response_data.remove(row)
 
-    def _validate_server_response(self, tsv_data, rubric):
-        expected_columns = ["Key Concept", "Observations", "Grade", "Reason"]
+        for row in response_data:
+            if "Grade" in row.keys():
+                row['Label'] = row['Grade']
+                del row['Grade']
+
+    def _validate_server_response(self, response_data, rubric):
+        expected_columns = ["Key Concept", "Observations", "Label", "Reason"]
 
         rubric_key_concepts = list(set(row['Key Concept'] for row in csv.DictReader(rubric.splitlines())))
 
-        if not all((set(row.keys()) & set(expected_columns)) == set(expected_columns) for row in tsv_data):
-            for row in tsv_data:
+        if not all((set(row.keys()) & set(expected_columns)) == set(expected_columns) for row in response_data):
+            for row in response_data:
                 unexpected_columns = set(row.keys()) - set(expected_columns)
                 missing_columns = set(expected_columns) - set(row.keys())
-                raise InvalidResponseError('incorrect column names. unexpected: {unexpected_columns} missing: {missing_columns}')
+                raise InvalidResponseError(f'incorrect column names. unexpected: {unexpected_columns} missing: {missing_columns}')
 
-        key_concepts_from_response = list(set(row["Key Concept"] for row in tsv_data))
+        key_concepts_from_response = list(set(row["Key Concept"] for row in response_data))
         if sorted(rubric_key_concepts) != sorted(key_concepts_from_response):
             unexpected_concepts = set(key_concepts_from_response) - set(rubric_key_concepts)
             unexpected_concepts = None if len(unexpected_concepts) == 0 else unexpected_concepts
@@ -273,9 +280,9 @@ class Grade:
             missing_concepts = None if len(missing_concepts) == 0 else missing_concepts
             raise InvalidResponseError(f'unexpected or missing key concept. unexpected: {unexpected_concepts} missing: {missing_concepts}')
 
-        for row in tsv_data:
-            if row["Grade"] not in VALID_LABELS:
-                raise InvalidResponseError(f"invalid label value: '{row['Grade']}'")
+        for row in response_data:
+            if row['Label'] not in VALID_LABELS:
+                raise InvalidResponseError(f"invalid label value: '{row['Label']}'")
 
     def get_consensus_response(self, choices, student_id):
         from collections import Counter
@@ -285,7 +292,7 @@ class Grade:
             for row in choice:
                 if row['Key Concept'] not in key_concept_to_labels:
                     key_concept_to_labels[row['Key Concept']] = []
-                key_concept_to_labels[row['Key Concept']].append(row['Grade'])
+                key_concept_to_labels[row['Key Concept']].append(row['Label'])
 
         key_concept_to_majority_label = {}
         for key_concept, labels in key_concept_to_labels.items():
@@ -299,9 +306,15 @@ class Grade:
         for choice in choices:
             for row in choice:
                 key_concept = row['Key Concept']
-                if key_concept_to_majority_label[key_concept] == row['Grade']:
+                if key_concept_to_majority_label[key_concept] == row['Label']:
                     if key_concept not in key_concept_to_observations:
                         key_concept_to_observations[key_concept] = row['Observations']
                     key_concept_to_reason[key_concept] = row['Reason']
 
-        return [{'Key Concept': key_concept, 'Observations': key_concept_to_observations[key_concept], 'Grade': label, 'Reason': f"<b>Votes: [{', '.join(key_concept_to_labels[key_concept])}]</b><br>{key_concept_to_reason[key_concept]}"} for key_concept, label in key_concept_to_majority_label.items()]
+        return [{'Key Concept': key_concept, 'Observations': key_concept_to_observations[key_concept], 'Label': label, 'Reason': f"{self.get_consensus_votes(key_concept_to_labels[key_concept])}{key_concept_to_reason[key_concept]}"} for key_concept, label in key_concept_to_majority_label.items()]
+
+    def get_consensus_votes(self, labels):
+        # only display votes if there is a disagreement
+        if len(set(labels)) == 1:
+            return ""
+        return f"<b>Votes: [{', '.join(labels)}]</b><br>"

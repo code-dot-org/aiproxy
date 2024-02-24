@@ -9,14 +9,14 @@ from io import StringIO
 import requests
 import pytest
 
-from lib.assessment.grade import Grade, InvalidResponseError
+from lib.assessment.label import Label, InvalidResponseError
 
 
 @pytest.fixture
 def label():
-    """ Creates a Grade() instance for any test that has a 'label' parameter.
+    """ Creates a Label() instance for any test that has a 'label' parameter.
     """
-    yield Grade()
+    yield Label()
 
 
 class TestRemoveJsComments:
@@ -45,17 +45,16 @@ class TestRemoveJsComments:
     }
     """
 
-
 class TestSanitizeCode:
     def test_should_call_remove_js_comments_if_wanted(self, mocker, label, code):
-        remove_js_comments_mock = mocker.patch.object(Grade, 'remove_js_comments')
+        remove_js_comments_mock = mocker.patch.object(Label, 'remove_js_comments')
 
         label.sanitize_code(code, remove_comments=True)
 
         remove_js_comments_mock.assert_called_with(code)
 
     def test_should_not_call_remove_js_comments_if_not_wanted(self, mocker, label, code):
-        remove_js_comments_mock = mocker.patch.object(Grade, 'remove_js_comments')
+        remove_js_comments_mock = mocker.patch.object(Label, 'remove_js_comments')
 
         label.sanitize_code(code, remove_comments=False)
 
@@ -78,7 +77,7 @@ class TestStaticallyLabelStudentWork:
         assert len(result['data']) == len(parsed_rubric)
 
         # It should return 'No Evidence' in every row
-        assert all(x['Grade'] == 'No Evidence' for x in result['data'])
+        assert all(x['Label'] == 'No Evidence' for x in result['data'])
 
         # It should match the concepts given in the rubric
         assert set(x['Key Concept'] for x in parsed_rubric) == set(x['Key Concept'] for x in result['data'])
@@ -128,13 +127,13 @@ class TestComputeMessages:
 
 class TestGetTsvDataIfValid:
     def test_should_return_none_if_the_response_is_blank(self, label, rubric, student_id):
-        result = label.get_tsv_data_if_valid("", rubric, student_id)
+        result = label.get_response_data_if_valid("", rubric, student_id)
 
         assert result is None
 
     def test_should_log_the_choice_index_if_the_response_is_blank(self, caplog, label, rubric, student_id):
         index = random.randint(0, 5)
-        label.get_tsv_data_if_valid("", rubric, student_id, choice_index=index)
+        label.get_response_data_if_valid("", rubric, student_id, choice_index=index)
 
         assert any(filter(lambda x: (f'Choice {index}' in x.message) and x.levelno == logging.ERROR, caplog.records))
 
@@ -148,7 +147,7 @@ class TestGetTsvDataIfValid:
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
         # It should parse them out to get the same number of rows as the rubric
-        result = label.get_tsv_data_if_valid(response, rubric, student_id)
+        result = label.get_response_data_if_valid(response, rubric, student_id)
         assert result is not None
         assert len(result) == len(parsed_rubric)
 
@@ -162,7 +161,7 @@ class TestGetTsvDataIfValid:
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
         # It should parse them out to get the same number of rows as the rubric
-        result = label.get_tsv_data_if_valid(response, rubric, student_id)
+        result = label.get_response_data_if_valid(response, rubric, student_id)
         assert result is not None
         assert len(result) == len(parsed_rubric)
 
@@ -174,7 +173,22 @@ class TestGetTsvDataIfValid:
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
         # It should parse them out to get the same number of rows as the rubric
-        result = label.get_tsv_data_if_valid(response, rubric, student_id)
+        result = label.get_response_data_if_valid(response, rubric, student_id)
+        assert result is not None
+        assert len(result) == len(parsed_rubric)
+
+    def test_should_strip_server_response(self, label, rubric, student_id, openai_gpt_response):
+        # We will generate fake openai gpt responses where it gave us the labeled
+        # rubrics in CSV or markdown (even though we told it NOT TO grr)
+        ai_response = openai_gpt_response(rubric, num_responses=1, output_type='tsv')
+        response = ai_response['choices'][0]['message']['content']
+
+        # We can invalidate the response
+        response = response.replace("Observations", " Observations ")
+
+        parsed_rubric = list(csv.DictReader(rubric.splitlines()))
+
+        result = label.get_response_data_if_valid(response, rubric, student_id)
         assert result is not None
         assert len(result) == len(parsed_rubric)
 
@@ -193,7 +207,25 @@ class TestGetTsvDataIfValid:
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
         # Should be fine
-        result = label.get_tsv_data_if_valid(response, rubric, student_id)
+        result = label.get_response_data_if_valid(response, rubric, student_id)
+        assert result is not None
+        assert len(result) == len(parsed_rubric)
+
+    def test_should_work_when_there_are_multiple_weird_entries(self, mocker, label, rubric, student_id, openai_gpt_response):
+        # We will occasionally get entries that place lines within the returned data
+        # This is true with markdown responses that place a set of '-----' lines
+        ai_response = openai_gpt_response(rubric, num_responses=1, output_type='tsv')
+        response = ai_response['choices'][0]['message']['content']
+
+        # Slide a nonsense line within the response (2nd to last entry)
+        lines = response.splitlines()
+        delimeter = "\n--------\t---------\t--------\t---------\n"
+        response = delimeter.join(lines)
+
+        parsed_rubric = list(csv.DictReader(rubric.splitlines()))
+
+        # Should be fine
+        result = label.get_response_data_if_valid(response, rubric, student_id)
         assert result is not None
         assert len(result) == len(parsed_rubric)
 
@@ -206,7 +238,7 @@ class TestGetTsvDataIfValid:
         # We can invalidate the response
         response = response.replace("Key Concept", "Bogus Weasel")
 
-        result = label.get_tsv_data_if_valid(response, rubric, student_id)
+        result = label.get_response_data_if_valid(response, rubric, student_id)
         assert result is None
 
     def test_should_return_none_when_the_columns_are_invalid(self, mocker, label, rubric, student_id, openai_gpt_response):
@@ -218,7 +250,7 @@ class TestGetTsvDataIfValid:
         # We can invalidate the response
         response = response.replace("Observations", "Things I notice")
 
-        result = label.get_tsv_data_if_valid(response, rubric, student_id)
+        result = label.get_response_data_if_valid(response, rubric, student_id)
         assert result is None
 
     def test_should_return_none_when_a_key_concept_is_missing(self, mocker, label, rubric, student_id, openai_gpt_response):
@@ -234,7 +266,7 @@ class TestGetTsvDataIfValid:
 
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
-        result = label.get_tsv_data_if_valid(response, rubric, student_id)
+        result = label.get_response_data_if_valid(response, rubric, student_id)
         assert result is None
 
     def test_should_return_none_when_a_different_key_concept_is_found(self, mocker, label, rubric, student_id, openai_gpt_response):
@@ -253,7 +285,7 @@ class TestGetTsvDataIfValid:
 
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
-        result = label.get_tsv_data_if_valid(response, rubric, student_id)
+        result = label.get_response_data_if_valid(response, rubric, student_id)
         assert result is None
 
     def test_should_return_none_when_there_is_an_invalid_label(self, mocker, label, rubric, student_id, openai_gpt_response):
@@ -273,7 +305,7 @@ class TestGetTsvDataIfValid:
 
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
-        result = label.get_tsv_data_if_valid(response, rubric, student_id)
+        result = label.get_response_data_if_valid(response, rubric, student_id)
         assert result is None
 
 
@@ -317,7 +349,7 @@ class TestAiLabelStudentWork:
         )
 
         # Mock the validator to invalidate everything
-        mocker.patch.object(Grade, 'get_tsv_data_if_valid').return_value = None
+        mocker.patch.object(Label, 'get_response_data_if_valid').return_value = None
 
         with pytest.raises(InvalidResponseError):
             label.ai_label_student_work(
@@ -380,7 +412,7 @@ class TestAiLabelStudentWork:
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
         # Mock out compute_messages
-        compute_messages = mocker.patch.object(Grade, 'compute_messages')
+        compute_messages = mocker.patch.object(Label, 'compute_messages')
         messages = ['messages']
         compute_messages.return_value = messages
 
@@ -395,10 +427,10 @@ class TestAiLabelStudentWork:
         assert requests_mock.last_request.json()['messages'] == messages
 
     def test_should_raise_timeout(self, mocker, label, prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model):
-        mocker.patch('lib.assessment.grade.requests.post', side_effect = requests.exceptions.ReadTimeout())
+        mocker.patch('lib.assessment.label.requests.post', side_effect = requests.exceptions.ReadTimeout())
 
         # Mock out compute_messages
-        compute_messages = mocker.patch.object(Grade, 'compute_messages')
+        compute_messages = mocker.patch.object(Label, 'compute_messages')
         messages = ['messages']
         compute_messages.return_value = messages
 
@@ -440,7 +472,7 @@ class TestlabelStudentWork:
                     {
                         'Key Concept': key_concept,
                         'Observations': randomstring(10),
-                        'Grade': random.choice([
+                        'Label': random.choice([
                             'Extensive Evidence',
                             'Convincing Evidence',
                             'Limited Evidence',
@@ -461,13 +493,13 @@ class TestlabelStudentWork:
 
     def test_should_log_timeout(self, mocker, caplog, label, prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model):
         # Mock out static assessment
-        mocker.patch.object(Grade, 'statically_label_student_work').return_value = None
+        mocker.patch.object(Label, 'statically_label_student_work').return_value = None
 
         # Mock out ai assessment to raise a timeout
-        mocker.patch.object(Grade, 'ai_label_student_work').side_effect = requests.exceptions.ReadTimeout()
+        mocker.patch.object(Label, 'ai_label_student_work').side_effect = requests.exceptions.ReadTimeout()
 
         with pytest.raises(Exception):
-            label.grade_student_work(
+            label.label_student_work(
                 prompt, rubric, code, student_id,
                 examples=examples(rubric),
                 num_responses=num_responses,
@@ -486,9 +518,9 @@ class TestlabelStudentWork:
         mock_file = mocker.patch('builtins.open', mock_open)
 
         # Mock the file exists
-        exists_mock = mocker.patch('lib.assessment.grade.os.path.exists', return_value=True)
+        exists_mock = mocker.patch('lib.assessment.label.os.path.exists', return_value=True)
 
-        result = label.grade_student_work(
+        result = label.label_student_work(
             prompt, rubric, code, student_id,
             examples=examples(rubric),
             num_responses=num_responses,
@@ -511,20 +543,20 @@ class TestlabelStudentWork:
         mock_file = mocker.patch('builtins.open', mock_open)
 
         # Mock the file so it does not exist
-        exists_mock = mocker.patch('lib.assessment.grade.os.path.exists', return_value=False)
+        exists_mock = mocker.patch('lib.assessment.label.os.path.exists', return_value=False)
 
         # Get mocks
         statically_label_student_work_mock = mocker.patch.object(
-            Grade, 'statically_label_student_work',
+            Label, 'statically_label_student_work',
             return_value=None
         )
 
         ai_label_student_work_mock = mocker.patch.object(
-            Grade, 'ai_label_student_work',
+            Label, 'ai_label_student_work',
             return_value=assessment_return_value(rubric)
         )
 
-        result = label.grade_student_work(
+        result = label.label_student_work(
             prompt, rubric, code, student_id,
             examples=examples(rubric),
             num_responses=num_responses,
@@ -542,17 +574,17 @@ class TestlabelStudentWork:
 
         # Get mocks
         statically_label_student_work_mock = mocker.patch.object(
-            Grade, 'statically_label_student_work',
+            Label, 'statically_label_student_work',
             return_value=None
         ).side_effect = lambda *a, **kw: call_order.append('static')
 
         ai_label_student_work_mock = mocker.patch.object(
-            Grade, 'ai_label_student_work',
+            Label, 'ai_label_student_work',
             return_value=None
         ).side_effect = lambda *a, **kw: call_order.append('ai')
 
         try:
-            result = label.grade_student_work(
+            result = label.label_student_work(
                 prompt, rubric, code, student_id,
                 examples=examples(rubric),
                 num_responses=num_responses,
@@ -570,16 +602,16 @@ class TestlabelStudentWork:
     def test_should_call_ai_assessment_when_static_assessment_returns_none(self, mocker, label, assessment_return_value, prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model):
         # Get mocks
         statically_label_student_work_mock = mocker.patch.object(
-            Grade, 'statically_label_student_work',
+            Label, 'statically_label_student_work',
             return_value=None
         )
 
         ai_label_student_work_mock = mocker.patch.object(
-            Grade, 'ai_label_student_work',
+            Label, 'ai_label_student_work',
             return_value=assessment_return_value(rubric)
         )
 
-        result = label.grade_student_work(
+        result = label.label_student_work(
             prompt, rubric, code, student_id,
             examples=examples(rubric),
             num_responses=num_responses,
@@ -594,18 +626,19 @@ class TestlabelStudentWork:
 
 class TestGetConsensusResponse:
     @pytest.fixture
-    def tsv_data_choices(self, openai_gpt_response):
-        def gen_tsv_data_choices(rubric):
+    def response_data_choices(self, label, openai_gpt_response):
+        def gen_response_data_choices(rubric, student_id, num_responses=3, disagreements=1):
             # Disagreements always happen in the first choice... so they always
             # mean an 'outvote'
-            ai_response = openai_gpt_response(rubric, num_responses=3, disagreements=1, output_type='tsv')
-            responses = [x['message']['content'] for x in ai_response['choices']]
-            return [list(csv.DictReader(StringIO(x), delimiter='\t')) for x in responses]
+            ai_response = openai_gpt_response(rubric, num_responses=num_responses, disagreements=disagreements, output_type='tsv')
+            responses = [label.get_response_data_if_valid(x['message']['content'], rubric, student_id) for x in ai_response['choices']]
+            # return [list(csv.DictReader(StringIO(x), delimiter='\t')) for x in responses]
+            return responses
 
-        yield gen_tsv_data_choices
+        yield gen_response_data_choices
 
-    def test_should_coalesce_votes(self, label, tsv_data_choices, rubric, student_id):
-        choices = tsv_data_choices(rubric)
+    def test_should_coalesce_votes(self, label, response_data_choices, rubric, student_id):
+        choices = response_data_choices(rubric, student_id)
         result = label.get_consensus_response(choices, student_id)
 
         # It should have the same number of rows as the rubric has key concepts
@@ -621,20 +654,30 @@ class TestGetConsensusResponse:
             for entry in choice:
                 key_concept = entry['Key Concept']
                 labels[key_concept] = labels.get(key_concept, [])
-                labels[key_concept].append(entry['Grade'])
+                labels[key_concept].append(entry['Label'])
 
         # Now we have a dictionary where the key concept is mapped to the list
         # of labels. So, let's ensure that the resulting label is found at least twice
         # in the choice list.
-        assert all(labels[entry['Key Concept']].count(entry['Grade']) >= 2 for entry in result)
+        assert all(labels[entry['Key Concept']].count(entry['Label']) >= 2 for entry in result)
 
-    def test_should_log_outvoting(self, caplog, label, tsv_data_choices, rubric, student_id):
+    def test_should_log_outvoting(self, caplog, label, response_data_choices, rubric, student_id):
         caplog.set_level(logging.INFO)
 
-        choices = tsv_data_choices(rubric)
+        choices = response_data_choices(rubric, student_id)
         result = label.get_consensus_response(choices, student_id)
 
         # It should have the same number of rows as the rubric has key concepts
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
         assert any(filter(lambda x: (f'outvoted {student_id}' in x.message) and x.levelno == logging.INFO, caplog.records))
+
+    def test_reason_should_include_disagreeing_votes(self, label, response_data_choices, short_rubric, student_id):
+        choices = response_data_choices(short_rubric, student_id, num_responses=3, disagreements=1)
+        result = label.get_consensus_response(choices, student_id)
+        assert 'Votes' in result[0]['Reason']
+
+    def test_reason_should_exclude_agreeing_votes(self, label, response_data_choices, short_rubric, student_id):
+        choices = response_data_choices(short_rubric, student_id, num_responses=3, disagreements=0)
+        result = label.get_consensus_response(choices, student_id)
+        assert 'Votes' not in result[0]['Reason']

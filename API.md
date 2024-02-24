@@ -13,7 +13,7 @@
 
 `POST /assessment`: Issue a rubric assessment to the AI agent and wait for a response.
 
-* `model`: The model to use. Default: `gpt-4`
+* `model`: The model to use. Default: see DEFAULT_MODEL
 * `api-key`: The API key associated with the model. Default: the configured key
 * `code`: The code to assess. Required.
 * `prompt`: The system prompt. Required.
@@ -47,12 +47,12 @@
     {
       "Key Concept": "Program Development 2",
       "Observations": "The program uses whitespace  good nami [... snipped for brevity ...]. The code is easily readable.",
-      "Grade": "Extensive Evidence",
+      "Label": "Extensive Evidence",
       "Reason": "The program code effectively uses whitespace, good naming conventions, indentation and comments to make the code easily readable."
     }, {
       "Key Concept": "Algorithms and Control Structures",
       "Observations": "Sprite interactions occur at lines 48-50 (player touches burger), 52 (sw[... snipped for brevity ...]",
-      "Grade": "Extensive Evidence",
+      "Label": "Extensive Evidence",
       "Reason": "The game includes multiple different interactions between sprites, responds to multiple types of user input (e.g. different arrow keys)."
     }
   ]
@@ -60,7 +60,7 @@
 
 `(GET|POST) /test/assessment`: Issue a test rubric assessment to the AI agent and wait for a response.
 
-* `model`: The model to use. Default: `gpt-4`
+* `model`: The model to use. Default: see DEFAULT_MODEL
 * `api-key`: The API key associated with the model. Default: the configured key
 * `remove-comments`: When `1`, attempts to strip comments out of the code before assessment. Default: 0
 * `num-responses`: The number of times it should ask the AI model. It votes on the final answer. Default: 1

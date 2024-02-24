@@ -6,7 +6,7 @@ from unittest import mock
 from types import SimpleNamespace
 
 from lib.assessment.rubric_tester import (
-    label_student_work,
+    read_and_label_student_work,
     get_passing_labels,
     read_inputs,
     get_student_files,
@@ -19,12 +19,12 @@ from lib.assessment.rubric_tester import (
     get_examples,
 )
 
-from lib.assessment.grade import Grade, InvalidResponseError
+from lib.assessment.label import Label, InvalidResponseError
 
 
 class TestLabelStudentWork:
-    def test_should_pass_arguments_through(self, mocker, code, prompt, rubric, examples, student_id, temperature, llm_model):
-        grade_student_work_mock = mocker.patch.object(Grade, 'grade_student_work')
+    def test_should_pass_arguments_through(self, mocker, code, prompt, rubric, examples, student_id, temperature, llm_model, remove_comments):
+        label_student_work_mock = mocker.patch.object(Label, 'label_student_work')
 
         # Mock the file read
         mock_open = mocker.mock_open(read_data=code)
@@ -35,18 +35,20 @@ class TestLabelStudentWork:
             write_cached=False,
             num_responses=random.randint(1, 3),
             temperature=temperature,
-            llm_model=llm_model
+            llm_model=llm_model,
+            remove_comments=remove_comments
         )
 
         labels = ['good data']
-        grade_student_work_mock.return_value = labels
+        label_student_work_mock.return_value = labels
 
-        result = label_student_work(
+        result = read_and_label_student_work(
             prompt=prompt,
             rubric=rubric,
             student_file=f"blah/{student_id}.js",
             examples=examples(rubric),
             options=options,
+            params={},
             prefix=""
         )
 

@@ -7,13 +7,13 @@ import json
 import logging
 
 # Import our support classes
-from lib.assessment.config import SUPPORTED_MODELS, VALID_LABELS
-from lib.assessment.grade import Grade
+from lib.assessment.config import SUPPORTED_MODELS, DEFAULT_MODEL, VALID_LABELS
+from lib.assessment.label import Label
 
 class KeyConceptError(Exception):
   pass
 
-def grade(code, prompt, rubric, examples=[], api_key='', llm_model='gpt-4', num_responses=1, temperature=0.2, remove_comments=False):
+def label(code, prompt, rubric, examples=[], api_key='', llm_model=DEFAULT_MODEL, num_responses=1, temperature=0.2, remove_comments=False):
   OPENAI_API_KEY = api_key
 
   # Set the key
@@ -33,8 +33,8 @@ def grade(code, prompt, rubric, examples=[], api_key='', llm_model='gpt-4', num_
       logging.error(f"Mismatch between rubric and example key concepts for example {i}: Rubric: {rubric_key_concepts} | Example: {example_key_concepts}")
       raise KeyConceptError(f"Mismatch between rubric and example key concepts for example {i}: Rubric: {rubric_key_concepts} | Example: {example_key_concepts}")
 
-  grade = Grade()
-  return grade.grade_student_work(
+  label = Label()
+  return label.label_student_work(
       prompt, rubric, code, "student",
       examples=examples,
       use_cached=False,
