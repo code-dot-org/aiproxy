@@ -125,7 +125,7 @@ class TestComputeMessages:
             assert example_set[i][1] in assistant_message['content']
 
 
-class TestGetTsvDataIfValid:
+class TestGetResponseDataIfValid:
     def test_should_return_none_if_the_response_is_blank(self, label, rubric, student_id):
         result = label.get_response_data_if_valid("", rubric, student_id)
 
@@ -150,6 +150,18 @@ class TestGetTsvDataIfValid:
         result = label.get_response_data_if_valid(response, rubric, student_id)
         assert result is not None
         assert len(result) == len(parsed_rubric)
+
+    def test_should_work_for_json_response_type(self, label, rubric, student_id, openai_gpt_response, output_type='json'):
+        ai_response = openai_gpt_response(rubric, num_responses=1, output_type=output_type)
+        response = ai_response['choices'][0]['message']['content']
+
+        parsed_rubric = list(csv.DictReader(rubric.splitlines()))
+
+        # It should parse them out to get the same number of rows as the rubric
+        result = label.get_response_data_if_valid(response, rubric, student_id, response_type='json')
+        assert result is not None
+        assert len(result) == len(parsed_rubric)
+
 
     @pytest.mark.parametrize("output_type", ['tsv', 'csv', 'markdown'])
     def test_should_work_for_different_output_types_with_leading_text(self, label, rubric, student_id, openai_gpt_response, output_type):
@@ -219,8 +231,8 @@ class TestGetTsvDataIfValid:
 
         # Slide a nonsense line within the response (2nd to last entry)
         lines = response.splitlines()
-        delimeter = "\n--------\t---------\t--------\t---------\n"
-        response = delimeter.join(lines)
+        delimiter = "\n--------\t---------\t--------\t---------\n"
+        response = delimiter.join(lines)
 
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
