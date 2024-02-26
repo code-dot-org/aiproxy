@@ -105,7 +105,6 @@ class Label:
             raise Exception(f"Error parsing llm_model: {llm_model} bedrock_model: {bedrock_model}")
 
         meta_prompt = self.compute_meta_prompt(prompt, rubric, student_code, examples=examples)
-        # logging.info(f"meta_prompt:\n{meta_prompt}")
         body = json.dumps({
             "prompt": meta_prompt,
             "max_gen_len": 1536,
@@ -116,11 +115,9 @@ class Label:
         response = bedrock.invoke_model(body=body, modelId=bedrock_model, accept=accept, contentType=content_type)
 
         response_body = json.loads(response.get('body').read())
-        # logging.info(f"raw AI response:\n{response_body}")
         generation = response_body.get('generation')
 
         data = self.get_response_data_if_valid(generation, rubric, student_id, response_type='json')
-        # logging.info(f"AI response_data json:\n{json.dumps(data, indent=2)}")
 
         return {
             'metadata': {
@@ -137,6 +134,7 @@ class Label:
         if cls._bedrock_client is None:
             with cls._bedrock_lock:
                 if cls._bedrock_client is None:
+                    # print the student_id so we can debug if we see multiple clients being created
                     logging.info(f"creating bedrock client. student_id: {student_id}")
                     cls._bedrock_client = boto3.client(service_name='bedrock-runtime')
         return cls._bedrock_client
