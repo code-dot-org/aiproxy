@@ -47,7 +47,7 @@ class Label:
         # We can't assess this statically
         return None
 
-    def ai_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model=""):
+    def ai_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model="", response_type='tsv'):
         # Determine the OpenAI URL and headers
         api_url = 'https://api.openai.com/v1/chat/completions'
         headers = {
@@ -74,7 +74,7 @@ class Label:
 
         info = response.json()
 
-        response_data = self.response_data_from_choices(info, rubric, student_id)
+        response_data = self.response_data_from_choices(info, rubric, student_id, response_type=response_type)
 
         return {
             'metadata': {
@@ -85,7 +85,7 @@ class Label:
             'data': response_data,
         }
 
-    def label_student_work(self, prompt, rubric, student_code, student_id, examples=[], use_cached=False, write_cached=False, num_responses=0, temperature=0.0, llm_model="", remove_comments=False, cache_prefix=""):
+    def label_student_work(self, prompt, rubric, student_code, student_id, examples=[], use_cached=False, write_cached=False, num_responses=0, temperature=0.0, llm_model="", remove_comments=False, response_type='tsv', cache_prefix=""):
         if use_cached and os.path.exists(os.path.join(cache_prefix, f"cached_responses/{student_id}.json")):
             with open(os.path.join(cache_prefix, f"cached_responses/{student_id}.json"), 'r') as f:
                 return json.load(f)
@@ -104,7 +104,7 @@ class Label:
         # Right now, however, only if there is no result, we try the AI for assessment
         if result is None:
             try:
-                result = self.ai_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
+                result = self.ai_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model, response_type=response_type)
             except requests.exceptions.ReadTimeout:
                 logging.error(f"{student_id} request timed out in {(time.time() - start_time):.0f} seconds.")
                 result = None
@@ -158,7 +158,7 @@ class Label:
 
         return student_code
 
-    def response_data_from_choices(self, info, rubric, student_id):
+    def response_data_from_choices(self, info, rubric, student_id, response_type='tsv'):
         max_index = len(info['choices']) - 1
         response_data_choices = []
         for index, choice in enumerate(info['choices']):
@@ -166,7 +166,7 @@ class Label:
             reraise = len(response_data_choices) == 0 and index == max_index
 
             if choice['message']['content']:
-                response_data = self.get_response_data_if_valid(choice['message']['content'], rubric, student_id, choice_index=index, reraise=reraise)
+                response_data = self.get_response_data_if_valid(choice['message']['content'], rubric, student_id, choice_index=index, reraise=reraise, response_type=response_type)
                 if response_data:
                     response_data_choices.append(response_data)
 
@@ -188,14 +188,19 @@ class Label:
         messages.append({'role': 'user', 'content': student_code})
         return messages
 
-    def get_response_data_if_valid(self, response_text, rubric, student_id, choice_index=None, reraise=False):
+    def get_response_data_if_valid(self, response_text, rubric, student_id, choice_index=None, reraise=False, response_type='tsv'):
         choice_text = f"Choice {choice_index}: " if choice_index is not None else ''
         if not response_text:
             logging.error(f"{student_id} {choice_text} Invalid response: empty response")
             return None
         text = response_text.strip()
 
-        response_data = self.parse_non_json_response(text)
+        if response_type == 'json':
+            response_data = self.parse_json_response(text, student_id)
+        elif response_type == 'tsv':
+            response_data = self.parse_non_json_response(text)
+        else:
+            raise ValueError(f"Invalid response type: {response_type}")
 
         try:
             self._sanitize_server_response(response_data)
@@ -206,6 +211,22 @@ class Label:
             if reraise:
                 raise e
             return None
+
+    def parse_json_response(self, response_text, student_id):
+        # capture all data from the first '[' to the last ']', inclusive
+        match = re.search(r'(\[.*\])', response_text,re.DOTALL)
+        if not match:
+            logging.error(f"{student_id} Invalid response: no valid JSON data:\n{response_text}")
+            return None
+        json_text = match.group(1)
+
+        try:
+            data = json.loads(json_text)
+        except json.JSONDecodeError as e:
+            logging.error(f"{student_id} JSON decoding error: {e}\n{json_text}")
+            return None
+
+        return data
 
     # parse response data in tsv, csv or markdown format.
     def parse_non_json_response(self, text):

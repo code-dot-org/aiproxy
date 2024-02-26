@@ -114,7 +114,7 @@ def get_params(prefix):
         params = json.load(f)
         validate_params(params)
         for k in params.keys():
-            if k == 'model':
+            if k in ['model', 'response-type']:
                 continue
             elif k == 'temperature':
                 params[k] = float(params[k])
@@ -125,7 +125,7 @@ def get_params(prefix):
 
 def validate_params(params):
     required_keys = ['model', 'num-responses', 'temperature']
-    allowed_keys = ['model', 'num-responses', 'temperature', 'remove-comments', 'num-passing-grades']
+    allowed_keys = ['model', 'num-responses', 'temperature', 'remove-comments', 'num-passing-grades', 'response-type']
     deprecated_keys = ['num-passing-grades']
     for k in required_keys:
         if k not in params:
@@ -137,6 +137,8 @@ def validate_params(params):
             logging.info(f"Deprecated key {k} in params.json. Please remove as this key has no effect.")
     if params['model'] not in SUPPORTED_MODELS:
         raise Exception(f"Unsupported LLM model: {params['model']}. Supported models are: {', '.join(SUPPORTED_MODELS)}")
+    if params.get('response-type', 'tsv') not in ['json', 'tsv']:
+        raise Exception(f"Unsupported response type: {params['response-type']}. Supported response types are: json, tsv")
 
 def get_student_files(max_num_students, prefix, student_ids=None):
     if student_ids:
@@ -162,14 +164,14 @@ def get_accuracy_thresholds(accuracy_threshold_file=accuracy_threshold_file, pre
     return thresholds
 
 
-def get_examples(prefix):
+def get_examples(prefix, response_type):
     example_js_files = sorted(glob.glob(os.path.join(prefix, 'examples', '*.js')))
     examples = []
     for example_js_file in example_js_files:
         example_id = os.path.splitext(os.path.basename(example_js_file))[0]
         with open(example_js_file, 'r') as f:
             example_code = f.read()
-        with open(os.path.join(prefix, 'examples', f"{example_id}.tsv"), 'r') as f:
+        with open(os.path.join(prefix, 'examples', f"{example_id}.{response_type}"), 'r') as f:
             example_rubric = f.read()
         examples.append((example_code, example_rubric))
     return examples
@@ -243,7 +245,7 @@ def compute_accuracy(actual_labels, predicted_labels, passing_labels):
     return accuracy_by_criteria, overall_accuracy, confusion_by_criteria, overall_confusion, label_names
 
 
-def read_and_label_student_work(prompt, rubric, student_file, examples, options, params, prefix):
+def read_and_label_student_work(prompt, rubric, student_file, examples, options, params, prefix, response_type):
     student_id = os.path.splitext(os.path.basename(student_file))[0]
     with open(student_file, 'r') as f:
         student_code = f.read()
@@ -261,6 +263,7 @@ def read_and_label_student_work(prompt, rubric, student_file, examples, options,
             temperature=options.temperature or params['temperature'],
             llm_model=options.llm_model or params['model'],
             remove_comments=options.remove_comments or params.get('remove-comments', False),
+            response_type=response_type,
             cache_prefix=prefix
         )
     except InvalidResponseError as e:
@@ -315,13 +318,14 @@ def main():
 
         # read in lesson files, validate them
         params = get_params(experiment_lesson_prefix)
+        response_type = params.get('response-type', 'tsv')
         prompt, standard_rubric = read_inputs(prompt_file, standard_rubric_file, experiment_lesson_prefix)
         student_files = get_student_files(options.max_num_students, dataset_lesson_prefix, student_ids=options.student_ids)
         if os.path.exists(os.path.join(dataset_lesson_prefix, actual_labels_file_old)):
             actual_labels = get_actual_labels(actual_labels_file_old, dataset_lesson_prefix)
         else:
             actual_labels = get_actual_labels(actual_labels_file, dataset_lesson_prefix)
-        examples = get_examples(experiment_lesson_prefix)
+        examples = get_examples(experiment_lesson_prefix, response_type)
 
         validate_rubrics(actual_labels, standard_rubric)
         validate_students(student_files, actual_labels)
@@ -337,7 +341,7 @@ def main():
 
         # call label function to either call openAI or read from cache
         with concurrent.futures.ThreadPoolExecutor(max_workers=7) as executor:
-            predicted_labels = list(executor.map(lambda student_file: read_and_label_student_work(prompt, rubric, student_file, examples, options, params, experiment_lesson_prefix), student_files))
+            predicted_labels = list(executor.map(lambda student_file: read_and_label_student_work(prompt, rubric, student_file, examples, options, params, experiment_lesson_prefix, response_type), student_files))
 
         errors = [student_id for student_id, labels in predicted_labels if not labels]
         # predicted_labels contains metadata and data (labels), we care about the data key
@@ -355,7 +359,8 @@ def main():
                 "model": options.llm_model or params['model'],
                 "num_responses": options.num_responses or params['num-responses'],
                 "temperature": options.temperature or params['temperature'],
-                "remove_comments": options.remove_comments or params.get('remove-comments', False)
+                "remove_comments": options.remove_comments or params.get('remove-comments', False),
+                "response_type": response_type,
             }
         }
         report = Report()
