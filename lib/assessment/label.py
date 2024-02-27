@@ -54,7 +54,7 @@ class Label:
 
     def ai_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model="", response_type='tsv'):
         if llm_model.startswith("gpt"):
-            return self.openai_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model, response_type='tsv')
+            return self.openai_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model, response_type=response_type)
         elif llm_model.startswith("bedrock.meta"):
             return self.bedrock_meta_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
         elif llm_model.startswith("bedrock.anthropic"):
