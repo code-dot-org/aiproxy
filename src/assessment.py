@@ -171,8 +171,9 @@ def test_assessment_examples():
 
     return labels
 
-@assessment_routes.route('/test/cfe_with_static_analysis', methods=['GET', 'POST'])
-def test_assessment_examples():
+# Test assessment with code feature extractor
+@assessment_routes.route('/test/assessment/cfe', methods=['GET', 'POST'])
+def test_assessment_cfe():
     openai.api_key = os.getenv('OPENAI_API_KEY')
 
     with open('tests/data/cfe_sa_sample.js', 'r') as f:

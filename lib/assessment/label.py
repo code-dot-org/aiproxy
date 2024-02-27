@@ -45,26 +45,21 @@ class Label:
                 )
             }
         
-        results = {{"metadata": {
-                            "agent": []
-                        },
-                        "data": []
-                }}
+        results = {"metadata": {"agent": []},"data": []}
     
         for row in csv.DictReader(rubric.splitlines()):
-            if 'CFE' in row["instructions"]:
+            if 'CFE' in row["Instructions"]:
                 cfe = CodeFeatures()
-                features, assessment = cfe.extract_code_features(student_code, row)
-                return {"metadata": {
-                            "agent": ["code feature extractor", "static analysis"]
-                        },
-                        "data": {
-                            "Label": assessment,
-                            "Key Concept": row["key_concept"],
-                            "Observations": features,
-                            "Reason": row[assessment],
-                        }
-                }
+                cfe.extract_code_features(student_code, row)
+                results["metadata"]["agent"] = ["code feature extractor", "static analysis"]
+                results["data"].append({"Label": cfe.assessment,
+                                        "Key Concept": row["Key Concept"],
+                                        "Observations": cfe.code_features,
+                                        "Reason": row[cfe.assessment] if cfe.assessment else ''
+                                        })
+        
+        if results["data"]:
+            return results
 
         # We can't assess this statically
         return None
@@ -100,7 +95,7 @@ class Label:
 
         return {
             'metadata': {
-                'agent': 'openai',
+                'agent': ['openai'],
                 'usage': info['usage'],
                 'request': data,
             },
@@ -119,27 +114,40 @@ class Label:
         student_code = self.sanitize_code(student_code, remove_comments=remove_comments)
 
         # Try static analysis options (before invoking AI)
-        result = self.statically_label_student_work(rubric, student_code, student_id, examples=examples)
+        static_result = self.statically_label_student_work(rubric, student_code, student_id, examples=examples)
 
         # If it gives back a response, right now assume it is complete and do not perform an AI analysis
         # We may want to, in the future, gauge how many of the concepts it has labeled and let AI fill in the blanks
         # Right now, however, only if there is no result, we try the AI for assessment
-        if result is None:
+        if static_result is None:
             try:
-                result = self.ai_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
+                ai_result = self.ai_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
             except requests.exceptions.ReadTimeout:
                 logging.error(f"{student_id} request timed out in {(time.time() - start_time):.0f} seconds.")
-                result = None
-        elif result["metadata"]["agent"] == ["code feature extractor", "static analysis"]:
+                ai_result = None
+
+        elif static_result["metadata"]["agent"] == ["code feature extractor", "static analysis"]:
+            assessed_learning_goals = [lg["Key Concept"] for lg in static_result["data"] if lg["Label"]]
+            new_rubric = 'Key Concept,Instructions,Extensive Evidence,Convincing Evidence,Limited Evidence,No Evidence\n'
+            for row in csv.DictReader(rubric.splitlines()):
+                if row["Key Concept"] not in assessed_learning_goals:
+                    new_row = ''
+                    for item in row.values():
+                        new_row += item + ','
+                    new_rubric += new_row + '\n'
+
             try:
-                result = self.ai_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
+                ai_result = self.ai_label_student_work(prompt, new_rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
+            except requests.exceptions.ReadTimeout:
+                logging.error(f"{student_id} request timed out in {(time.time() - start_time):.0f} seconds.")
+                ai_result = None
 
         # No assessment was possible
-        if result is None:
+        if ai_result is None:
             raise Exception("AI assessment failed.")
 
         elapsed = time.time() - start_time
-        tokens = result.get('metadata', {}).get('usage', {}).get('total_tokens', 0)
+        tokens = ai_result.get('metadata', {}).get('usage', {}).get('total_tokens', 0)
         logging.info(f"{student_id} request succeeded in {elapsed:.0f} seconds. {tokens} tokens used.")
 
         # Craft the response dictionary
@@ -148,12 +156,16 @@ class Label:
                 'time': elapsed,
                 'student_id': student_id,
             },
-            'data': result.get('data', []),
+            'data': ai_result.get('data', []),
         }
-        response['metadata'].update(result.get('metadata', {})),
+        response['metadata'].update(ai_result.get('metadata', {}))
+        if static_result:
+            response['metadata']['agent'].extend(static_result['metadata']['agent'])
+            response['data'].extend(static_result['data'])
+        logging.info(response) #DEBUG
 
         # only write to cache if the response is valid
-        if write_cached and result:
+        if write_cached and ai_result:
             with open(os.path.join(cache_prefix, f"cached_responses/{student_id}.json"), 'w+') as f:
                 json.dump(response, f, indent=4)
 

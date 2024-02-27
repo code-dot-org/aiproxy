@@ -2,7 +2,7 @@ class DecisionTrees:
   def __init__(self):
     pass
 
-  def assess_position_elements(data):
+  def assess_position_elements(self, data):
     """
     Assess Position - Elements and the Coordinate System.
 

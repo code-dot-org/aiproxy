@@ -1,10 +1,12 @@
 import esprima
-import DecisionTrees from lib.assessment.decision_trees
+from lib.assessment.decision_trees import DecisionTrees
+import logging
 
 class CodeFeatures:
 
   def __init__(self):
-    self.code_features = {'shapes': 0, 'sprites': 0, 'text': 0, 'nodes': []}
+    self.code_features = {'shapes': 0, 'sprites': 0, 'text': 0}
+    self.nodes = []
     self.assessment = ''
 
   # Feature extraction and labeling functions
@@ -33,16 +35,16 @@ class CodeFeatures:
         func_type = self.expressionHelper(node.expression)
         if func_type:
           self.code_features[func_type] += 1
-          self.code_features['nodes'].append(node)
+          self.nodes.append(node)
       elif node.type == 'VariableDeclaration':
         for declaration in node.declarations:
           if declaration.init.type == 'CallExpression':
             func_type = self.expressionHelper(declaration.init)
             if func_type:
               self.code_features[func_type] += 1
-              self.code_features['nodes'].append(node)
+              self.nodes.append(node)
 
-    if learning_goal == 'Position - Elements and the Coordinate System':
+    if learning_goal["Key Concept"] == 'Position - Elements and the Coordinate System':
       esprima.parseScript(program, {'tolerant': True, 'comment': True, 'loc': True}, positionElementsAndTheCoordinateSystemDelegate)
       dt = DecisionTrees()
       self.assessment = dt.assess_position_elements(self.code_features)
