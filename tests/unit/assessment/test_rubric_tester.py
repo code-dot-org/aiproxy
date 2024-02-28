@@ -22,8 +22,8 @@ from lib.assessment.rubric_tester import (
 from lib.assessment.label import Label, InvalidResponseError
 
 
-class TestLabelStudentWork:
-    def test_should_pass_arguments_through(self, mocker, code, prompt, rubric, examples, student_id, temperature, llm_model, remove_comments):
+class TestReadAndLabelStudentWork:
+    def test_should_pass_arguments_through(self, mocker, code, prompt, rubric, examples, student_id, temperature, llm_model, remove_comments, response_type):
         label_student_work_mock = mocker.patch.object(Label, 'label_student_work')
 
         # Mock the file read
@@ -36,7 +36,7 @@ class TestLabelStudentWork:
             num_responses=random.randint(1, 3),
             temperature=temperature,
             llm_model=llm_model,
-            remove_comments=remove_comments
+            remove_comments=remove_comments,
         )
 
         labels = ['good data']
@@ -49,7 +49,8 @@ class TestLabelStudentWork:
             examples=examples(rubric),
             options=options,
             params={},
-            prefix=""
+            prefix="",
+            response_type=response_type,
         )
 
         assert result[0] == student_id
@@ -159,7 +160,6 @@ class TestGetActualLabels:
 class TestGetExamples:
     def test_should_open_example_js_and_tsv_files(self, mocker, code_generator, rubric, examples):
         examples_set = examples(rubric)
-        print(examples_set)
 
         contents = {}
         for i, example in enumerate(examples_set):
@@ -178,7 +178,7 @@ class TestGetExamples:
         glob_mock = mocker.patch('glob.glob')
         glob_mock.return_value = [f'examples/{x}.js' for x in range(0, len(examples_set))]
 
-        result = get_examples("")
+        result = get_examples("", response_type='tsv')
 
         assert len(result) == len(examples_set)
 
@@ -186,6 +186,33 @@ class TestGetExamples:
             assert example[0] == examples_set[i][0]
             assert example[1] == examples_set[i][1]
 
+    def test_should_open_example_js_and_json_files(self, mocker, code_generator, rubric, examples):
+        examples_set = examples(rubric)
+
+        contents = {}
+        for i, example in enumerate(examples_set):
+            contents[f'examples/{i}.js'] = example[0]
+            contents[f'examples/{i}.json'] = example[1]
+
+        def file_open_mock(name, *a, **kw):
+            return mocker.mock_open(read_data=contents.get(name, '')).return_value
+
+        # Mock the file read
+        m = mock.Mock()
+        mock_open = mocker.mock_open(m)
+        mock_file = mocker.patch('builtins.open', mock_open, create=True)
+        m.side_effect = file_open_mock
+
+        glob_mock = mocker.patch('glob.glob')
+        glob_mock.return_value = [f'examples/{x}.js' for x in range(0, len(examples_set))]
+
+        result = get_examples("", response_type='json')
+
+        assert len(result) == len(examples_set)
+
+        for i, example in enumerate(result):
+            assert example[0] == examples_set[i][0]
+            assert example[1] == examples_set[i][1]
 
 class TestValidateRubrics:
     def test_should_raise_when_actual_labels_contains_a_concept_unknown_to_the_rubric(self, rubric, random_label_generator, randomstring):
