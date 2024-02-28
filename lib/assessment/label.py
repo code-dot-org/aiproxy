@@ -116,9 +116,7 @@ class Label:
         # Try static analysis options (before invoking AI)
         static_result = self.statically_label_student_work(rubric, student_code, student_id, examples=examples)
 
-        # If it gives back a response, right now assume it is complete and do not perform an AI analysis
-        # We may want to, in the future, gauge how many of the concepts it has labeled and let AI fill in the blanks
-        # Right now, however, only if there is no result, we try the AI for assessment
+        # If there is no output from static analysis, send all data to the AI for assessment
         if static_result is None:
             try:
                 ai_result = self.ai_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
@@ -126,7 +124,11 @@ class Label:
                 logging.error(f"{student_id} request timed out in {(time.time() - start_time):.0f} seconds.")
                 ai_result = None
 
+        # If the static analysis output lists both the code feature extractor and static analysis as agents
+        # Strip the learning goals that have already been assessed and send the remaining data to the AI for assessment
         elif static_result["metadata"]["agent"] == ["code feature extractor", "static analysis"]:
+            
+            # Strip assessed learning goals from the rubric
             assessed_learning_goals = [lg["Key Concept"] for lg in static_result["data"] if lg["Label"]]
             new_rubric = 'Key Concept,Instructions,Extensive Evidence,Convincing Evidence,Limited Evidence,No Evidence\n'
             for row in csv.DictReader(rubric.splitlines()):
@@ -141,6 +143,9 @@ class Label:
             except requests.exceptions.ReadTimeout:
                 logging.error(f"{student_id} request timed out in {(time.time() - start_time):.0f} seconds.")
                 ai_result = None
+
+        # TODO: Add a conditional for learning goals that have gotten code feature extractor output but have not been
+        # statically assessed. These should go to the AI with CFE output for assessment.
 
         # No assessment was possible
         if ai_result is None:
@@ -159,6 +164,8 @@ class Label:
             'data': ai_result.get('data', []),
         }
         response['metadata'].update(ai_result.get('metadata', {}))
+
+        # Add results from static analysis to AI analysis output
         if static_result:
             response['metadata']['agent'].extend(static_result['metadata']['agent'])
             response['data'].extend(static_result['data'])
