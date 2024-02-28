@@ -82,12 +82,27 @@ class TestStaticallyLabelStudentWork:
         # It should match the concepts given in the rubric
         assert set(x['Key Concept'] for x in parsed_rubric) == set(x['Key Concept'] for x in result['data'])
 
-    def test_should_return_none_when_given_code(self, label, code, rubric, student_id, examples):
+    def test_should_return_none_when_given_code_with_no_cfe_flag(self, label, code, rubric, student_id, examples):
         result = label.statically_label_student_work(
             rubric, code, student_id, examples(rubric)
         )
 
         assert result is None
+
+    def test_should_return_statically_analyzed_learning_goal_when_cfe_flag_set(self, label, code, rubric_with_flag, student_id, examples):
+        result = label.statically_label_student_work(
+            rubric_with_flag, code, student_id, examples(rubric_with_flag)
+        )
+
+        # It should have a metadata and data section
+        assert 'metadata' in result
+        assert 'data' in result
+
+        # It should return just as many labeled rows as there are in the rubric
+        assert len(result['data']) == 1
+
+        # It should return 'No Evidence' in every row
+        assert all(x['Label'] == 'No Evidence' for x in result['data'])
 
 
 class TestComputeMessages:
@@ -614,6 +629,30 @@ class TestlabelStudentWork:
         result = label.label_student_work(
             prompt, rubric, code, student_id,
             examples=examples(rubric),
+            num_responses=num_responses,
+            temperature=temperature,
+            write_cached=False,
+            llm_model=llm_model,
+            remove_comments=False
+        )
+
+        ai_label_student_work_mock.assert_called_once()
+
+    def test_should_call_ai_assessment_when_static_assessment_returns_assessed_learning_goal(self, mocker, label, assessment_return_value, prompt, rubric_with_flag, code, student_id, examples, num_responses, temperature, llm_model):
+        # Get mocks
+        statically_label_student_work_mock = mocker.patch.object(
+            Label, 'statically_label_student_work',
+            return_value=None
+        )
+
+        ai_label_student_work_mock = mocker.patch.object(
+            Label, 'ai_label_student_work',
+            return_value=assessment_return_value(rubric_with_flag)
+        )
+
+        result = label.label_student_work(
+            prompt, rubric_with_flag, code, student_id,
+            examples=examples(rubric_with_flag),
             num_responses=num_responses,
             temperature=temperature,
             write_cached=False,

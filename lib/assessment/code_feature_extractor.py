@@ -4,7 +4,7 @@ import logging
 
 '''
 This class contains delegate and helper functions to extract relevant features from code for assessment. 
-New features should be added to the code_features dictionary.
+New features should be added to the features dictionary.
 Add delegate function definitions to the extractCodeFeatures function.
 '''
 class CodeFeatures:
@@ -12,7 +12,7 @@ class CodeFeatures:
   def __init__(self):
 
     # Add additional features here
-    self.code_features = {'shapes': 0, 'sprites': 0, 'text': 0}
+    self.features = {'shapes': 0, 'sprites': 0, 'text': 0}
 
     # Store relevant parse tree nodes here during extraction. This will be useful
     # For returning metadata like line and column numbers or for exploring additional
@@ -42,7 +42,7 @@ class CodeFeatures:
       return None
 
   # All delegate functions and code feature extraction 
-  def extract_code_features(self, program, learning_goal):
+  def extract_features(self, program, learning_goal):
 
     # Delegate function for U3L11 'Position - Elements and the Coordinate System'
     # Add additional delegate functions here
@@ -50,14 +50,14 @@ class CodeFeatures:
       if node.type == 'ExpressionStatement' and node.expression.type == 'CallExpression':
         func_type = self.expressionHelper(node.expression)
         if func_type:
-          self.code_features[func_type] += 1
+          self.features[func_type] += 1
           self.nodes.append(node)
       elif node.type == 'VariableDeclaration':
         for declaration in node.declarations:
           if declaration.init.type == 'CallExpression':
             func_type = self.expressionHelper(declaration.init)
             if func_type:
-              self.code_features[func_type] += 1
+              self.features[func_type] += 1
               self.nodes.append(node)
 
     # Add conditionals for future learning goals here
@@ -66,4 +66,4 @@ class CodeFeatures:
     if learning_goal["Key Concept"] == 'Position - Elements and the Coordinate System':
       esprima.parseScript(program, {'tolerant': True, 'comment': True, 'loc': True}, positionElementsAndTheCoordinateSystemDelegate)
       dt = DecisionTrees()
-      self.assessment = dt.assess_position_elements(self.code_features)
+      self.assessment = dt.assess_position_elements(self.features)

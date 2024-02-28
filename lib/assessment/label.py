@@ -50,11 +50,11 @@ class Label:
         for row in csv.DictReader(rubric.splitlines()):
             if 'CFE' in row["Instructions"]:
                 cfe = CodeFeatures()
-                cfe.extract_code_features(student_code, row)
+                cfe.extract_features(student_code, row)
                 results["metadata"]["agent"] = ["code feature extractor", "static analysis"]
                 results["data"].append({"Label": cfe.assessment,
                                         "Key Concept": row["Key Concept"],
-                                        "Observations": cfe.code_features,
+                                        "Observations": cfe.features,
                                         "Reason": row[cfe.assessment] if cfe.assessment else ''
                                         })
         
