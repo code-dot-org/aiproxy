@@ -475,7 +475,7 @@ class TestlabelStudentWork:
         """
 
         def gen_assessment(rubric, metadata={}):
-            result_metadata = {}
+            result_metadata = {"agent": ["openai"]}
 
             # Merge any metadata given to us
             result_metadata.update(metadata)
@@ -639,10 +639,20 @@ class TestlabelStudentWork:
         ai_label_student_work_mock.assert_called_once()
 
     def test_should_call_ai_assessment_when_static_assessment_returns_assessed_learning_goal(self, mocker, label, assessment_return_value, prompt, rubric_with_flag, code, student_id, examples, num_responses, temperature, llm_model):
+        
+        parsed_rubric = list(csv.DictReader(rubric_with_flag.splitlines()))
+
         # Get mocks
         statically_label_student_work_mock = mocker.patch.object(
             Label, 'statically_label_student_work',
-            return_value=None
+            return_value={"metadata": {"agent": ["code feature extractor", "static analysis"]},
+                          "data": [
+                              {"Label": "No Evidence",
+                               "Key Concept": parsed_rubric[-1]["Key Concept"],
+                               "Observations": {'shapes': 0, 'sprites': 0, 'text': 0},
+                               "Reason": parsed_rubric[-1]["No Evidence"],
+                               }
+                               ]}
         )
 
         ai_label_student_work_mock = mocker.patch.object(
