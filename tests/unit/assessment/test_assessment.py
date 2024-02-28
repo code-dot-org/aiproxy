@@ -8,7 +8,7 @@ from lib.assessment.assess import label, KeyConceptError
 
 def test_label_should_pass_arguments_along(
         mocker, code, prompt, rubric, examples, openai_api_key,
-        llm_model, num_responses, temperature, remove_comments):
+        llm_model, num_responses, temperature, remove_comments, response_type):
     """ Tests lib.assessment.assess.label()
     """
 
@@ -34,7 +34,8 @@ def test_label_should_pass_arguments_along(
         llm_model=llm_model,
         num_responses=num_responses,
         temperature=temperature,
-        remove_comments=remove_comments
+        remove_comments=remove_comments,
+        response_type=response_type
     )
 
     # Check to see that it was called
@@ -45,7 +46,8 @@ def test_label_should_pass_arguments_along(
         num_responses=num_responses,
         temperature=temperature,
         llm_model=llm_model,
-        remove_comments=remove_comments
+        remove_comments=remove_comments,
+        response_type=response_type
     )
 
 

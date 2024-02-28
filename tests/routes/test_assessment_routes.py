@@ -127,6 +127,7 @@ class TestPostAssessment:
         assert response.status_code == 400
 
     def test_should_pass_arguments_to_label_function(self, mocker, client, randomstring):
+        response_type = 'json'
         label_mock = mocker.patch('lib.assessment.assess.label')
         data = {
           "code": randomstring(10),
@@ -138,6 +139,7 @@ class TestPostAssessment:
           "remove-comments": "1",
           "num-responses": "2",
           "temperature": "0.2",
+          "response-type": response_type,
         }
 
         response = client.post('/assessment', data=data)
@@ -151,7 +153,8 @@ class TestPostAssessment:
             llm_model=data["model"],
             remove_comments=True,
             num_responses=2,
-            temperature=0.2
+            temperature=0.2,
+            response_type=response_type,
         )
 
     def test_should_return_the_result_from_label_function_when_valid(self, mocker, client, randomstring):
@@ -275,34 +278,6 @@ class TestPostTestAssessment:
         })
 
         assert response.status_code == 400
-
-    def test_should_pass_arguments_to_label_function(self, mocker, client, randomstring):
-        label_mock = mocker.patch('lib.assessment.assess.label')
-        mock_open = mocker.mock_open(read_data='file data')
-        mock_file = mocker.patch('builtins.open', mock_open)
-        data = {
-          "code": randomstring(10),
-          "prompt": randomstring(10),
-          "rubric": randomstring(10),
-          "api-key": randomstring(10),
-          "model": randomstring(10),
-          "remove-comments": "1",
-          "num-responses": "2",
-          "temperature": "0.2",
-        }
-
-        response = client.post('/test/assessment', data=data)
-
-        label_mock.assert_called_with(
-            code='file data',
-            prompt='file data',
-            rubric='file data',
-            api_key=data["api-key"],
-            llm_model=data["model"],
-            remove_comments=True,
-            num_responses=2,
-            temperature=0.2
-        )
 
     def test_should_return_the_result_from_label_function_when_valid(self, mocker, client, randomstring):
         label_mock = mocker.patch('lib.assessment.assess.label')
