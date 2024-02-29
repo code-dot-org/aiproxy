@@ -8,11 +8,12 @@ from lib.assessment.assess import label, KeyConceptError
 
 def test_label_should_pass_arguments_along(
         mocker, code, prompt, rubric, examples, openai_api_key,
-        llm_model, num_responses, temperature, remove_comments, response_type):
+        llm_model, num_responses, temperature, remove_comments):
     """ Tests lib.assessment.assess.label()
     """
 
     # import test data
+    response_type = 'tsv'
     rubric = ''
     with open('tests/data/u3l13.csv', 'r') as f:
         rubric = f.read()
