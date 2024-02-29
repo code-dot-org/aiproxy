@@ -59,6 +59,10 @@ class Label:
             return self.bedrock_meta_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
         elif llm_model.startswith("bedrock.anthropic"):
             return self.bedrock_anthropic_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
+        elif llm_model.startswith("localhost"):
+            API_URL = "http://localhost:1234/v1/chat/completions"
+            API_HEADERS = {'Content-Type': 'application/json'}
+            return self.openai_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model, response_type=response_type, api_url=API_URL, api_headers=API_HEADERS)
         else:
             raise Exception("Unknown model: {}".format(llm_model))
 
@@ -141,10 +145,8 @@ class Label:
                     cls._bedrock_client = boto3.client(service_name='bedrock-runtime')
         return cls._bedrock_client
 
-    def openai_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model="", response_type='tsv'):
-        # Determine the OpenAI URL and headers
-        api_url = 'https://api.openai.com/v1/chat/completions'
-        headers = {
+    def openai_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model="", response_type='tsv', api_url='https://api.openai.com/v1/chat/completions', api_headers=None):
+        api_headers = api_headers or {
             'Content-Type': 'application/json',
             'Authorization': f"Bearer {os.getenv('OPENAI_API_KEY')}"
         }
@@ -159,7 +161,7 @@ class Label:
         }
 
         # Post to the AI service
-        response = requests.post(api_url, headers=headers, json=data, timeout=120)
+        response = requests.post(api_url, headers=api_headers, json=data, timeout=120)
 
         if response.status_code != 200:
             logging.error(f"{student_id} Error calling the API: {response.status_code}")
