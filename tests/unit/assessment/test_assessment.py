@@ -2,14 +2,14 @@ import os
 
 import pytest
 
-from lib.assessment.label import Label
-from lib.assessment.assess import label, KeyConceptError
+from aiproxy.assessment.label import Label
+from aiproxy.assessment.assess import label, KeyConceptError
 
 
 def test_label_should_pass_arguments_along(
         mocker, code, prompt, rubric, examples, openai_api_key,
         llm_model, num_responses, temperature, remove_comments):
-    """ Tests lib.assessment.assess.label()
+    """ Tests aiproxy.assessment.assess.label()
     """
 
     # import test data
@@ -52,7 +52,7 @@ def test_label_should_pass_arguments_along(
 def test_label_should_set_api_key_in_env_var(
         mocker, code, prompt, rubric, examples, openai_api_key,
         llm_model, num_responses, temperature, remove_comments):
-    """ Tests lib.assessment.assess.label()
+    """ Tests aiproxy.assessment.assess.label()
     """
 
     # Mock the Label() class
@@ -75,7 +75,7 @@ def test_label_should_set_api_key_in_env_var(
 def test_label_should_return_empty_result_when_no_api_key(
         mocker, code, prompt, rubric, examples,
         llm_model, num_responses, temperature, remove_comments):
-    """ Tests lib.assessment.assess.label() (without an api-key)
+    """ Tests aiproxy.assessment.assess.label() (without an api-key)
     """
 
     # Mock the Label() class
@@ -97,7 +97,7 @@ def test_label_should_return_empty_result_when_no_api_key(
 def test_label_should_return_empty_result_when_example_and_rubric_key_concepts_mismatch(
         mocker, code, prompt, rubric, examples, openai_api_key,
         llm_model, num_responses, temperature, remove_comments):
-    """ Tests lib.assessment.assess.label() (without an api-key)
+    """ Tests aiproxy.assessment.assess.label() (without an api-key)
     """
     # Mock the Label() class
     label_student_work = mocker.patch.object(Label, 'label_student_work')
@@ -122,7 +122,7 @@ def test_label_should_return_empty_result_when_example_and_rubric_key_concepts_m
 def test_label_should_call_label_student_work_with_api_key_in_env_var(
         mocker, code, prompt, rubric, examples, openai_api_key,
         llm_model, num_responses, temperature, remove_comments):
-    """ Tests lib.assessment.assess.label() (without an api-key)
+    """ Tests aiproxy.assessment.assess.label() (without an api-key)
     """
 
     # Set the environment variable

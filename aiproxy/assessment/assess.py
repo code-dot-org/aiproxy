@@ -7,8 +7,8 @@ import json
 import logging
 
 # Import our support classes
-from lib.assessment.config import SUPPORTED_MODELS, DEFAULT_MODEL, VALID_LABELS
-from lib.assessment.label import Label
+from .config import SUPPORTED_MODELS, DEFAULT_MODEL, VALID_LABELS
+from .label import Label
 
 class KeyConceptError(Exception):
   pass

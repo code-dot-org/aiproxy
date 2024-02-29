@@ -4,7 +4,7 @@ import io
 import json
 import math
 from typing import List, Dict, Any
-from lib.assessment.config import VALID_LABELS
+from .config import VALID_LABELS
 
 class Report:
     def _compute_pass_fail_cell_color(self, actual, predicted, passing_labels):

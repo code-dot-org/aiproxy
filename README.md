@@ -119,10 +119,9 @@ Install requirements to the virtual environment with pip:
 
 Export the following environment variables (or add them once to your shell profile)
 * `export OPENAI_API_KEY=<your API key>`
-* `export PYTHONPATH=<path to aiproxy root>`
 
 See rubric tester options with:
-* `python lib/assessment/rubric_tester.py --help`
+* `bin/rubric_tester --help`
 
 ### example usage
 
@@ -132,7 +131,7 @@ GPT 3.5 Turbo is the default because a complete test run with that model costs o
 
 A recommended first run is to use default experiment and dataset, limited to 1 lesson:
 ```
-(.venv) Dave-MBP:~/src/aiproxy (rt-recover-from-bad-llm-responses)$ python ./lib/assessment/rubric_tester.py --lesson-names csd3-2023-L11 
+(.venv) Dave-MBP:~/src/aiproxy (rt-recover-from-bad-llm-responses)$ bin/rubric_tester --lesson-names csd3-2023-L11 
 2024-02-13 20:15:30,127: INFO: Evaluating lesson csd3-2023-L11 for dataset contractor-grades-batch-1-fall-2023 and experiment ai-rubrics-pilot-gpt-3.5-turbo...
 ```
 
@@ -150,7 +149,7 @@ The report that gets generated will contain a count of how many errors there wer
 In order to rerun only the failed student projects, you can pass the `-c` (`--use-cached`) option:
 
 ```commandline
-(.venv) Dave-MBP:~/src/aiproxy (rt-recover-from-bad-llm-responses)$ python ./lib/assessment/rubric_tester.py --lesson-names csd3-2023-L11 -c
+(.venv) Dave-MBP:~/src/aiproxy (rt-recover-from-bad-llm-responses)$ bin/rubric_tester --lesson-names csd3-2023-L11 -c
 ```
 
 ![Screenshot 2024-02-13 at 8 24 31 PM](https://github.com/code-dot-org/aiproxy/assets/8001765/ff560302-94b9-4966-a5d6-7d9a9fa54892)
@@ -163,7 +162,7 @@ After enough reruns, you'll have a complete accuracy measurement for the lesson.
 
 experiments run against GPT 4, GPT 4 Turbo and other pricey models should include report html and cached response data. this allows you to quickly view reports for these datasets either by looking directly at the `output/report*html` files or by regenerating the report against cached data via a command like:
 ```commandline
-python ./lib/assessment/rubric_tester.py --experiment-name ai-rubrics-pilot-baseline-gpt-4-turbo --use-cached
+bin/rubric_tester --experiment-name ai-rubrics-pilot-baseline-gpt-4-turbo --use-cached
 ```
 
 #### smaller test runs

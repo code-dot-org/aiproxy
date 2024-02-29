@@ -5,9 +5,9 @@ import os, sys
 import logging
 
 # Our modules
-from src.test import test_routes
-from src.openai import openai_routes
-from src.assessment import assessment_routes
+from .test import test_routes
+from .openai import openai_routes
+from .assessment import assessment_routes
 
 # Flask
 from flask import Flask

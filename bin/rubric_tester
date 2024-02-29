@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+# Set current working dir to ../
+cd "$(dirname "$0")"/..
+
+source .venv/bin/activate
+python3 -m aiproxy.assessment.rubric_tester "$@"

@@ -9,7 +9,7 @@ import boto3
 from threading import Lock
 
 from typing import List, Dict, Any
-from lib.assessment.config import VALID_LABELS
+from .config import VALID_LABELS
 
 from io import StringIO
 

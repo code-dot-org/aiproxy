@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from src import create_app
+from aiproxy.app import create_app
 
 import contextlib
 import os

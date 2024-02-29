@@ -1,28 +1,30 @@
-#!/usr/bin/env python
-
-# Make sure the caller sees a helpful error message if they try to run this script with Python 2
-f"This script requires {'Python 3'}. Please be sure to activate your virtual environment via `source .venv/bin/activate`."
+#!/usr/bin/env python3
 
 import argparse
+import boto3
+import concurrent.futures
 import csv
 import glob
-import json
-import time
-import os
-from multiprocessing import Pool
-import concurrent.futures
 import io
+import json
 import logging
+import os
 import pprint
-import boto3
 import subprocess
+import sys
+import time
 
-from sklearn.metrics import accuracy_score, confusion_matrix
+from multiprocessing import Pool
 from collections import defaultdict
 
-from lib.assessment.config import SUPPORTED_MODELS, DEFAULT_MODEL, VALID_LABELS, LESSONS, DEFAULT_DATASET_NAME, DEFAULT_EXPERIMENT_NAME
-from lib.assessment.label import Label, InvalidResponseError
-from lib.assessment.report import Report
+from sklearn.metrics import accuracy_score, confusion_matrix
+
+from .config import SUPPORTED_MODELS, DEFAULT_MODEL, VALID_LABELS, LESSONS, DEFAULT_DATASET_NAME, DEFAULT_EXPERIMENT_NAME
+from .label import Label, InvalidResponseError
+from .report import Report
+
+if 'OPEN_AI_KEY' not in os.environ:
+    print("Warning: OPEN_AI_KEY environment variable is not set.", file=sys.stderr)
 
 #globals
 prompt_file = 'system_prompt.txt'
