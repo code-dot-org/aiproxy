@@ -5,6 +5,8 @@ import csv
 import time
 import requests
 import logging
+import boto3
+from threading import Lock
 
 from typing import List, Dict, Any
 from lib.assessment.config import VALID_LABELS
@@ -15,6 +17,9 @@ class InvalidResponseError(Exception):
     pass
 
 class Label:
+    _bedrock_client = None
+    _bedrock_lock = Lock()
+
     def __init__(self):
         pass
 
@@ -48,6 +53,93 @@ class Label:
         return None
 
     def ai_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model="", response_type='tsv'):
+        if llm_model.startswith("gpt"):
+            return self.openai_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model, response_type=response_type)
+        elif llm_model.startswith("bedrock.meta"):
+            return self.bedrock_meta_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
+        elif llm_model.startswith("bedrock.anthropic"):
+            return self.bedrock_anthropic_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
+        else:
+            raise Exception("Unknown model: {}".format(llm_model))
+
+    def bedrock_anthropic_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model=""):
+        bedrock = boto3.client(service_name='bedrock-runtime')
+
+        # strip 'bedrock.' from the model name
+        bedrock_model = llm_model[8:]
+        if not bedrock_model.startswith("anthropic."):
+            raise Exception(f"Error parsing llm_model: {llm_model} bedrock_model: {bedrock_model}")
+
+        anthropic_prompt = self.compute_anthropic_prompt(prompt, rubric, student_code, examples=examples)
+        body = json.dumps({
+            "prompt": anthropic_prompt,
+            "max_tokens_to_sample": 4000,
+            "temperature": temperature,
+            # "top_p": 0.9,
+        })
+        accept = 'application/json'
+        content_type = 'application/json'
+        response = bedrock.invoke_model(body=body, modelId=bedrock_model, accept=accept, contentType=content_type)
+
+        response_body = json.loads(response.get('body').read())
+        generation = response_body.get('completion')
+
+        data = self.get_response_data_if_valid(generation, rubric, student_id, response_type='json')
+
+        return {
+            'metadata': {
+                'agent': 'anthropic',
+                'request': body,
+            },
+            'data': data,
+        }
+
+    def bedrock_meta_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model=""):
+        bedrock = self.get_bedrock_client(student_id)
+
+        # strip 'bedrock.' from the model name
+        bedrock_model = llm_model[8:]
+
+        # raise if the model name does not start with 'meta'
+        if not bedrock_model.startswith("meta."):
+            raise Exception(f"Error parsing llm_model: {llm_model} bedrock_model: {bedrock_model}")
+
+        meta_prompt = self.compute_meta_prompt(prompt, rubric, student_code, examples=examples)
+        body = json.dumps({
+            "prompt": meta_prompt,
+            "max_gen_len": 1536,
+            "temperature": temperature,
+        })
+        accept = 'application/json'
+        content_type = 'application/json'
+        response = bedrock.invoke_model(body=body, modelId=bedrock_model, accept=accept, contentType=content_type)
+
+        response_body = json.loads(response.get('body').read())
+        generation = response_body.get('generation')
+
+        data = self.get_response_data_if_valid(generation, rubric, student_id, response_type='json')
+
+        return {
+            'metadata': {
+                'agent': 'meta',
+                'request': body,
+            },
+            'data': data,
+        }
+
+    # make sure only one client is created, otherwise we sometimes end up with a corrupt .aws/credentials file
+    # when rubric tester calls this function multiple times in parallel.
+    @classmethod
+    def get_bedrock_client(cls, student_id):
+        if cls._bedrock_client is None:
+            with cls._bedrock_lock:
+                if cls._bedrock_client is None:
+                    # print the student_id so we can debug if we see multiple clients being created
+                    logging.info(f"creating bedrock client. student_id: {student_id}")
+                    cls._bedrock_client = boto3.client(service_name='bedrock-runtime')
+        return cls._bedrock_client
+
+    def openai_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model="", response_type='tsv'):
         # Determine the OpenAI URL and headers
         api_url = 'https://api.openai.com/v1/chat/completions'
         headers = {
@@ -177,6 +269,20 @@ class Label:
         else:
             response_data = self.get_consensus_response(response_data_choices, student_id)
         return response_data
+
+    def compute_anthropic_prompt(self, prompt, rubric, student_code, examples=[]):
+        return f"Human:\n{prompt}\n\nRubric:\n{rubric}\n\nStudent Code:\n{student_code}\n\nAssistant:\n"
+
+    def compute_meta_prompt(self, prompt, rubric, student_code, examples=[]):
+        # here is the documentation for code llama and llama 2 prompting:
+        # https://huggingface.co/blog/llama2#how-to-prompt-llama-2
+        # https://huggingface.co/blog/codellama#conversational-instructions
+        #
+        # that documentation says that the prompt should be in the following format:
+        # return f"<s>[INST]<<SYS>>{prompt}<</SYS>>\n\nRubric:\n{rubric}\n\nStudent Code:\n{student_code}\n\nEvaluation (JSON):\n[/INST]"
+        #
+        # but that format does not consistently lead to valid JSON output. The following format works more reliably:
+        return f"[INST]{prompt}[/INST]\n\nRubric:\n{rubric}\n\nStudent Code:\n{student_code}\n\nEvaluation (JSON):\n"
 
     def compute_messages(self, prompt, rubric, student_code, examples=[]):
         messages = [
