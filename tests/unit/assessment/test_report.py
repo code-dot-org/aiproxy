@@ -4,7 +4,7 @@ import csv
 import pytest
 import random
 
-from lib.assessment.report import Report
+from aiproxy.assessment.report import Report
 
 
 @pytest.fixture

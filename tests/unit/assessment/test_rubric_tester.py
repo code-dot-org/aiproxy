@@ -5,7 +5,7 @@ import random
 from unittest import mock
 from types import SimpleNamespace
 
-from lib.assessment.rubric_tester import (
+from aiproxy.assessment.rubric_tester import (
     read_and_label_student_work,
     get_passing_labels,
     read_inputs,
@@ -19,7 +19,7 @@ from lib.assessment.rubric_tester import (
     get_examples,
 )
 
-from lib.assessment.label import Label, InvalidResponseError
+from aiproxy.assessment.label import Label, InvalidResponseError
 
 
 class TestReadAndLabelStudentWork:
@@ -321,8 +321,8 @@ class TestMain:
 
 class TestInit:
     def test_should_call_main_when_running_by_itself(self, mocker):
-        main_mock = mocker.patch('lib.assessment.rubric_tester.main')
-        mocker.patch('lib.assessment.rubric_tester.__name__', '__main__')
+        main_mock = mocker.patch('aiproxy.assessment.rubric_tester.main')
+        mocker.patch('aiproxy.assessment.rubric_tester.__name__', '__main__')
 
         init()
 

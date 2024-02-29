@@ -9,7 +9,7 @@ from io import StringIO
 import requests
 import pytest
 
-from lib.assessment.label import Label, InvalidResponseError
+from aiproxy.assessment.label import Label, InvalidResponseError
 
 
 @pytest.fixture
@@ -439,7 +439,7 @@ class TestAiLabelStudentWork:
         assert requests_mock.last_request.json()['messages'] == messages
 
     def test_should_raise_timeout(self, mocker, label, prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model):
-        mocker.patch('lib.assessment.label.requests.post', side_effect = requests.exceptions.ReadTimeout())
+        mocker.patch('aiproxy.assessment.label.requests.post', side_effect = requests.exceptions.ReadTimeout())
 
         # Mock out compute_messages
         compute_messages = mocker.patch.object(Label, 'compute_messages')
@@ -530,7 +530,7 @@ class TestlabelStudentWork:
         mock_file = mocker.patch('builtins.open', mock_open)
 
         # Mock the file exists
-        exists_mock = mocker.patch('lib.assessment.label.os.path.exists', return_value=True)
+        exists_mock = mocker.patch('aiproxy.assessment.label.os.path.exists', return_value=True)
 
         result = label.label_student_work(
             prompt, rubric, code, student_id,
@@ -555,7 +555,7 @@ class TestlabelStudentWork:
         mock_file = mocker.patch('builtins.open', mock_open)
 
         # Mock the file so it does not exist
-        exists_mock = mocker.patch('lib.assessment.label.os.path.exists', return_value=False)
+        exists_mock = mocker.patch('aiproxy.assessment.label.os.path.exists', return_value=False)
 
         # Get mocks
         statically_label_student_work_mock = mocker.patch.object(

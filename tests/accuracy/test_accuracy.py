@@ -3,7 +3,7 @@ import os
 
 from unittest import mock
 
-from lib.assessment.rubric_tester import (
+from aiproxy.assessment.rubric_tester import (
     main,
 )
 
