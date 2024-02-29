@@ -5,9 +5,7 @@ COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY ./tests /app/tests
-COPY ./lib /app/lib
-COPY ./src /app/src
+COPY . .
 
 EXPOSE 80
-CMD ["waitress-serve", "--host=0.0.0.0", "--port=80", "--call", "app:create_app"]
+CMD ["waitress-serve", "--host=0.0.0.0", "--port=80", "--call", "aiproxy.app:create_app"]
