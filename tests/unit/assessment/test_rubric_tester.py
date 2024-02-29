@@ -160,7 +160,6 @@ class TestGetActualLabels:
 class TestGetExamples:
     def test_should_open_example_js_and_tsv_files(self, mocker, code_generator, rubric, examples):
         examples_set = examples(rubric)
-        print(examples_set)
 
         contents = {}
         for i, example in enumerate(examples_set):
@@ -189,7 +188,6 @@ class TestGetExamples:
 
     def test_should_open_example_js_and_json_files(self, mocker, code_generator, rubric, examples):
         examples_set = examples(rubric)
-        print(examples_set)
 
         contents = {}
         for i, example in enumerate(examples_set):
