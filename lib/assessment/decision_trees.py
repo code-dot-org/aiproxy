@@ -6,7 +6,7 @@ class DecisionTrees:
   # All decision tree functions should receive the code feature dictionary from the 
   # CodeFeatureExtractor class when called.
   # Function to statically assess U3L11 'Position - Elements and the Coordinate System'
-  def assess_position_elements(self, data):
+  def u3l11_position_assessment(self, data):
 
     shapes = data.get('shapes', 0)
     sprites = data.get('sprites', 0)

@@ -5,7 +5,7 @@ import logging
 '''
 This class contains delegate and helper functions to extract relevant features from code for assessment. 
 New features should be added to the features dictionary.
-Add delegate function definitions to the extractCodeFeatures function.
+Add delegate function definitions to the extract_features function.
 '''
 class CodeFeatures:
 
@@ -19,24 +19,25 @@ class CodeFeatures:
     # info about the extracted features
     self.nodes = []
 
-    # Store statically assessed score here
+    # For learning goals that are assessed by decision tree and not the LLM, store the
+    # assessment results here
     self.assessment = ''
 
-  # Feature extraction and labeling functions
+  # Feature extraction and labeling helper functions
     
   # Helper function to check number of arguments in an expression
   # Can be modified to provide additional info about arguments
-  def argumentHelper(self, expression):
+  def argument_helper(self, expression):
     return True if len(expression.arguments) >= 2 else False
 
   # Helper function that returns the type of a called expression
-  def expressionHelper(self, expression):
+  def expression_helper(self, expression):
     shapes = ['rect', 'ellipse', 'circle', 'quad', 'triangle']
-    if expression.callee.name in shapes and self.argumentHelper(expression):
+    if expression.callee.name in shapes and self.argument_helper(expression):
       return 'shapes'
-    elif expression.callee.name == 'text' and self.argumentHelper(expression):
+    elif expression.callee.name == 'text' and self.argument_helper(expression):
       return 'text'
-    elif expression.callee.name == 'createSprite' and self.argumentHelper(expression):
+    elif expression.callee.name == 'createSprite' and self.argument_helper(expression):
       return 'sprites'
     else:
       return None
@@ -46,16 +47,16 @@ class CodeFeatures:
 
     # Delegate function for U3L11 'Position - Elements and the Coordinate System'
     # Add additional delegate functions here
-    def positionElementsAndTheCoordinateSystemDelegate(node, metadata):
+    def u3l11_position(node, metadata):
       if node.type == 'ExpressionStatement' and node.expression.type == 'CallExpression':
-        func_type = self.expressionHelper(node.expression)
+        func_type = self.expression_helper(node.expression)
         if func_type:
           self.features[func_type] += 1
           self.nodes.append(node)
       elif node.type == 'VariableDeclaration':
         for declaration in node.declarations:
           if declaration.init.type == 'CallExpression':
-            func_type = self.expressionHelper(declaration.init)
+            func_type = self.expression_helper(declaration.init)
             if func_type:
               self.features[func_type] += 1
               self.nodes.append(node)
@@ -64,6 +65,6 @@ class CodeFeatures:
     # TODO: Add list or file to store names of learning goals that are being statically assessed
     # Feature extraction for U3L11 'Position - Elements and the Coordinate System'
     if learning_goal["Key Concept"] == 'Position - Elements and the Coordinate System':
-      esprima.parseScript(program, {'tolerant': True, 'comment': True, 'loc': True}, positionElementsAndTheCoordinateSystemDelegate)
+      esprima.parseScript(program, {'tolerant': True, 'comment': True, 'loc': True}, u3l11_position)
       dt = DecisionTrees()
-      self.assessment = dt.assess_position_elements(self.features)
+      self.assessment = dt.u3l11_position_assessment(self.features)

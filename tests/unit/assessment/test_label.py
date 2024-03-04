@@ -61,10 +61,10 @@ class TestSanitizeCode:
         remove_js_comments_mock.assert_not_called()
 
 
-class TestStaticallyLabelStudentWork:
+class TestBlankCodeDetection:
     def test_should_return_no_evidence_on_blank_project(self, label, rubric, student_id, examples):
-        result = label.statically_label_student_work(
-            rubric, "", student_id, examples(rubric)
+        result = label.test_for_blank_code(
+            rubric, "", student_id
         )
 
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
@@ -82,26 +82,28 @@ class TestStaticallyLabelStudentWork:
         # It should match the concepts given in the rubric
         assert set(x['Key Concept'] for x in parsed_rubric) == set(x['Key Concept'] for x in result['data'])
 
-    def test_should_return_none_when_given_code_with_no_cfe_flag(self, label, code, rubric, student_id, examples):
-        result = label.statically_label_student_work(
-            rubric, code, student_id, examples(rubric)
-        )
 
-        assert result is None
+class TestCodeFeatureExtractor:
+    def test_should_return_assessed_learning_goal_when_cfe_flag_set(self, label, code):
+        
+        with open('tests/data/cfe_params.json', 'r') as f:
+            params = json.load(f)
 
-    def test_should_return_statically_analyzed_learning_goal_when_cfe_flag_set(self, label, code, rubric_with_flag, student_id, examples):
-        result = label.statically_label_student_work(
-            rubric_with_flag, code, student_id, examples(rubric_with_flag)
+        with open('tests/data/cfe_rubric.csv', 'r') as f:
+            rubric = f.read()
+        
+        result = label.cfe_label_student_work(
+            rubric, code, params["code-feature-extractor"]
         )
+        print(result)
 
         # It should have a metadata and data section
         assert 'metadata' in result
         assert 'data' in result
 
-        # It should return just as many labeled rows as there are in the rubric
-        assert len(result['data']) == 1
+        # It should return just as many labeled rows as the number of learning goals listed in the code-feature-extractor param
+        assert len(result['data']) == len(params["code-feature-extractor"])
 
-        # It should return 'No Evidence' in every row
         assert all(x['Label'] == 'No Evidence' for x in result['data'])
 
 
@@ -520,7 +522,7 @@ class TestlabelStudentWork:
 
     def test_should_log_timeout(self, mocker, caplog, label, prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model):
         # Mock out static assessment
-        mocker.patch.object(Label, 'statically_label_student_work').return_value = None
+        mocker.patch.object(Label, 'test_for_blank_code').return_value = None
 
         # Mock out ai assessment to raise a timeout
         mocker.patch.object(Label, 'ai_label_student_work').side_effect = requests.exceptions.ReadTimeout()
@@ -573,8 +575,8 @@ class TestlabelStudentWork:
         exists_mock = mocker.patch('lib.assessment.label.os.path.exists', return_value=False)
 
         # Get mocks
-        statically_label_student_work_mock = mocker.patch.object(
-            Label, 'statically_label_student_work',
+        test_for_blank_code_mock = mocker.patch.object(
+            Label, 'test_for_blank_code',
             return_value=None
         )
 
@@ -595,15 +597,15 @@ class TestlabelStudentWork:
 
         mock_file.assert_called_with(filename, 'w+')
 
-    def test_should_call_statically_label_student_work_before_ai_assessment(self, mocker, label, prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model):
+    def test_should_call_test_for_blank_code_before_ai_assessment(self, mocker, label, prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model):
         # Determine call order
         call_order = []
 
         # Get mocks
-        statically_label_student_work_mock = mocker.patch.object(
-            Label, 'statically_label_student_work',
+        test_for_blank_code_mock = mocker.patch.object(
+            Label, 'test_for_blank_code',
             return_value=None
-        ).side_effect = lambda *a, **kw: call_order.append('static')
+        ).side_effect = lambda *a, **kw: call_order.append('blank')
 
         ai_label_student_work_mock = mocker.patch.object(
             Label, 'ai_label_student_work',
@@ -624,12 +626,25 @@ class TestlabelStudentWork:
         except:
             pass
 
-        assert call_order == ['static', 'ai']
+        assert call_order == ['blank', 'ai']
 
-    def test_should_call_ai_assessment_when_static_assessment_returns_none(self, mocker, label, assessment_return_value, prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model):
+    def test_should_return_no_evidence_if_blank_code_detected(self, label, prompt, rubric, student_id):
+
+        result = label.label_student_work(
+            prompt, rubric, "", student_id
+        )
+
+        # It should have a metadata and data section
+        assert 'metadata' in result
+        assert 'data' in result
+
+        # It should return No Evidence for all learning goals
+        assert all(x["Label"] == "No Evidence" for x in result["data"])
+
+    def test_should_call_ai_assessment_when_blank_code_check_returns_None(self, mocker, label, assessment_return_value, prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model):
         # Get mocks
-        statically_label_student_work_mock = mocker.patch.object(
-            Label, 'statically_label_student_work',
+        test_for_blank_code_mock = mocker.patch.object(
+            Label, 'test_for_blank_code',
             return_value=None
         )
 
@@ -650,13 +665,15 @@ class TestlabelStudentWork:
 
         ai_label_student_work_mock.assert_called_once()
 
-    def test_should_call_ai_assessment_when_static_assessment_returns_assessed_learning_goal(self, mocker, label, assessment_return_value, prompt, rubric_with_flag, code, student_id, examples, num_responses, temperature, llm_model):
+    def test_should_call_ai_assessment_when_static_assessment_returns_assessed_learning_goal(self, mocker, label, assessment_return_value, prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model):
         
-        parsed_rubric = list(csv.DictReader(rubric_with_flag.splitlines()))
+        parsed_rubric = list(csv.DictReader(rubric.splitlines()))
+
+        code_feature_extractor = [parsed_rubric[-1]["Key Concept"]]
 
         # Get mocks
-        statically_label_student_work_mock = mocker.patch.object(
-            Label, 'statically_label_student_work',
+        cfe_label_student_work_mock = mocker.patch.object(
+            Label, 'cfe_label_student_work',
             return_value={"metadata": {"agent": ["code feature extractor", "static analysis"]},
                           "data": [
                               {"Label": "No Evidence",
@@ -669,17 +686,18 @@ class TestlabelStudentWork:
 
         ai_label_student_work_mock = mocker.patch.object(
             Label, 'ai_label_student_work',
-            return_value=assessment_return_value(rubric_with_flag)
+            return_value=assessment_return_value(rubric)
         )
 
         result = label.label_student_work(
-            prompt, rubric_with_flag, code, student_id,
-            examples=examples(rubric_with_flag),
+            prompt, rubric, code, student_id,
+            examples=examples(rubric),
             num_responses=num_responses,
             temperature=temperature,
             write_cached=False,
             llm_model=llm_model,
-            remove_comments=False
+            remove_comments=False,
+            code_feature_extractor=code_feature_extractor
         )
 
         ai_label_student_work_mock.assert_called_once()
