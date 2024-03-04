@@ -30,8 +30,23 @@ class CodeFeatures:
   def argument_helper(self, expression):
     return True if len(expression.arguments) >= 2 else False
 
+  # Helper function to identify and count all function calls in a program
+  def function_call_helper(self, node):
+    if node.type == 'ExpressionStatement' and node.expression.type == 'CallExpression':
+      if node.expression.callee.name in self.features.keys():
+        self.features[node.expression.callee.name] += 1
+      else:
+        self.features[node.expression.callee.name] = 1
+    elif node.type == 'VariableDeclaration':
+      for declaration in node.declarations:
+        if declaration.init.type == 'CallExpression':
+          if node.expression.callee.name in self.features.keys():
+            self.features[node.expression.callee.name] += 1
+          else:
+            self.features[node.expression.callee.name] = 1
+
   # Helper function that returns the type of a called expression
-  def expression_helper(self, expression):
+  def expression_type_helper(self, expression):
     shapes = ['rect', 'ellipse', 'circle', 'quad', 'triangle']
     if expression.callee.name in shapes and self.argument_helper(expression):
       return 'shapes'
@@ -49,14 +64,14 @@ class CodeFeatures:
     # Add additional delegate functions here
     def u3l11_position(node, metadata):
       if node.type == 'ExpressionStatement' and node.expression.type == 'CallExpression':
-        func_type = self.expression_helper(node.expression)
+        func_type = self.expression_type_helper(node.expression)
         if func_type:
           self.features[func_type] += 1
           self.nodes.append(node)
       elif node.type == 'VariableDeclaration':
         for declaration in node.declarations:
           if declaration.init.type == 'CallExpression':
-            func_type = self.expression_helper(declaration.init)
+            func_type = self.expression_type_helper(declaration.init)
             if func_type:
               self.features[func_type] += 1
               self.nodes.append(node)
