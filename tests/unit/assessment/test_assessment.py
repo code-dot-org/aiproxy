@@ -13,6 +13,7 @@ def test_label_should_pass_arguments_along(
     """
 
     # import test data
+    response_type = 'tsv'
     rubric = ''
     with open('tests/data/u3l13.csv', 'r') as f:
         rubric = f.read()
@@ -34,7 +35,8 @@ def test_label_should_pass_arguments_along(
         llm_model=llm_model,
         num_responses=num_responses,
         temperature=temperature,
-        remove_comments=remove_comments
+        remove_comments=remove_comments,
+        response_type=response_type
     )
 
     # Check to see that it was called
@@ -46,7 +48,8 @@ def test_label_should_pass_arguments_along(
         temperature=temperature,
         llm_model=llm_model,
         remove_comments=remove_comments,
-        code_feature_extractor=None
+        response_type=response_type,
+        code_feature_extractor=None,
     )
 
 

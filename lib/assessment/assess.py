@@ -13,7 +13,7 @@ from lib.assessment.label import Label
 class KeyConceptError(Exception):
   pass
 
-def label(code, prompt, rubric, examples=[], api_key='', llm_model=DEFAULT_MODEL, num_responses=1, temperature=0.2, remove_comments=False, code_feature_extractor=None):
+def label(code, prompt, rubric, examples=[], api_key='', llm_model=DEFAULT_MODEL, num_responses=1, temperature=0.2, remove_comments=False, response_type='tsv', code_feature_extractor=None):
   OPENAI_API_KEY = api_key
 
   # Set the key
@@ -28,7 +28,7 @@ def label(code, prompt, rubric, examples=[], api_key='', llm_model=DEFAULT_MODEL
   # Validate example key concepts against rubric.
   for i, ex in enumerate(examples):
     rubric_key_concepts = list(set(row['Key Concept'] for row in csv.DictReader(rubric.splitlines())))
-    example_key_concepts = list(set(row['Key Concept'] for row in csv.DictReader(ex[1].splitlines(), delimiter="\t")))
+    example_key_concepts = get_example_key_concepts(ex[1], response_type)
     if rubric_key_concepts != example_key_concepts:
       logging.error(f"Mismatch between rubric and example key concepts for example {i}: Rubric: {rubric_key_concepts} | Example: {example_key_concepts}")
       raise KeyConceptError(f"Mismatch between rubric and example key concepts for example {i}: Rubric: {rubric_key_concepts} | Example: {example_key_concepts}")
@@ -43,5 +43,15 @@ def label(code, prompt, rubric, examples=[], api_key='', llm_model=DEFAULT_MODEL
       temperature=temperature,
       llm_model=llm_model,
       remove_comments=remove_comments,
+      response_type=response_type,
       code_feature_extractor=code_feature_extractor,
   )
+
+def get_example_key_concepts(example_response, response_type):
+    if response_type == 'tsv':
+        return list(set(row['Key Concept'] for row in csv.DictReader(example_response.splitlines(), delimiter="\t")))
+    elif response_type == 'json':
+        response_data = json.loads(example_response)
+        return list(set([item["Key Concept"] for item in response_data]))
+    else:
+        raise f"invalid response type {response_type}"

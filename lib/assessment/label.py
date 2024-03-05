@@ -228,7 +228,7 @@ class Label:
         
         # Send data to LLM for assessment
         try:
-            ai_result = self.ai_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
+            ai_result = self.ai_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model, response_type=response_type)
         except requests.exceptions.ReadTimeout:
             logging.error(f"{student_id} request timed out in {(time.time() - start_time):.0f} seconds.")
             ai_result = None
