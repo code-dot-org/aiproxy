@@ -5,9 +5,12 @@ import csv
 import time
 import requests
 import logging
+import boto3
+from threading import Lock
 
 from typing import List, Dict, Any
 from lib.assessment.config import VALID_LABELS
+from lib.assessment.code_feature_extractor import CodeFeatures
 
 from io import StringIO
 
@@ -15,21 +18,23 @@ class InvalidResponseError(Exception):
     pass
 
 class Label:
+    _bedrock_client = None
+    _bedrock_lock = Lock()
+
     def __init__(self):
         pass
 
-    # This will take a rubric and student code and it will perform static checks on the code.
-    #
-    # For instance, it will determine a blank project should receive a No Evidence score for
-    # all items in the rubric.
-    def statically_label_student_work(self, rubric, student_code, student_id, examples=[]):
+    # Check to ensure that student project is not blank. Assessment is statically generated for blank code.
+    def test_for_blank_code(self, rubric, student_code, student_id):
         rubric_key_concepts = list(set(row['Key Concept'] for row in csv.DictReader(rubric.splitlines())))
 
+        # Test for blank code
         if student_code.strip() == "":
             # Blank code should return No Evidence
             return {
                 'metadata': {
                     'agent': 'static',
+                    'student_id': student_id,
                 },
                 'data': list(
                     map(
@@ -44,10 +49,121 @@ class Label:
                 )
             }
 
-        # We can't assess this statically
+        # Code is not blank
         return None
+    
+    # Send student code and relevant learning goals to code feature extractor
+    def cfe_label_student_work(self, rubric, student_code, code_feature_extractor):
+
+        # Filter rubric to return only learning goals listed for code feature extractor
+        learning_goals = [row for row in csv.DictReader(rubric.splitlines()) if row["Key Concept"] in code_feature_extractor]
+        
+        # Prep output data
+        results = {"metadata": {"agent": ["code feature extractor", "static analysis"]},"data": []}
+    
+        # Create instance of feature extractor
+        cfe = CodeFeatures()
+    
+        # Send each filtered learning goal to code feature extractor and add returned data
+        # to output dictionary
+        for learning_goal in learning_goals:
+            cfe.extract_features(student_code, learning_goal)
+            results["data"].append({"Label": cfe.assessment,
+                                    "Key Concept": learning_goal["Key Concept"],
+                                    "Observations": cfe.features,
+                                    "Reason": learning_goal[cfe.assessment] if cfe.assessment else ''
+                                        })
+        
+        return results
 
     def ai_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model="", response_type='tsv'):
+        if llm_model.startswith("gpt"):
+            return self.openai_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model, response_type=response_type)
+        elif llm_model.startswith("bedrock.meta"):
+            return self.bedrock_meta_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
+        elif llm_model.startswith("bedrock.anthropic"):
+            return self.bedrock_anthropic_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
+        else:
+            raise Exception("Unknown model: {}".format(llm_model))
+
+    def bedrock_anthropic_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model=""):
+        bedrock = boto3.client(service_name='bedrock-runtime')
+
+        # strip 'bedrock.' from the model name
+        bedrock_model = llm_model[8:]
+        if not bedrock_model.startswith("anthropic."):
+            raise Exception(f"Error parsing llm_model: {llm_model} bedrock_model: {bedrock_model}")
+
+        anthropic_prompt = self.compute_anthropic_prompt(prompt, rubric, student_code, examples=examples)
+        body = json.dumps({
+            "prompt": anthropic_prompt,
+            "max_tokens_to_sample": 4000,
+            "temperature": temperature,
+            # "top_p": 0.9,
+        })
+        accept = 'application/json'
+        content_type = 'application/json'
+        response = bedrock.invoke_model(body=body, modelId=bedrock_model, accept=accept, contentType=content_type)
+
+        response_body = json.loads(response.get('body').read())
+        generation = response_body.get('completion')
+
+        data = self.get_response_data_if_valid(generation, rubric, student_id, response_type='json')
+
+        return {
+            'metadata': {
+                'agent': 'anthropic',
+                'request': body,
+            },
+            'data': data,
+        }
+
+    def bedrock_meta_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model=""):
+        bedrock = self.get_bedrock_client(student_id)
+
+        # strip 'bedrock.' from the model name
+        bedrock_model = llm_model[8:]
+
+        # raise if the model name does not start with 'meta'
+        if not bedrock_model.startswith("meta."):
+            raise Exception(f"Error parsing llm_model: {llm_model} bedrock_model: {bedrock_model}")
+
+        meta_prompt = self.compute_meta_prompt(prompt, rubric, student_code, examples=examples)
+        body = json.dumps({
+            "prompt": meta_prompt,
+            "max_gen_len": 1536,
+            "temperature": temperature,
+        })
+        accept = 'application/json'
+        content_type = 'application/json'
+        response = bedrock.invoke_model(body=body, modelId=bedrock_model, accept=accept, contentType=content_type)
+
+        response_body = json.loads(response.get('body').read())
+        generation = response_body.get('generation')
+
+        data = self.get_response_data_if_valid(generation, rubric, student_id, response_type='json')
+
+        return {
+            'metadata': {
+                'agent': 'meta',
+                'request': body,
+            },
+            'data': data,
+        }
+
+    # make sure only one client is created, otherwise we sometimes end up with a corrupt .aws/credentials file
+    # when rubric tester calls this function multiple times in parallel.
+    @classmethod
+    def get_bedrock_client(cls, student_id):
+        if cls._bedrock_client is None:
+            with cls._bedrock_lock:
+                if cls._bedrock_client is None:
+                    # print the student_id so we can debug if we see multiple clients being created
+                    logging.info(f"creating bedrock client. student_id: {student_id}")
+                    cls._bedrock_client = boto3.client(service_name='bedrock-runtime')
+        return cls._bedrock_client
+
+    def openai_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model="", response_type='tsv'):
         # Determine the OpenAI URL and headers
         api_url = 'https://api.openai.com/v1/chat/completions'
         headers = {
@@ -78,14 +194,14 @@ class Label:
 
         return {
             'metadata': {
-                'agent': 'openai',
+                'agent': ['openai'],
                 'usage': info['usage'],
                 'request': data,
             },
             'data': response_data,
         }
 
-    def label_student_work(self, prompt, rubric, student_code, student_id, examples=[], use_cached=False, write_cached=False, num_responses=0, temperature=0.0, llm_model="", remove_comments=False, response_type='tsv', cache_prefix=""):
+    def label_student_work(self, prompt, rubric, student_code, student_id, examples=[], use_cached=False, write_cached=False, num_responses=0, temperature=0.0, llm_model="", remove_comments=False, response_type='tsv', cache_prefix="", code_feature_extractor=None):
         if use_cached and os.path.exists(os.path.join(cache_prefix, f"cached_responses/{student_id}.json")):
             with open(os.path.join(cache_prefix, f"cached_responses/{student_id}.json"), 'r') as f:
                 return json.load(f)
@@ -96,25 +212,34 @@ class Label:
         # Sanitize student code
         student_code = self.sanitize_code(student_code, remove_comments=remove_comments)
 
-        # Try static analysis options (before invoking AI)
-        result = self.statically_label_student_work(rubric, student_code, student_id, examples=examples)
+        # Test for empty student code file
+        blank_code_result = self.test_for_blank_code(rubric, student_code, student_id)
 
-        # If it gives back a response, right now assume it is complete and do not perform an AI analysis
-        # We may want to, in the future, gauge how many of the concepts it has labeled and let AI fill in the blanks
-        # Right now, however, only if there is no result, we try the AI for assessment
-        if result is None:
-            try:
-                result = self.ai_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model, response_type=response_type)
-            except requests.exceptions.ReadTimeout:
-                logging.error(f"{student_id} request timed out in {(time.time() - start_time):.0f} seconds.")
-                result = None
+        # If code is blank, return results
+        if blank_code_result:
+            blank_code_result["metadata"]["time"] = time.time() - start_time
+            return blank_code_result
+
+        # If student code is not blank, check for learning goals flagged for code feature extractor
+        # Send student code and learning goals(s) for feature extraction and labeling.
+        cfe_results = None
+        if code_feature_extractor:
+            cfe_results = self.cfe_label_student_work(rubric, student_code, code_feature_extractor)
+        
+        # Send data to LLM for assessment
+        try:
+            ai_result = self.ai_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
+        except requests.exceptions.ReadTimeout:
+            logging.error(f"{student_id} request timed out in {(time.time() - start_time):.0f} seconds.")
+            ai_result = None
+
 
         # No assessment was possible
-        if result is None:
+        if ai_result is None:
             raise Exception("AI assessment failed.")
 
         elapsed = time.time() - start_time
-        tokens = result.get('metadata', {}).get('usage', {}).get('total_tokens', 0)
+        tokens = ai_result.get('metadata', {}).get('usage', {}).get('total_tokens', 0)
         logging.info(f"{student_id} request succeeded in {elapsed:.0f} seconds. {tokens} tokens used.")
 
         # Craft the response dictionary
@@ -123,12 +248,19 @@ class Label:
                 'time': elapsed,
                 'student_id': student_id,
             },
-            'data': result.get('data', []),
+            'data': ai_result.get('data', []),
         }
-        response['metadata'].update(result.get('metadata', {})),
+        response['metadata'].update(ai_result.get('metadata', {}))
+
+        # If any learning goals were assessed by the code feature extractor, replace the AI results with cfe results
+        if cfe_results:
+            response["metadata"]["agent"].append(cfe_results["metadata"]["agent"])
+            new_data = list(filter(lambda assessment: assessment["Key Concept"] not in code_feature_extractor, response["data"]))
+            new_data.extend(cfe_results["data"])
+            response["data"] = new_data
 
         # only write to cache if the response is valid
-        if write_cached and result:
+        if write_cached and ai_result:
             with open(os.path.join(cache_prefix, f"cached_responses/{student_id}.json"), 'w+') as f:
                 json.dump(response, f, indent=4)
 
@@ -177,6 +309,20 @@ class Label:
         else:
             response_data = self.get_consensus_response(response_data_choices, student_id)
         return response_data
+
+    def compute_anthropic_prompt(self, prompt, rubric, student_code, examples=[]):
+        return f"Human:\n{prompt}\n\nRubric:\n{rubric}\n\nStudent Code:\n{student_code}\n\nAssistant:\n"
+
+    def compute_meta_prompt(self, prompt, rubric, student_code, examples=[]):
+        # here is the documentation for code llama and llama 2 prompting:
+        # https://huggingface.co/blog/llama2#how-to-prompt-llama-2
+        # https://huggingface.co/blog/codellama#conversational-instructions
+        #
+        # that documentation says that the prompt should be in the following format:
+        # return f"<s>[INST]<<SYS>>{prompt}<</SYS>>\n\nRubric:\n{rubric}\n\nStudent Code:\n{student_code}\n\nEvaluation (JSON):\n[/INST]"
+        #
+        # but that format does not consistently lead to valid JSON output. The following format works more reliably:
+        return f"[INST]{prompt}[/INST]\n\nRubric:\n{rubric}\n\nStudent Code:\n{student_code}\n\nEvaluation (JSON):\n"
 
     def compute_messages(self, prompt, rubric, student_code, examples=[]):
         messages = [

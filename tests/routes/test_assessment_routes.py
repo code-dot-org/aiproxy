@@ -138,7 +138,7 @@ class TestPostAssessment:
           "model": randomstring(10),
           "remove-comments": "1",
           "num-responses": "2",
-          "temperature": "0.2",
+          "temperature": "0.2", 
           "response-type": response_type,
         }
 
@@ -155,6 +155,7 @@ class TestPostAssessment:
             num_responses=2,
             temperature=0.2,
             response_type=response_type,
+            code_feature_extractor=None
         )
 
     def test_should_return_the_result_from_label_function_when_valid(self, mocker, client, randomstring):

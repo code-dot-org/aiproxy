@@ -1,0 +1,8 @@
+{
+  "model": "gpt-4-0613",
+  "remove-comments": "1",
+  "num-responses": "3",
+  "num-passing-grades": "2",
+  "temperature": "0.2",
+  "code-feature-extractor": ["Position - Elements and the Coordinate System"]
+}

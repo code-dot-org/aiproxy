@@ -6,6 +6,7 @@ from flask import Blueprint, request
 import os
 import openai
 import json
+import logging
 
 from lib.assessment.config import DEFAULT_MODEL
 
@@ -44,6 +45,7 @@ def post_assessment():
             num_responses=int(request.values.get("num-responses", "1")),
             temperature=float(request.values.get("temperature", "0.2")),
             response_type=request.values.get("response-type", "tsv"),
+            code_feature_extractor=(request.values.get("code-feature-extractor", None))
         )
     except ValueError:
         return "One of the arguments is not parseable as a number", 400
@@ -159,6 +161,47 @@ def test_assessment_examples():
             remove_comments=(request.values.get("remove-comments", "0") != "0"),
             num_responses=int(request.values.get("num-responses", "1")),
             temperature=float(request.values.get("temperature", "0.2")),
+        )
+    except ValueError as e:
+        return "One of the arguments is not parseable as a number: {}".format(str(e)), 400
+    except openai.error.InvalidRequestError as e:
+        return str(e), 400
+    except KeyConceptError as e:
+        return str(e), 400
+    
+    if not isinstance(labels, dict) or not isinstance(labels.get("data"), list):
+        return "response from AI or service not valid", 400
+
+    return labels
+
+# Test assessment with code feature extractor
+@assessment_routes.route('/test/assessment/cfe', methods=['GET', 'POST'])
+def test_assessment_cfe():
+    openai.api_key = os.getenv('OPENAI_API_KEY')
+
+    with open('tests/data/cfe_params.json', 'r') as f:
+        params = json.load(f)
+        
+    with open('tests/data/cfe_code.js', 'r') as f:
+        code = f.read()
+
+    with open('tests/data/cfe_prompt.txt', 'r') as f:
+        prompt = f.read()
+
+    with open('tests/data/cfe_rubric.csv', 'r') as f:
+        rubric = f.read()
+
+    try:
+        labels = assess.label(
+            code=code,
+            prompt=prompt,
+            rubric=rubric,
+            api_key=request.values.get("api-key", openai.api_key),
+            llm_model=request.values.get("model", DEFAULT_MODEL),
+            remove_comments=params["remove-comments"],
+            num_responses=int(params["num-responses"]),
+            temperature=float(params["temperature"]),
+            code_feature_extractor=params["code-feature-extractor"]
         )
     except ValueError as e:
         return "One of the arguments is not parseable as a number: {}".format(str(e)), 400

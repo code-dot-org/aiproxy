@@ -48,7 +48,8 @@ def test_label_should_pass_arguments_along(
         temperature=temperature,
         llm_model=llm_model,
         remove_comments=remove_comments,
-        response_type=response_type
+        response_type=response_type,
+        code_feature_extractor=None,
     )
 
 
