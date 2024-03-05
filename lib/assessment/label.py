@@ -10,6 +10,7 @@ from threading import Lock
 
 from typing import List, Dict, Any
 from lib.assessment.config import VALID_LABELS
+from lib.assessment.code_feature_extractor import CodeFeatures
 
 from io import StringIO
 
@@ -23,18 +24,17 @@ class Label:
     def __init__(self):
         pass
 
-    # This will take a rubric and student code and it will perform static checks on the code.
-    #
-    # For instance, it will determine a blank project should receive a No Evidence score for
-    # all items in the rubric.
-    def statically_label_student_work(self, rubric, student_code, student_id, examples=[]):
+    # Check to ensure that student project is not blank. Assessment is statically generated for blank code.
+    def test_for_blank_code(self, rubric, student_code, student_id):
         rubric_key_concepts = list(set(row['Key Concept'] for row in csv.DictReader(rubric.splitlines())))
 
+        # Test for blank code
         if student_code.strip() == "":
             # Blank code should return No Evidence
             return {
                 'metadata': {
                     'agent': 'static',
+                    'student_id': student_id,
                 },
                 'data': list(
                     map(
@@ -49,8 +49,32 @@ class Label:
                 )
             }
 
-        # We can't assess this statically
+        # Code is not blank
         return None
+    
+    # Send student code and relevant learning goals to code feature extractor
+    def cfe_label_student_work(self, rubric, student_code, code_feature_extractor):
+
+        # Filter rubric to return only learning goals listed for code feature extractor
+        learning_goals = [row for row in csv.DictReader(rubric.splitlines()) if row["Key Concept"] in code_feature_extractor]
+        
+        # Prep output data
+        results = {"metadata": {"agent": ["code feature extractor", "static analysis"]},"data": []}
+    
+        # Create instance of feature extractor
+        cfe = CodeFeatures()
+    
+        # Send each filtered learning goal to code feature extractor and add returned data
+        # to output dictionary
+        for learning_goal in learning_goals:
+            cfe.extract_features(student_code, learning_goal)
+            results["data"].append({"Label": cfe.assessment,
+                                    "Key Concept": learning_goal["Key Concept"],
+                                    "Observations": cfe.features,
+                                    "Reason": learning_goal[cfe.assessment] if cfe.assessment else ''
+                                        })
+        
+        return results
 
     def ai_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model="", response_type='tsv'):
         if llm_model.startswith("gpt"):
@@ -170,14 +194,14 @@ class Label:
 
         return {
             'metadata': {
-                'agent': 'openai',
+                'agent': ['openai'],
                 'usage': info['usage'],
                 'request': data,
             },
             'data': response_data,
         }
 
-    def label_student_work(self, prompt, rubric, student_code, student_id, examples=[], use_cached=False, write_cached=False, num_responses=0, temperature=0.0, llm_model="", remove_comments=False, response_type='tsv', cache_prefix=""):
+    def label_student_work(self, prompt, rubric, student_code, student_id, examples=[], use_cached=False, write_cached=False, num_responses=0, temperature=0.0, llm_model="", remove_comments=False, response_type='tsv', cache_prefix="", code_feature_extractor=None):
         if use_cached and os.path.exists(os.path.join(cache_prefix, f"cached_responses/{student_id}.json")):
             with open(os.path.join(cache_prefix, f"cached_responses/{student_id}.json"), 'r') as f:
                 return json.load(f)
@@ -188,25 +212,34 @@ class Label:
         # Sanitize student code
         student_code = self.sanitize_code(student_code, remove_comments=remove_comments)
 
-        # Try static analysis options (before invoking AI)
-        result = self.statically_label_student_work(rubric, student_code, student_id, examples=examples)
+        # Test for empty student code file
+        blank_code_result = self.test_for_blank_code(rubric, student_code, student_id)
 
-        # If it gives back a response, right now assume it is complete and do not perform an AI analysis
-        # We may want to, in the future, gauge how many of the concepts it has labeled and let AI fill in the blanks
-        # Right now, however, only if there is no result, we try the AI for assessment
-        if result is None:
-            try:
-                result = self.ai_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model, response_type=response_type)
-            except requests.exceptions.ReadTimeout:
-                logging.error(f"{student_id} request timed out in {(time.time() - start_time):.0f} seconds.")
-                result = None
+        # If code is blank, return results
+        if blank_code_result:
+            blank_code_result["metadata"]["time"] = time.time() - start_time
+            return blank_code_result
+
+        # If student code is not blank, check for learning goals flagged for code feature extractor
+        # Send student code and learning goals(s) for feature extraction and labeling.
+        cfe_results = None
+        if code_feature_extractor:
+            cfe_results = self.cfe_label_student_work(rubric, student_code, code_feature_extractor)
+        
+        # Send data to LLM for assessment
+        try:
+            ai_result = self.ai_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
+        except requests.exceptions.ReadTimeout:
+            logging.error(f"{student_id} request timed out in {(time.time() - start_time):.0f} seconds.")
+            ai_result = None
+
 
         # No assessment was possible
-        if result is None:
+        if ai_result is None:
             raise Exception("AI assessment failed.")
 
         elapsed = time.time() - start_time
-        tokens = result.get('metadata', {}).get('usage', {}).get('total_tokens', 0)
+        tokens = ai_result.get('metadata', {}).get('usage', {}).get('total_tokens', 0)
         logging.info(f"{student_id} request succeeded in {elapsed:.0f} seconds. {tokens} tokens used.")
 
         # Craft the response dictionary
@@ -215,12 +248,19 @@ class Label:
                 'time': elapsed,
                 'student_id': student_id,
             },
-            'data': result.get('data', []),
+            'data': ai_result.get('data', []),
         }
-        response['metadata'].update(result.get('metadata', {})),
+        response['metadata'].update(ai_result.get('metadata', {}))
+
+        # If any learning goals were assessed by the code feature extractor, replace the AI results with cfe results
+        if cfe_results:
+            response["metadata"]["agent"].append(cfe_results["metadata"]["agent"])
+            new_data = list(filter(lambda assessment: assessment["Key Concept"] not in code_feature_extractor, response["data"]))
+            new_data.extend(cfe_results["data"])
+            response["data"] = new_data
 
         # only write to cache if the response is valid
-        if write_cached and result:
+        if write_cached and ai_result:
             with open(os.path.join(cache_prefix, f"cached_responses/{student_id}.json"), 'w+') as f:
                 json.dump(response, f, indent=4)
 

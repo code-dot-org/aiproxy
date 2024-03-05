@@ -66,11 +66,29 @@ def rubric(randomstring):
     writer = csv.writer(output, csv.QUOTE_NONNUMERIC)
 
     # Header
-    writer.writerow(['Key Concept', 'Extensive Evidence', 'Convincing Evidence', 'Limited Evidence', 'No Evidence'])
+    writer.writerow(['Key Concept', 'Instructions', 'Extensive Evidence', 'Convincing Evidence', 'Limited Evidence', 'No Evidence'])
 
     for i in range(0, random.randint(2, 5)):
         key_concept = f"Concept {randomstring(10)}"
-        writer.writerow([key_concept, randomstring(20), randomstring(23), randomstring(25), randomstring(15)])
+        writer.writerow([key_concept, 'no flag', randomstring(20), randomstring(23), randomstring(25), randomstring(15)])
+
+    yield output.getvalue()
+
+@pytest.fixture
+def rubric_with_flag(randomstring):
+    """ Creates a generic rubric (a CSV string).
+    """
+
+    output = io.StringIO()
+    writer = csv.writer(output, csv.QUOTE_NONNUMERIC)
+
+    # Header
+    writer.writerow(['Key Concept', 'Instructions', 'Extensive Evidence', 'Convincing Evidence', 'Limited Evidence', 'No Evidence'])
+
+    for i in range(0, random.randint(2, 5)):
+        key_concept = f"Concept {randomstring(10)}"
+        writer.writerow([key_concept, 'no flag', randomstring(20), randomstring(23), randomstring(25), randomstring(15)])
+    writer.writerow(['Position - Elements and the Coordinate System', 'CFE', randomstring(20), randomstring(23), randomstring(25), randomstring(15)])
 
     yield output.getvalue()
 
@@ -83,11 +101,11 @@ def short_rubric(randomstring):
     writer = csv.writer(output, csv.QUOTE_NONNUMERIC)
 
     # Header
-    writer.writerow(['Key Concept', 'Extensive Evidence', 'Convincing Evidence', 'Limited Evidence', 'No Evidence'])
+    writer.writerow(['Key Concept', 'Instructions' 'Extensive Evidence', 'Convincing Evidence', 'Limited Evidence', 'No Evidence'])
 
     # single key concept row
     key_concept = f"Concept {randomstring(10)}"
-    writer.writerow([key_concept, randomstring(20), randomstring(23), randomstring(25), randomstring(15)])
+    writer.writerow([key_concept, 'no flag', randomstring(20), randomstring(23), randomstring(25), randomstring(15)])
 
     yield output.getvalue()
 
