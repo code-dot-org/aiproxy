@@ -42,6 +42,7 @@ class Label:
                             "Label": "No Evidence",
                             "Key Concept": key_concept,
                             "Observations": "The program is empty.",
+                            "Evidence": "",
                             "Reason": "The program is empty.",
                         },
                         rubric_key_concepts
@@ -71,6 +72,7 @@ class Label:
             results["data"].append({"Label": cfe.assessment,
                                     "Key Concept": learning_goal["Key Concept"],
                                     "Observations": cfe.features,
+                                    "Evidence": '',
                                     "Reason": learning_goal[cfe.assessment] if cfe.assessment else ''
                                         })
         
