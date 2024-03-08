@@ -12,7 +12,8 @@ class CodeFeatures:
   def __init__(self):
 
     # Add additional features here
-    self.features = {'shapes': 0, 'sprites': 0, 'text': 0}
+    self.features = {'object_types': {'shapes': 0, 'sprites': 0, 'text': 0},
+                     'function_calls': {}}
 
     # Store relevant parse tree nodes here during extraction. This will be useful
     # For returning metadata like line and column numbers or for exploring additional
@@ -34,28 +35,42 @@ class CodeFeatures:
   def function_call_helper(self, node):
     if node.type == 'ExpressionStatement' and node.expression.type == 'CallExpression':
       if node.expression.callee.name in self.features.keys():
-        self.features[node.expression.callee.name] += 1
+        self.features["function_calls"][node.expression.callee.name] += 1
+        self.nodes.append(node)
       else:
-        self.features[node.expression.callee.name] = 1
+        self.features["function_calls"][node.expression.callee.name] = 1
+        self.nodes.append(node)
     elif node.type == 'VariableDeclaration':
       for declaration in node.declarations:
         if declaration.init.type == 'CallExpression':
           if node.expression.callee.name in self.features.keys():
-            self.features[node.expression.callee.name] += 1
+            self.features["function_calls"][node.expression.callee.name] += 1
+            self.nodes.append(node)
           else:
-            self.features[node.expression.callee.name] = 1
+            self.features["function_calls"][node.expression.callee.name] = 1
+            self.nodes.append(node)
 
-  # Helper function that returns the type of a called expression
-  def expression_type_helper(self, expression):
+  # Helper function that returns the type of object instantiated by a called expression
+  def object_type_helper(self, expression, node):
     shapes = ['rect', 'ellipse', 'circle', 'quad', 'triangle']
-    if expression.callee.name in shapes and self.argument_helper(expression):
-      return 'shapes'
-    elif expression.callee.name == 'text' and self.argument_helper(expression):
-      return 'text'
-    elif expression.callee.name == 'createSprite' and self.argument_helper(expression):
-      return 'sprites'
-    else:
-      return None
+    expressions = []
+    if node.type == 'ExpressionStatement' and node.expression.type == 'CallExpression':
+      expressions.append(node.expression)
+    elif node.type == 'VariableDeclaration':
+      for declaration in node.declarations:
+        if declaration.init.type == 'CallExpression':
+          expressions.append(declaration.init)
+
+    for expression in expressions:
+      if expression.callee.name in shapes and self.argument_helper(expression):
+        self.features["object_types"]["shapes"] += 1
+        self.nodes.append(node)
+      elif expression.callee.name == 'text' and self.argument_helper(expression):
+        self.features["object_types"]["text"] += 1
+        self.nodes.append(node)
+      elif expression.callee.name == 'createSprite' and self.argument_helper(expression):
+        self.features["object_types"]["sprites"] += 1
+        self.nodes.append(node)
 
   # All delegate functions and code feature extraction 
   def extract_features(self, program, learning_goal):
@@ -64,7 +79,7 @@ class CodeFeatures:
     # Add additional delegate functions here
     def u3l11_position(node, metadata):
       if node.type == 'ExpressionStatement' and node.expression.type == 'CallExpression':
-        func_type = self.expression_type_helper(node.expression)
+        func_type = self.object_type_helper(node.expression)
         if func_type:
           self.features[func_type] += 1
           self.nodes.append(node)
