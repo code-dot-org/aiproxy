@@ -42,6 +42,7 @@ class Label:
                             "Label": "No Evidence",
                             "Key Concept": key_concept,
                             "Observations": "The program is empty.",
+                            "Evidence": "",
                             "Reason": "The program is empty.",
                         },
                         rubric_key_concepts
@@ -71,6 +72,7 @@ class Label:
             results["data"].append({"Label": cfe.assessment,
                                     "Key Concept": learning_goal["Key Concept"],
                                     "Observations": cfe.features,
+                                    "Evidence": '',
                                     "Reason": learning_goal[cfe.assessment] if cfe.assessment else ''
                                         })
         
@@ -469,6 +471,7 @@ class Label:
                 logging.info(f"outvoted {student_id} Key Concept: {key_concept} first label: {labels[0]} majority label: {majority_label}")
 
         key_concept_to_observations = {}
+        key_concept_to_evidence = {}
         key_concept_to_reason = {}
         for choice in choices:
             for row in choice:
@@ -476,9 +479,10 @@ class Label:
                 if key_concept_to_majority_label[key_concept] == row['Label']:
                     if key_concept not in key_concept_to_observations:
                         key_concept_to_observations[key_concept] = row['Observations']
+                        key_concept_to_evidence[key_concept] = row.get('Evidence', '')
                     key_concept_to_reason[key_concept] = row['Reason']
 
-        return [{'Key Concept': key_concept, 'Observations': key_concept_to_observations[key_concept], 'Label': label, 'Reason': f"{self.get_consensus_votes(key_concept_to_labels[key_concept])}{key_concept_to_reason[key_concept]}"} for key_concept, label in key_concept_to_majority_label.items()]
+        return [{'Key Concept': key_concept, 'Observations': key_concept_to_observations[key_concept], 'Evidence': key_concept_to_evidence[key_concept], 'Label': label, 'Reason': f"{self.get_consensus_votes(key_concept_to_labels[key_concept])}{key_concept_to_reason[key_concept]}"} for key_concept, label in key_concept_to_majority_label.items()]
 
     def get_consensus_votes(self, labels):
         # only display votes if there is a disagreement
