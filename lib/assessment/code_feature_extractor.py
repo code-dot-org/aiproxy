@@ -64,7 +64,7 @@ class CodeFeatures:
         case "UnaryExpression":
           output.append(self.unary_expression_helper(exp))
         case _:
-          print("binary expression outlier", exp) # DEBUG
+          logging.info("binary expression outlier", str(exp)) # DEBUG
     return {"left": output[0], "operator": expression.operator, "right": output[1]}
 
   # Helper function for parsing function calls. Outputs a dictionary containing the
@@ -113,14 +113,14 @@ class CodeFeatures:
               case "AssignmentExpression":
                 draw_loop_body.append(self.variable_assignment_helper(statement))
               case _:
-                print("draw loop outlier expression", statement.expression)
+                logging.info("draw loop outlier expression", str(statement.expression))
           case "VariableDeclaration":
             for declaration in self.variable_declaration_helper(statement):
               draw_loop_body.append(declaration)
           case "IfStatement":
             draw_loop_body.append(self.if_statement_helper(statement))
           case _:
-            print("draw loop outlier statement", statement)
+            logging.info("draw loop outlier statement", str(statement))
       return draw_loop_body
 
   # Helper function to parse all statements in an if block
@@ -141,7 +141,7 @@ class CodeFeatures:
         case "UnaryExpression":
           test = self.unary_expression_helper(node.test)
         case _:
-          print("conditional test outlier", node.test)
+          logging.info("conditional test outlier", str(node.test))
       consequent = []
       for statement in node.consequent.body:
         match statement.type:
@@ -152,14 +152,14 @@ class CodeFeatures:
               case "AssignmentExpression":
                 consequent.append(self.variable_assignment_helper(statement))
               case _:
-                print("conditional consequent outlier expression", statement.expression)
+                logging.info("conditional consequent outlier expression", str(statement.expression))
           case "VariableDeclaration":
             for declaration in self.variable_declaration_helper(statement):
               consequent.append(declaration)
           case "IfStatement":
             consequent.append(self.if_statement_helper(statement))
           case _:
-            print("conditional consequent outlier statement", statement)
+            logging.info("conditional consequent outlier statement", str(statement))
       alternate = []
       if node.alternate and node.alternate.body:
         for statement in node.alternate.body:
@@ -171,14 +171,14 @@ class CodeFeatures:
                 case "AssignmentExpression":
                   alternate.append(self.variable_assignment_helper(statement))
                 case _:
-                  print("conditional alternate outlier expression", statement.expression)
+                  logging.info("conditional alternate outlier expression", str(statement.expression))
             case "VariableDeclaration":
               for declaration in self.variable_declaration_helper(statement):
                 alternate.append(declaration)
             case "IfStatement":
               alternate.append(self.if_statement_helper(statement))
             case _:
-              print("conditional alternate outlier statement", statement)
+              logging.info("conditional alternate outlier statement", str(statement))
       return {"test": test, "consequent": consequent, "alternate": alternate}
 
   # This function is used to extract statements from all conditional paths,
@@ -198,33 +198,11 @@ class CodeFeatures:
   # Returns a dict containing the object and the property being operated on.
   def member_expression_helper(self, expression):
     # Get object and property names
-    if expression.object.type == "Literal":
-      member_expression = {"object": expression.object.raw, "property": expression.property.name}
-    elif expression.object.type == "Identifier":
+    if expression.object.type == "Identifier":
       member_expression = {"object": expression.object.name, "property": expression.property.name}
     else:
-      print("member expression outlier", expression) # DEBUG
+      logging.info("member expression outlier", str(expression)) # DEBUG
     return member_expression
-
-  # Helper function to determine the type of an object (sprite, shape, or text)
-  # Returns the object type as a string
-  def object_type_helper(self, node):
-    expressions = []
-    if node.type == 'ExpressionStatement' and node.expression.type == 'CallExpression':
-      expressions.append(node.expression)
-    elif node.type == 'VariableDeclaration':
-      for declaration in node.declarations:
-        if declaration.init.type == 'CallExpression':
-          expressions.append(declaration.init)
-    obj_types = []
-    for expression in expressions:
-      if expression.callee.name in shape_functions:
-        obj_types.append("shapes")
-      elif expression.callee.name == 'text':
-        obj_types.append("text")
-      elif expression.callee.name == 'createSprite':
-        obj_types.append("sprites")
-    return obj_types
 
   # Helper function to parse unary functions. Returns a float combining the
   # operator and number
@@ -232,7 +210,7 @@ class CodeFeatures:
     if expression.argument.type == "Literal":
       return float(expression.operator + expression.argument.raw)
     else:
-      print("unary expression outlier", expression) #DEBUG
+      logging.info("unary expression outlier", str(expression)) #DEBUG
 
   def variable_declaration_helper(self, node):
     declarations = []
@@ -264,8 +242,85 @@ class CodeFeatures:
         case "UnaryExpression":
           output.append(self.unary_expression_helper(exp))
         case _:
-          print("variable assignment outlier", exp)
+          logging.info("variable assignment outlier", str(exp))
     return {"assignee": output[0], "value": output[1]}
+  
+  # Extractor functions: These functions utilize helper functions to return
+  # information from nodes, then store the relevant code features in the
+  # features dictionary.
+  def extract_movement_types(self, node):
+    draw_loop_info = self.draw_loop_helper(node)
+    if draw_loop_info:
+      for statement in draw_loop_info:
+        if "assignee" in statement:
+          if "object" in statement["assignee"]:
+            obj = [obj for obj in self.features["objects"] if obj["identifier"] == statement["assignee"]["object"]]
+            if obj:
+              if isinstance(statement["value"], dict):
+                if "left" in statement["value"]:
+                  if statement["assignee"] in [statement["value"]["left"], statement["value"]["right"]]:
+                    if statement["value"]["operator"] in ["+", "-"]:
+                      self.features["movement"]["counter"] += 1
+                      self.nodes.append(node)
+                  if [stmnt for stmnt in [statement["value"]["left"], statement["value"]["right"]] if isinstance(stmnt, dict) and "function" in stmnt and "randomNumber" in stmnt["function"]]:
+                    self.features["movement"]["random"] += 1
+                    self.nodes.append(node)
+                elif "function" in statement["value"] and statement["value"]["function"] == "randomNumber":
+                    self.features["movement"]["random"] += 1
+                    self.nodes.append(node)
+        if "test" in statement:
+          conditional_body = self.flatten_conditional_paths(statement)
+          for conditional_statement in conditional_body:
+            if "assignee" in conditional_statement:
+              if "object" in conditional_statement["assignee"]:
+                obj = [obj for obj in self.features["objects"] if obj["identifier"] == conditional_statement["assignee"]["object"]]
+                if obj:
+                  if isinstance(conditional_statement["value"], dict):
+                    if "left" in conditional_statement["value"]:
+                      if conditional_statement["assignee"] in [conditional_statement["value"]["left"], conditional_statement["value"]["right"]]:
+                        if conditional_statement["value"]["operator"] in ["+", "-"]:
+                          self.features["movement"]["counter"] += 1
+                          self.nodes.append(node)
+                      if [stmnt for stmnt in [conditional_statement["value"]["left"], conditional_statement["value"]["right"]] if isinstance(stmnt, dict) and "function" in stmnt and "randomNumber" in stmnt["function"]]:
+                        self.features["movement"]["random"] += 1
+                        self.nodes.append(node)
+                    elif "function" in conditional_statement["value"] and conditional_statement["value"]["function"] == "randomNumber":
+                        self.features["movement"]["random"] += 1
+                        self.nodes.append(node)
+
+  def extract_object_and_variable_data(self, node):
+    if node.type == "VariableDeclaration":
+      for node_info in self.variable_declaration_helper(node):
+        if node_info["identifier"] not in [obj["identifier"] for obj in self.features["objects"]] and node_info["identifier"] not in [var["identifier"] for var in self.features["variables"]]:
+          if isinstance(node_info["value"], dict) and "function" in node_info["value"]:
+            if node_info["value"]["function"] == "createSprite":
+              self.features["objects"].append({"identifier": node_info["identifier"], "properties": node_info["value"]["args"], "type": "sprite"})
+              self.features["object_types"]["sprites"] += 1
+              self.nodes.append(node)
+            elif node_info["value"]["function"] == "text":
+              self.features["objects"].append({"identifier": node_info["identifier"], "properties": node_info["value"]["args"], "type": "text"})
+              self.features["object_types"]["text"] += 1
+              self.nodes.append(node)
+            elif node_info["value"]["function"] in shape_functions:
+              self.features["objects"].append({"identifier": node_info["identifier"], "properties": node_info["value"]["args"], "type": "shape"})
+              self.features["object_types"]["shapes"] += 1
+              self.nodes.append(node)
+          else:
+            self.features["variables"].append({"identifier": node_info["identifier"], "value": node_info["value"]})
+            self.nodes.append(node)
+    elif node.type == "ExpressionStatement" and node.expression.type == "CallExpression":
+      node_info = self.call_expression_helper(node.expression)
+      if node_info["function"] == "background":
+        self.features["objects"].append({"identifier": '', "properties": node_info["args"], "type": "background"})
+        self.nodes.append(node)
+      elif node_info["function"] == "text":
+        self.features["objects"].append({"identifier": '', "properties": node_info["args"], "type": "text"})
+        self.features["object_types"]["text"] += 1
+        self.nodes.append(node)
+      elif node_info["function"] in shape_functions:
+        self.features["objects"].append({"identifier": '', "properties": node_info["args"], "type": "shape"})
+        self.features["object_types"]["shapes"] += 1
+        self.nodes.append(node)
 
   # Function to extract features for learning goals. Contains delegate functions
   # to be used with the parser. Does not return any values, but should populate
@@ -288,99 +343,22 @@ class CodeFeatures:
         else:
           logging.error("Parsing error", err)
 
-    # Extractor functions: These functions utilize helper functions to return
-    # information from nodes, then store the relevant code features in the
-    # features dictionary.
-    def extract_movement_types(node):
-      draw_loop_info = self.draw_loop_helper(node)
-      if draw_loop_info:
-        for statement in draw_loop_info:
-          if "assignee" in statement:
-            if "object" in statement["assignee"]:
-              obj = [obj for obj in self.features["objects"] if obj["identifier"] == statement["assignee"]["object"]]
-              if obj:
-                if isinstance(statement["value"], dict):
-                  if "left" in statement["value"]:
-                    if statement["assignee"] in [statement["value"]["left"], statement["value"]["right"]]:
-                      if statement["value"]["operator"] in ["+", "-"]:
-                        self.features["movement"]["counter"] += 1
-                        self.nodes.append(node)
-                    if [stmnt for stmnt in [statement["value"]["left"], statement["value"]["right"]] if isinstance(stmnt, dict) and "function" in stmnt and "randomNumber" in stmnt["function"]]:
-                      self.features["movement"]["random"] += 1
-                      self.nodes.append(node)
-                  elif "function" in statement["value"] and statement["value"]["function"] == "randomNumber":
-                      self.features["movement"]["random"] += 1
-                      self.nodes.append(node)
-          if "test" in statement:
-            conditional_body = self.flatten_conditional_paths(statement)
-            for conditional_statement in conditional_body:
-              if "assignee" in conditional_statement:
-                if "object" in conditional_statement["assignee"]:
-                  obj = [obj for obj in self.features["objects"] if obj["identifier"] == conditional_statement["assignee"]["object"]]
-                  if obj:
-                    if isinstance(conditional_statement["value"], dict):
-                      if "left" in conditional_statement["value"]:
-                        if conditional_statement["assignee"] in [conditional_statement["value"]["left"], conditional_statement["value"]["right"]]:
-                          if conditional_statement["value"]["operator"] in ["+", "-"]:
-                            self.features["movement"]["counter"] += 1
-                            self.nodes.append(node)
-                        if [stmnt for stmnt in [conditional_statement["value"]["left"], conditional_statement["value"]["right"]] if isinstance(stmnt, dict) and "function" in stmnt and "randomNumber" in stmnt["function"]]:
-                          self.features["movement"]["random"] += 1
-                          self.nodes.append(node)
-                      elif "function" in conditional_statement["value"] and conditional_statement["value"]["function"] == "randomNumber":
-                          self.features["movement"]["random"] += 1
-                          self.nodes.append(node)
-
-    def extract_object_and_variable_data(node):
-      if node.type == "VariableDeclaration":
-        for node_info in self.variable_declaration_helper(node):
-          if node_info["identifier"] not in [obj["identifier"] for obj in self.features["objects"]] and node_info["identifier"] not in [var["identifier"] for var in self.features["variables"]]:
-            if isinstance(node_info["value"], dict) and "function" in node_info["value"]:
-              if node_info["value"]["function"] == "createSprite":
-                self.features["objects"].append({"identifier": node_info["identifier"], "properties": node_info["value"]["args"], "type": "sprite"})
-                self.features["object_types"]["sprites"] += 1
-                self.nodes.append(node)
-              elif node_info["value"]["function"] == "text":
-                self.features["objects"].append({"identifier": node_info["identifier"], "properties": node_info["value"]["args"], "type": "text"})
-                self.features["object_types"]["text"] += 1
-                self.nodes.append(node)
-              elif node_info["value"]["function"] in shape_functions:
-                self.features["objects"].append({"identifier": node_info["identifier"], "properties": node_info["value"]["args"], "type": "shape"})
-                self.features["object_types"]["shapes"] += 1
-                self.nodes.append(node)
-            else:
-              self.features["variables"].append({"identifier": node_info["identifier"], "value": node_info["value"]})
-              self.nodes.append(node)
-      elif node.type == "ExpressionStatement" and node.expression.type == "CallExpression":
-        node_info = self.call_expression_helper(node.expression)
-        if node_info["function"] == "background":
-          self.features["objects"].append({"identifier": '', "properties": node_info["args"], "type": "background"})
-          self.nodes.append(node)
-        elif node_info["function"] == "text":
-          self.features["objects"].append({"identifier": '', "properties": node_info["args"], "type": "text"})
-          self.features["object_types"]["text"] += 1
-          self.nodes.append(node)
-        elif node_info["function"] in shape_functions:
-          self.features["objects"].append({"identifier": '', "properties": node_info["args"], "type": "shape"})
-          self.features["object_types"]["shapes"] += 1
-          self.nodes.append(node)
-
     # Delegate function for U3L11 'Position - Elements and the Coordinate System'
     def u3l11_position_delegate(node, metadata):
       # extract_object_types(node)
-      extract_object_and_variable_data(node)
+      self.extract_object_and_variable_data(node)
 
     # Delegate function for U3L14 'Position and Movement'
     def u3l14_position_delegate(node, metadata):
       # extract_object_types(node)
-      extract_object_and_variable_data(node)
-      extract_movement_types(node)
+      self.extract_object_and_variable_data(node)
+      self.extract_movement_types(node)
 
     # Delegate function for U3L18 'Position and Movement'
     def u3l18_position_delegate(node, metadata):
       # extract_object_types(node)
-      extract_object_and_variable_data(node)
-      extract_movement_types(node)
+      self.extract_object_and_variable_data(node)
+      self.extract_movement_types(node)
 
     # Add conditionals for future learning goals here
     # TODO: Add list or file to store names of learning goals that are being statically assessed

@@ -1,5 +1,6 @@
 import pytest
 from lib.assessment.code_feature_extractor import CodeFeatures
+import esprima
 
 @pytest.fixture
 def code_features():
@@ -101,3 +102,75 @@ function draw() {
     assert code_features.features["object_types"] == {'shapes': 0, 'sprites': 4, 'text': 1}
     assert code_features.features["movement"] == {'random': 0, 'counter': 0}
     assert code_features.assessment == 'Limited Evidence'
+
+  def test_binary_expression_helper(self, code_features):
+    statement = "x = x + 1"
+    parsed = esprima.parseScript(statement)
+    result = code_features.binary_expression_helper(parsed.body[0].expression.right)
+    assert result == {'left': 'x', 'operator': '+', 'right': 1}
+
+    statement = "x = x + -1"
+    parsed = esprima.parseScript(statement)
+    result = code_features.binary_expression_helper(parsed.body[0].expression.right)
+    assert result == {'left': 'x', 'operator': '+', 'right': -1}
+
+  def test_call_expression_helper(self, code_features):
+    statement = """x = 1
+    test_function(x)"""
+    parsed = esprima.parseScript(statement)
+    result = code_features.call_expression_helper(parsed.body[1].expression)
+    assert result == {'args': ['x'], 'function': 'test_function'}
+
+  def test_draw_loop_helper(self, code_features):
+    statement = """function draw() {
+  var x = 1
+}"""
+    parsed = esprima.parseScript(statement)
+    result = code_features.draw_loop_helper(parsed.body[0])
+    assert result == [{'identifier': 'x', 'value': 1}]
+
+  def test_if_statement_helper(self, code_features):
+    statement = """if(-1) {
+  if(true) {
+    var x = 1;
+  }
+  if(x === 1) {
+    x = 2;
+  }
+} else {
+  if(x) {
+    var y = 2;
+  }
+  if(x.prop) {
+    x = 2
+  }
+  test_func(1);
+  var z = 1
+  z = 2
+}"""
+    parsed = esprima.parseScript(statement)
+    result = code_features.if_statement_helper(parsed.body[0])
+    assert result == {'test': -1.0, 'consequent': [{'test': True, 'consequent': [{'identifier': 'x', 'value': 1}], 'alternate': []}, {'test': {'left': 'x', 'operator': '===', 'right': 1}, 'consequent': [{'assignee': 'x', 'value': 2}], 'alternate': []}], 'alternate': [{'test': 'x', 'consequent': [{'identifier': 'y', 'value': 2}], 'alternate': []}, {'test': {'object': 'x', 'property': 'prop'}, 'consequent': [{'assignee': 'x', 'value': 2}], 'alternate': []}, {'function': 'test_func', 'args': [1]}, {'identifier': 'z', 'value': 1}, {'assignee': 'z', 'value': 2}]}
+  
+  def test_flatten_conditional_paths(self, code_features):
+    statement = """if(-1) {
+var x = 1
+  if(true) {
+    x = 1;
+  }
+}"""
+    parsed = esprima.parseScript(statement)
+    conditional = code_features.if_statement_helper(parsed.body[0])
+    result = code_features.flatten_conditional_paths(conditional)
+    assert result == [{'identifier': 'x', 'value': 1}, {'assignee': 'x', 'value': 1}]
+    
+  def test_variable_assignment_helper(self, code_features):
+    statement = """var x = 1
+x = test_func(1)
+x = -1
+"""
+    parsed = esprima.parseScript(statement)
+    result = code_features.variable_assignment_helper(parsed.body[1])
+    result2 = code_features.variable_assignment_helper(parsed.body[2])
+    assert result == {'assignee': 'x', 'value': {'function': 'test_func', 'args': [1]}}
+    assert result2 == {'assignee': 'x', 'value': -1.0}
