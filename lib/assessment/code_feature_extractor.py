@@ -248,6 +248,7 @@ class CodeFeatures:
   # Extractor functions: These functions utilize helper functions to return
   # information from nodes, then store the relevant code features in the
   # features dictionary.
+  # Extract and store counter and random movement instances in features dictionary
   def extract_movement_types(self, node):
     draw_loop_info = self.draw_loop_helper(node)
     if draw_loop_info:
@@ -288,6 +289,7 @@ class CodeFeatures:
                         self.features["movement"]["random"] += 1
                         self.nodes.append(node)
 
+  # Extract and store all object and variable data, including object types
   def extract_object_and_variable_data(self, node):
     if node.type == "VariableDeclaration":
       for node_info in self.variable_declaration_helper(node):

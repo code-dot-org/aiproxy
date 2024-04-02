@@ -28,7 +28,7 @@ class DecisionTrees:
     # No Evidence: No elements placed using the coordinate system.
     return "No Evidence"
 
-  # Function to statically assess U3L11 'Position and Movement'
+  # Function to statically assess U3L14 'Position and Movement'
   def u3l14_position_assessment(self, data):
     shapes = data["object_types"]["shapes"]
     sprites = data["object_types"]["sprites"]
@@ -54,6 +54,7 @@ class DecisionTrees:
     # No Evidence: No elements placed using the coordinate system.
     return "No Evidence"
 
+  # Function to statically assess U3L18 'Position and Movement'
   def u3l18_position_assessment(self, data):
     sprites = data["object_types"]["sprites"]
     other_elements = data["object_types"]["shapes"] + data["object_types"]["text"]
