@@ -4,5 +4,6 @@
   "num-responses": "3",
   "num-passing-grades": "2",
   "temperature": "0.2",
-  "code-feature-extractor": ["Position - Elements and the Coordinate System"]
+  "code-feature-extractor": ["Position - Elements and the Coordinate System"],
+  "lesson": "U3L11"
 }

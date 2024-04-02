@@ -29,8 +29,10 @@ fill("white");
 text("Fortnite", 175, 200);
 rect(50, 240, 75, 25);"""
 
-    code_features.extract_features(code, learning_goal)
+    lesson="U3L11"
 
-    assert code_features.features == {'shapes': 1, 'sprites': 2, 'text': 1}
+    code_features.extract_features(code, learning_goal, lesson)
+
+    assert code_features.features["object_types"] == {'shapes': 1, 'sprites': 2, 'text': 1}
     assert code_features.assessment == 'Convincing Evidence'
 

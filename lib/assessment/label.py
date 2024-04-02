@@ -53,29 +53,27 @@ class Label:
         # Code is not blank
         return None
     
-    # Send student code and relevant learning goals to code feature extractor
-    def cfe_label_student_work(self, rubric, student_code, code_feature_extractor):
+    def cfe_label_student_work(self, rubric, student_code, code_feature_extractor, lesson):
 
         # Filter rubric to return only learning goals listed for code feature extractor
         learning_goals = [row for row in csv.DictReader(rubric.splitlines()) if row["Key Concept"] in code_feature_extractor]
-        
+
         # Prep output data
         results = {"metadata": {"agent": ["code feature extractor", "static analysis"]},"data": []}
-    
+
         # Create instance of feature extractor
         cfe = CodeFeatures()
-    
+
         # Send each filtered learning goal to code feature extractor and add returned data
         # to output dictionary
         for learning_goal in learning_goals:
-            cfe.extract_features(student_code, learning_goal)
+            cfe.extract_features(student_code, learning_goal, lesson)
             results["data"].append({"Label": cfe.assessment,
                                     "Key Concept": learning_goal["Key Concept"],
                                     "Observations": cfe.features,
-                                    "Evidence": '',
                                     "Reason": learning_goal[cfe.assessment] if cfe.assessment else ''
                                         })
-        
+
         return results
 
     def ai_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model="", response_type='tsv'):
@@ -203,7 +201,7 @@ class Label:
             'data': response_data,
         }
 
-    def label_student_work(self, prompt, rubric, student_code, student_id, examples=[], use_cached=False, write_cached=False, num_responses=0, temperature=0.0, llm_model="", remove_comments=False, response_type='tsv', cache_prefix="", code_feature_extractor=None):
+    def label_student_work(self, prompt, rubric, student_code, student_id, examples=[], use_cached=False, write_cached=False, num_responses=0, temperature=0.0, llm_model="", remove_comments=False, response_type='tsv', cache_prefix="", code_feature_extractor=None, lesson=None):
         if use_cached and os.path.exists(os.path.join(cache_prefix, f"cached_responses/{student_id}.json")):
             with open(os.path.join(cache_prefix, f"cached_responses/{student_id}.json"), 'r') as f:
                 return json.load(f)
@@ -226,7 +224,7 @@ class Label:
         # Send student code and learning goals(s) for feature extraction and labeling.
         cfe_results = None
         if code_feature_extractor:
-            cfe_results = self.cfe_label_student_work(rubric, student_code, code_feature_extractor)
+            cfe_results = self.cfe_label_student_work(rubric, student_code, code_feature_extractor, lesson)
         
         # Send data to LLM for assessment
         try:

@@ -50,6 +50,7 @@ def test_label_should_pass_arguments_along(
         remove_comments=remove_comments,
         response_type=response_type,
         code_feature_extractor=None,
+        lesson=None
     )
 
 

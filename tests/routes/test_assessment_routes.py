@@ -155,7 +155,8 @@ class TestPostAssessment:
             num_responses=2,
             temperature=0.2,
             response_type=response_type,
-            code_feature_extractor=None
+            code_feature_extractor=None,
+            lesson=None
         )
 
     def test_should_return_the_result_from_label_function_when_valid(self, mocker, client, randomstring):

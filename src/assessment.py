@@ -45,7 +45,8 @@ def post_assessment():
             num_responses=int(request.values.get("num-responses", "1")),
             temperature=float(request.values.get("temperature", "0.2")),
             response_type=request.values.get("response-type", "tsv"),
-            code_feature_extractor=(request.values.get("code-feature-extractor", None))
+            code_feature_extractor=(request.values.get("code-feature-extractor", None)),
+            lesson=(request.values.get("lesson", None))
         )
     except ValueError:
         return "One of the arguments is not parseable as a number", 400
@@ -201,7 +202,8 @@ def test_assessment_cfe():
             remove_comments=params["remove-comments"],
             num_responses=int(params["num-responses"]),
             temperature=float(params["temperature"]),
-            code_feature_extractor=params["code-feature-extractor"]
+            code_feature_extractor=params["code-feature-extractor"],
+            lesson=params["lesson"]
         )
     except ValueError as e:
         return "One of the arguments is not parseable as a number: {}".format(str(e)), 400
