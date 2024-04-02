@@ -482,7 +482,7 @@ class TestAiLabelStudentWork:
         assert result is None
 
 
-class TestlabelStudentWork:
+class TestLabelStudentWork:
     @pytest.fixture
     def assessment_return_value(self, randomstring):
         """ Creates the return value for the *_label_student_work calls.
@@ -664,6 +664,39 @@ class TestlabelStudentWork:
         )
 
         ai_label_student_work_mock.assert_called_once()
+
+    def test_should_pass_params_through_to_ai_label_student_work(self, mocker, label, assessment_return_value, prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model):
+        test_for_blank_code_mock = mocker.patch.object(
+            Label, 'test_for_blank_code',
+            return_value=None
+        )
+
+        ai_label_student_work_mock = mocker.patch.object(
+            Label, 'ai_label_student_work',
+            return_value=assessment_return_value(rubric)
+        )
+
+        response_type = 'json'
+        expected_examples = examples(rubric)
+        result = label.label_student_work(
+            prompt, rubric, code, student_id,
+            examples=expected_examples,
+            num_responses=num_responses,
+            temperature=temperature,
+            write_cached=False,
+            llm_model=llm_model,
+            remove_comments=False,
+            response_type=response_type
+        )
+
+        ai_label_student_work_mock.assert_called_once_with(
+            prompt, rubric, code, student_id,
+            examples=expected_examples,
+            num_responses=num_responses,
+            temperature=temperature,
+            llm_model=llm_model,
+            response_type=response_type
+        )
 
     def test_should_call_ai_assessment_when_static_assessment_returns_assessed_learning_goal(self, mocker, label, assessment_return_value, prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model):
         

@@ -44,6 +44,7 @@ def post_assessment():
             remove_comments=(request.values.get("remove-comments", "0") != "0"),
             num_responses=int(request.values.get("num-responses", "1")),
             temperature=float(request.values.get("temperature", "0.2")),
+            response_type=request.values.get("response-type", "tsv"),
             code_feature_extractor=(request.values.get("code-feature-extractor", None))
         )
     except ValueError:
