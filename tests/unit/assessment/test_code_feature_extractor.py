@@ -29,7 +29,7 @@ fill("white");
 text("Fortnite", 175, 200);
 rect(50, 240, 75, 25);"""
 
-    lesson="U3L11"
+    lesson="csd3-2023-L11"
 
     code_features.extract_features(code, learning_goal, lesson)
 
@@ -58,7 +58,7 @@ function draw() {
   drawSprites();
 }"""
 
-    lesson="U3L14"
+    lesson="csd3-2023-L14"
 
     code_features.extract_features(code, learning_goal, lesson)
 
@@ -95,7 +95,7 @@ function draw() {
   }
 }"""
 
-    lesson="U3L18"
+    lesson="csd3-2023-L18"
 
     code_features.extract_features(code, learning_goal, lesson)
 

@@ -365,15 +365,15 @@ class CodeFeatures:
     # Add conditionals for future learning goals here
     # TODO: Add list or file to store names of learning goals that are being statically assessed
     match [learning_goal["Key Concept"], lesson]:
-      case ['Position - Elements and the Coordinate System', 'U3L11']:
+      case ['Position - Elements and the Coordinate System', 'csd3-2023-L11']:
         parse_code(program, u3l11_position_delegate)
         dt = DecisionTrees()
         self.assessment = dt.u3l11_position_assessment(self.features)
-      case ['Position and Movement', 'U3L14']:
+      case ['Position and Movement', 'csd3-2023-L14']:
         parse_code(program, u3l14_position_delegate)
         dt = DecisionTrees()
         self.assessment = dt.u3l14_position_assessment(self.features)
-      case ['Position and Movement', 'U3L18']:
+      case ['Position and Movement', 'csd3-2023-L18']:
         parse_code(program, u3l18_position_delegate)
         dt = DecisionTrees()
         self.assessment = dt.u3l18_position_assessment(self.features)
