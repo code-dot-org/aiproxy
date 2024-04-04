@@ -93,9 +93,8 @@ class TestCodeFeatureExtractor:
             rubric = f.read()
         
         result = label.cfe_label_student_work(
-            rubric, code, params["code-feature-extractor"]
+            rubric, code, params["code-feature-extractor"], params["lesson"]
         )
-        print(result)
 
         # It should have a metadata and data section
         assert 'metadata' in result
