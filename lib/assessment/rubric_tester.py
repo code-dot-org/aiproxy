@@ -416,6 +416,7 @@ def main():
         confidence_pass_fail = get_pass_fail_confidence(accuracy_by_criteria)
         with open(os.path.join(experiment_lesson_prefix, 'confidence.json'), 'w') as f:
             json.dump(confidence_pass_fail, f, indent=4)
+            f.write('\n')
 
     return accuracy_pass
 
