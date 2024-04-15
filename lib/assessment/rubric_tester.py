@@ -408,20 +408,22 @@ def main():
 
         os.system(f"open {output_file}")
 
+        if options.generate_confidence:
+            confidence_pass_fail = get_pass_fail_confidence(accuracy_by_criteria)
+            with open(os.path.join(experiment_lesson_prefix, 'confidence.json'), 'w') as f:
+                json.dump(confidence_pass_fail, f, indent=4)
+                f.write('\n')
+                logging.info(f"writing {os.path.join(experiment_lesson_prefix, 'confidence.json')}")
+
+            confidence_exact_match = get_exact_match_confidence(confusion_by_criteria)
+            with open(os.path.join(experiment_lesson_prefix, 'confidence-exact.json'), 'w') as f:
+                json.dump(confidence_exact_match, f, indent=4)
+                f.write('\n')
+                logging.info(f"writing {os.path.join(experiment_lesson_prefix, 'confidence-exact.json')}")
+
     if not accuracy_pass and len(accuracy_failures.keys()) > 0:
         logging.error(f"The following thresholds were not met:\n{pp.pformat(accuracy_failures)}")
         print(("PASS" if accuracy_pass else "FAIL"))
-
-    if options.generate_confidence:
-        confidence_pass_fail = get_pass_fail_confidence(accuracy_by_criteria)
-        with open(os.path.join(experiment_lesson_prefix, 'confidence.json'), 'w') as f:
-            json.dump(confidence_pass_fail, f, indent=4)
-            f.write('\n')
-
-        confidence_exact_match = get_exact_match_confidence(confusion_by_criteria)
-        with open(os.path.join(experiment_lesson_prefix, 'confidence-exact.json'), 'w') as f:
-            json.dump(confidence_exact_match, f, indent=4)
-            f.write('\n')
 
     return accuracy_pass
 
