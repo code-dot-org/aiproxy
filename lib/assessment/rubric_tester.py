@@ -23,7 +23,7 @@ from collections import defaultdict
 from lib.assessment.config import SUPPORTED_MODELS, DEFAULT_MODEL, VALID_LABELS, LESSONS, DEFAULT_DATASET_NAME, DEFAULT_EXPERIMENT_NAME
 from lib.assessment.label import Label, InvalidResponseError, RequestTooLargeError
 from lib.assessment.report import Report
-from lib.assessment.confidence import get_pass_fail_confidence
+from lib.assessment.confidence import get_pass_fail_confidence, get_exact_match_confidence
 
 #globals
 prompt_file = 'system_prompt.txt'
@@ -416,6 +416,11 @@ def main():
         confidence_pass_fail = get_pass_fail_confidence(accuracy_by_criteria)
         with open(os.path.join(experiment_lesson_prefix, 'confidence.json'), 'w') as f:
             json.dump(confidence_pass_fail, f, indent=4)
+            f.write('\n')
+
+        confidence_exact_match = get_exact_match_confidence(confusion_by_criteria)
+        with open(os.path.join(experiment_lesson_prefix, 'confidence-exact.json'), 'w') as f:
+            json.dump(confidence_exact_match, f, indent=4)
             f.write('\n')
 
     return accuracy_pass
