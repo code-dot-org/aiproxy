@@ -1,10 +1,11 @@
 import json
 import unittest
+import numpy as np
+
+from lib.assessment.confidence import get_pass_fail_confidence, get_exact_match_confidence, get_predicted_class_stats
 
 class TestConfidence(unittest.TestCase):
     def test_pass_fail_confidence(self):
-        from lib.assessment.confidence import get_pass_fail_confidence
-
         learning_goal_accuracies = {
             "goal1": 0.9,
             "goal2": 0.8,
@@ -20,9 +21,6 @@ class TestConfidence(unittest.TestCase):
         assert get_pass_fail_confidence(learning_goal_accuracies) == expected
 
     def test_predicted_class_stats(self):
-        from lib.assessment.confidence import get_predicted_class_stats
-        import numpy as np
-
         confusion = np.array(
             [[4, 1, 0, 0],
              [5, 1, 0, 0],
@@ -41,9 +39,6 @@ class TestConfidence(unittest.TestCase):
             self.assertAlmostEqual(accuracies[i], expected_accuracies[i], 1e-4)
 
     def test_exact_match_confidence(self):
-        from lib.assessment.confidence import get_exact_match_confidence
-        import numpy as np
-
         confusion1 = np.array(
             [[17, 1, 1, 0],
              [1, 9, 1, 1],
