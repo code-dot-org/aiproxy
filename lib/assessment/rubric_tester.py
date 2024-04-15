@@ -23,6 +23,7 @@ from collections import defaultdict
 from lib.assessment.config import SUPPORTED_MODELS, DEFAULT_MODEL, VALID_LABELS, LESSONS, DEFAULT_DATASET_NAME, DEFAULT_EXPERIMENT_NAME
 from lib.assessment.label import Label, InvalidResponseError, RequestTooLargeError
 from lib.assessment.report import Report
+from lib.assessment.confidence import get_pass_fail_confidence
 
 #globals
 prompt_file = 'system_prompt.txt'
@@ -70,6 +71,8 @@ def command_line_options():
                         help='Run against accuracy thresholds')
     parser.add_argument('-r', '--remove-comments', action='store_true',
                         help='Remove comments from student code before evaluating')
+    parser.add_argument('-g', '--generate-confidence', action='store_true',
+                        help='Generate confidence levels for each learning goal')
 
     args = parser.parse_args()
 
@@ -408,6 +411,11 @@ def main():
     if not accuracy_pass and len(accuracy_failures.keys()) > 0:
         logging.error(f"The following thresholds were not met:\n{pp.pformat(accuracy_failures)}")
         print(("PASS" if accuracy_pass else "FAIL"))
+
+    if options.generate_confidence:
+        confidence_pass_fail = get_pass_fail_confidence(accuracy_by_criteria)
+        with open(os.path.join(experiment_lesson_prefix, 'confidence.json'), 'w') as f:
+            json.dump(confidence_pass_fail, f, indent=4)
 
     return accuracy_pass
 
