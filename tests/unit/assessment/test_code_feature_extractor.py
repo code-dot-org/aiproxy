@@ -103,31 +103,131 @@ function draw() {
     assert code_features.features["movement"] == {'random': 0, 'counter': 0}
     assert code_features.assessment == 'Limited Evidence'
 
+  def test_u3l14_modularity_feature_extractor(self, code_features):
+    learning_goal = {"Key Concept": "Modularity - Sprites and Sprite Properties"
+                     }
+    code = """var pacman = createSprite(100, 275);
+pacman.setAnimation("pacman");
+function draw() {
+    pac = randomNumber(1, 100);
+    pacman.x = pacman.x - 3;
+    if (pac < 50){
+        pacman.setAnimation("pacman_closed");
+      }
+}
+"""
+
+    lesson="csd3-2023-L14"
+
+    code_features.extract_features(code, learning_goal, lesson)
+
+    assert code_features.features["object_types"] == {'shapes': 0, 'sprites': 1, 'text': 0}
+    assert code_features.features["movement"] == {'random': 0, 'counter': 0}
+    assert code_features.features["objects"] == [{'end': 1, 'identifier': 'pacman', 'properties': {'x': [100], 'y': [275]}, 'start': 1, 'type': 'sprite'}]
+    assert code_features.features["property_change"] == [   {   'draw_loop': False,
+                               'end': 2,
+                               'method': 'setAnimation',
+                               'object': 'pacman',
+                               'start': 2},
+                           {   'draw_loop': True,
+                               'end': 5,
+                               'object': 'pacman',
+                               'property': 'x',
+                               'start': 5},
+                           {   'draw_loop': True,
+                               'end': 7,
+                               'method': 'setAnimation',
+                               'object': 'pacman',
+                               'start': 7}]
+    assert code_features.assessment == 'Convincing Evidence'
+
+  def test_u3l18_modularity_feature_extractor(self, code_features):
+    learning_goal = {"Key Concept": "Modularity - Multiple Sprites"
+                     }
+    code = """var shai_hulud = createSprite(100, 275);
+var muadib = createSprite(50, 100);
+var fremen = createSprite(0, 275);
+shai_hulud.setAnimation("worm");
+function draw() {
+    rhythm = randomNumber(1, 100);
+    muadib.x = muadib.x + 2;
+    if (rhythm < 50){
+        shai_hulud.visible = False;
+      }
+    if (muadib.x == shai_hulud.x && rhythm > 50) {
+        fremen.setAnimation("lisan al gaib")
+    }
+}
+"""
+
+    lesson="csd3-2023-L18"
+
+    code_features.extract_features(code, learning_goal, lesson)
+
+    assert code_features.features["object_types"] == {'shapes': 0, 'sprites': 3, 'text': 0}
+    assert code_features.features["movement"] == {'random': 0, 'counter': 0}
+    assert code_features.features["objects"] == [   {   'end': 1,
+                       'identifier': 'shai_hulud',
+                       'properties': {'x': [100], 'y': [275]},
+                       'start': 1,
+                       'type': 'sprite'},
+                   {   'end': 2,
+                       'identifier': 'muadib',
+                       'properties': {'x': [50], 'y': [100]},
+                       'start': 2,
+                       'type': 'sprite'},
+                   {   'end': 3,
+                       'identifier': 'fremen',
+                       'properties': {'x': [0], 'y': [275]},
+                       'start': 3,
+                       'type': 'sprite'}]
+    assert code_features.features["property_change"] == [   {   'draw_loop': False,
+                               'end': 4,
+                               'method': 'setAnimation',
+                               'object': 'shai_hulud',
+                               'start': 4},
+                           {   'draw_loop': True,
+                               'end': 7,
+                               'object': 'muadib',
+                               'property': 'x',
+                               'start': 7},
+                           {   'draw_loop': True,
+                               'end': 9,
+                               'object': 'shai_hulud',
+                               'property': 'visible',
+                               'start': 9},
+                           {   'draw_loop': True,
+                               'end': 12,
+                               'method': 'setAnimation',
+                               'object': 'fremen',
+                               'start': 12}]
+    assert code_features.assessment == 'Extensive Evidence'
+
   def test_binary_expression_helper(self, code_features):
     statement = "x = x + 1"
-    parsed = esprima.parseScript(statement)
+    parsed = esprima.parseScript(statement, {'tolerant': True, 'comment': True, 'loc': True})
     result = code_features.binary_expression_helper(parsed.body[0].expression.right)
-    assert result == {'left': 'x', 'operator': '+', 'right': 1}
+    assert result == {'left': 'x', 'operator': '+', 'right': 1, 'start': 1, 'end': 1}
 
     statement = "x = x + -1"
-    parsed = esprima.parseScript(statement)
+    parsed = esprima.parseScript(statement, {'tolerant': True, 'comment': True, 'loc': True})
     result = code_features.binary_expression_helper(parsed.body[0].expression.right)
-    assert result == {'left': 'x', 'operator': '+', 'right': -1}
+    assert result == {'left': 'x', 'operator': '+', 'right': -1, 'start': 1, 'end': 1}
 
   def test_call_expression_helper(self, code_features):
     statement = """x = 1
     test_function(x)"""
-    parsed = esprima.parseScript(statement)
+    parsed = esprima.parseScript(statement, {'tolerant': True, 'comment': True, 'loc': True})
     result = code_features.call_expression_helper(parsed.body[1].expression)
-    assert result == {'args': ['x'], 'function': 'test_function'}
+    assert result == {'args': ['x'], 'function': 'test_function', 'start': 2, 'end': 2}
 
   def test_draw_loop_helper(self, code_features):
     statement = """function draw() {
   var x = 1
 }"""
-    parsed = esprima.parseScript(statement)
+    parsed = esprima.parseScript(statement, {'tolerant': True, 'comment': True, 'loc': True})
     result = code_features.draw_loop_helper(parsed.body[0])
-    assert result == [{'identifier': 'x', 'value': 1}]
+    assert result == [{'identifier': 'x', 'value': 1, 'start': 2, 'end': 2}]
 
   def test_if_statement_helper(self, code_features):
     statement = """if(-1) {
@@ -148,9 +248,11 @@ function draw() {
   var z = 1
   z = 2
 }"""
-    parsed = esprima.parseScript(statement)
+    parsed = esprima.parseScript(statement, {'tolerant': True, 'comment': True, 'loc': True})
     result = code_features.if_statement_helper(parsed.body[0])
-    assert result == {'test': -1.0, 'consequent': [{'test': True, 'consequent': [{'identifier': 'x', 'value': 1}], 'alternate': []}, {'test': {'left': 'x', 'operator': '===', 'right': 1}, 'consequent': [{'assignee': 'x', 'value': 2}], 'alternate': []}], 'alternate': [{'test': 'x', 'consequent': [{'identifier': 'y', 'value': 2}], 'alternate': []}, {'test': {'object': 'x', 'property': 'prop'}, 'consequent': [{'assignee': 'x', 'value': 2}], 'alternate': []}, {'function': 'test_func', 'args': [1]}, {'identifier': 'z', 'value': 1}, {'assignee': 'z', 'value': 2}]}
+    print(result)
+    assert result == {'test': -1.0, 'consequent': [{'test': True, 'consequent': [{'identifier': 'x', 'value': 1, 'start': 3, 'end': 3}], 'alternate': [], 'start': 2, 'end': 4}, {'test': {'left': 'x', 'operator': '===', 'right': 1, 'start': 5, 'end': 5}, 'consequent': [{'assignee': 'x', 'value': 2, 'start': 6, 'end': 6}], 'alternate': [], 'start': 5, 'end': 7}], 'alternate': [{'test': 'x', 'consequent': [{'identifier': 'y', 'value': 2, 'start': 10, 'end': 10}], 'alternate': [], 'start': 9, 'end': 11}, {'test': {'object': 'x', 'property': 'prop', 'start': 12, 'end': 12}, 'consequent': [{'assignee': 'x', 'value': 2, 'start': 13, 'end': 13}], 'alternate': [], 'start': 12, 'end': 14}, {'function': 'test_func', 'args': [1], 'start': 15, 'end': 15}, {'identifier': 'z', 'value': 1, 'start': 16, 'end': 16}, {'assignee': 'z', 'value': 2, 'start': 17, 'end': 17}], 'start': 1, 'end': 18}
+    # assert result == {'test': -1.0, 'consequent': [{'test': True, 'consequent': [{'identifier': 'x', 'value': 1}], 'alternate': []}, {'test': {'left': 'x', 'operator': '===', 'right': 1}, 'consequent': [{'assignee': 'x', 'value': 2}], 'alternate': []}], 'alternate': [{'test': 'x', 'consequent': [{'identifier': 'y', 'value': 2}], 'alternate': []}, {'test': {'object': 'x', 'property': 'prop'}, 'consequent': [{'assignee': 'x', 'value': 2}], 'alternate': []}, {'function': 'test_func', 'args': [1]}, {'identifier': 'z', 'value': 1}, {'assignee': 'z', 'value': 2}]}
   
   def test_flatten_conditional_paths(self, code_features):
     statement = """if(-1) {
@@ -159,18 +261,18 @@ var x = 1
     x = 1;
   }
 }"""
-    parsed = esprima.parseScript(statement)
+    parsed = esprima.parseScript(statement, {'tolerant': True, 'comment': True, 'loc': True})
     conditional = code_features.if_statement_helper(parsed.body[0])
     result = code_features.flatten_conditional_paths(conditional)
-    assert result == [{'identifier': 'x', 'value': 1}, {'assignee': 'x', 'value': 1}]
+    assert result == [{'identifier': 'x', 'value': 1, 'start': 2, 'end': 2}, {'assignee': 'x', 'value': 1, 'start': 4, 'end': 4}]
     
   def test_variable_assignment_helper(self, code_features):
     statement = """var x = 1
 x = test_func(1)
 x = -1
 """
-    parsed = esprima.parseScript(statement)
+    parsed = esprima.parseScript(statement, {'tolerant': True, 'comment': True, 'loc': True})
     result = code_features.variable_assignment_helper(parsed.body[1])
     result2 = code_features.variable_assignment_helper(parsed.body[2])
-    assert result == {'assignee': 'x', 'value': {'function': 'test_func', 'args': [1]}}
-    assert result2 == {'assignee': 'x', 'value': -1.0}
+    assert result == {'assignee': 'x', 'value': {'function': 'test_func', 'args': [1], 'start': 2, 'end': 2}, 'start': 2, 'end': 2}
+    assert result2 == {'assignee': 'x', 'value': -1.0, 'start': 3, 'end': 3}
