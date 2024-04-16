@@ -78,3 +78,49 @@ class DecisionTrees:
 
     # No Evidence: No elements placed using the coordinate system.
     return "No Evidence"
+  
+  def u3l14_modularity_assessment(self, data):
+    sprites = data["object_types"]["sprites"]
+
+    sprites_updated_in_draw = set([property["object"] for property in data["property_change"] if
+                                   any([obj["identifier"] == property["object"] and
+                                        obj["type"]=="sprite" for obj in data["objects"]])
+                                  and property["draw_loop"] == True])
+
+    # Extensive Evidence: At least 3 sprites, 2 other elements, and 2 types of movement
+    if sprites >= 2 and len(sprites_updated_in_draw) >= 2:
+      return "Extensive Evidence"
+
+    # Convincing Evidence: At least 2 sprites, 1 other element, and some movement
+    elif sprites >= 1 and len(sprites_updated_in_draw) >= 1:
+      return "Convincing Evidence"
+
+    # Limited Evidence: A cumulative of at least a total of 1 element
+    elif sprites >= 1:
+      return "Limited Evidence"
+
+    # No Evidence: No elements placed using the coordinate system.
+    return "No Evidence"
+  
+  def u3l18_modularity_assessment(self, data):
+    sprites = data["object_types"]["sprites"]
+
+    sprites_updated_in_draw = set([property["object"] for property in data["property_change"] if
+                                   any([obj["identifier"] == property["object"] and
+                                        obj["type"]=="sprite" for obj in data["objects"]])
+                                  and property["draw_loop"] == True])
+
+    # Extensive Evidence: At least 3 sprites, 2 other elements, and 2 types of movement
+    if sprites >= 3 and len(sprites_updated_in_draw) >= 3:
+      return "Extensive Evidence"
+
+    # Convincing Evidence: At least 2 sprites, 1 other element, and some movement
+    elif sprites >= 1 and len(sprites_updated_in_draw) >= 1:
+      return "Convincing Evidence"
+
+    # Limited Evidence: A cumulative of at least a total of 1 element
+    elif sprites >= 1:
+      return "Limited Evidence"
+
+    # No Evidence: No elements placed using the coordinate system.
+    return "No Evidence"
