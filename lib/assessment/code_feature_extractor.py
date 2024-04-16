@@ -401,7 +401,7 @@ class CodeFeatures:
     # the next line of code.
     def parse_code(program, delegate):
       try:
-        parsed = esprima.parseScript(program, {'tolerant': True, 'comment': True, 'loc': True}, u3l18_position_delegate)
+        parsed = esprima.parseScript(program, {'tolerant': True, 'comment': True, 'loc': True}, delegate)
       except Exception as e:
         err = str(e)
         if "Line" in err:
@@ -425,13 +425,16 @@ class CodeFeatures:
 
     # Delegate function for U3L18 'Position and Movement'
     def u3l18_position_delegate(node, metadata):
-      print("NODE:")
-      print(node)
-      print("-------------------------")
-      print("\n")
       # extract_object_types(node)
       self.extract_object_and_variable_data(node)
       self.extract_movement_types(node)
+
+    def u3l14_modularity_delegate(node, metadata):
+      self.extract_object_and_variable_data(node)
+      self.extract_property_assignment(node)
+      
+    def u3l18_modularity_delegate(node, metadata):
+      self.extract_object_and_variable_data(node)
       self.extract_property_assignment(node)
 
     # Add conditionals for future learning goals here
@@ -449,3 +452,11 @@ class CodeFeatures:
         parse_code(program, u3l18_position_delegate)
         dt = DecisionTrees()
         self.assessment = dt.u3l18_position_assessment(self.features)
+      case ['Modularity - Sprites and Sprite Properties', 'csd3-2023-L14']:
+        parse_code(program, u3l14_modularity_delegate)
+        dt = DecisionTrees()
+        self.assessment = dt.u3l14_modularity_assessment(self.features)
+      case ['Modularity - Multiple Sprites', 'csd3-2023-L18']:
+        parse_code(program, u3l18_modularity_delegate)
+        dt = DecisionTrees()
+        self.assessment = dt.u3l18_modularity_assessment(self.features)
