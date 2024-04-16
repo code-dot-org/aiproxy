@@ -1,8 +1,6 @@
 import esprima
 from lib.assessment.decision_trees import DecisionTrees
 import logging
-import pprint
-pp=pprint.PrettyPrinter(indent=4)
 
 function_args = {
     "arc": ["x", "y", "w", "h", "start", "stop"],
@@ -51,8 +49,6 @@ class CodeFeatures:
     # For learning goals that are assessed by decision tree and not the LLM, store the
     # assessment results here
     self.assessment = ''
-
-    self.draw_loop_info = []
 
   # Helper function for parsing binary expressions.
   # Outputs a dictionary containing both sides of the expression and the operator
@@ -252,32 +248,6 @@ class CodeFeatures:
           logging.info("variable assignment outlier", str(exp))
     return {"assignee": output[0], "value": output[1], "start":node.loc.start.line, "end":node.loc.end.line}
   
-  def property_update_helper(self, node, draw_loop=False):
-    output = []
-    # print("property_update_helper")
-    # print(node)
-    if type(node) is dict:
-      # print("is dict")
-      for exp in node.keys():
-        # print(f"key: {exp}")
-        if type(node[exp]) is dict:
-          if exp == "assignee" and all([k in node[exp].keys() for k in ["object", "property"]]):
-            # print("add assignee")
-            output.append({**node[exp], "draw_loop":draw_loop})
-          elif exp == "function" and all([k in node[exp].keys() for k in ["object", "method"]]) and node[exp]["method"] in sprite_functions:
-            # print("add function")
-            output.append({**node[exp], "draw_loop":draw_loop})
-          else:
-            output.extend(self.property_update_helper(node[exp], draw_loop))
-        else:
-          output.extend(self.property_update_helper(node[exp],draw_loop))
-    elif type(node) is list:
-      # print("is list")
-      for item in node:
-        output.extend(self.property_update_helper(item,draw_loop))
-    # print(f"ret: {output}")
-    return output
-  
   # Extractor functions: These functions utilize helper functions to return
   # information from nodes, then store the relevant code features in the
   # features dictionary.
@@ -323,11 +293,9 @@ class CodeFeatures:
                         self.features["movement"]["random"] += 1
                         self.nodes.append(node)
 
+  #Extract and store all object properties that are updated
   def extract_property_assignment(self, node):
-    # draw_loop_info = self.draw_loop_helper(node)
-    # if draw_loop_info or node.type == "FunctionDeclaration" and node.id.name == "draw":
     if node.type == "FunctionDeclaration" and node.id.name == "draw":
-      print("DRAW LOOP INFO:")
       draw_loop_start = node.loc.start.line
       draw_loop_end = node.loc.end.line
       # For any properties that change in the drawloop, change "draw_loop" to true
@@ -336,23 +304,14 @@ class CodeFeatures:
         if property["start"] >= draw_loop_start and property["end"] <= draw_loop_end:
           property["draw_loop"] = True
         new_properties.append(property)
-      # for property in self.features["property_change"]:
-      #   if property["end"] < draw_loop_start or property["start"] > draw_loop_end:
-      #     new_properties.append(property)
       self.features["property_change"] = new_properties
-      # properties = self.property_update_helper(draw_loop_info, draw_loop=True)
-      # self.features["property_change"].extend(properties)
     elif node.type == "ExpressionStatement" and node.expression.type == "CallExpression":
       node_info = self.call_expression_helper(node.expression)
       if type(node_info["function"]) is dict and all([k in node_info["function"].keys() for k in ["object", "method"]]) and node_info["function"]["method"] in sprite_functions:
-        print("Adding function node to property_change")
-        print(node)
         self.features["property_change"].append({**node_info["function"], "draw_loop":False})
     elif node.type == "ExpressionStatement" and node.expression.type == "AssignmentExpression":
       node_info = self.variable_assignment_helper(node)
       if type(node_info["assignee"]) is dict and all([k in node_info["assignee"].keys() for k in ["object", "property"]]):
-        print("Adding var assignment node to property_change")
-        print(node)
         self.features["property_change"].append({**node_info["assignee"], "draw_loop":False})
       
 
