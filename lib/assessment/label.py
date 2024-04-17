@@ -350,7 +350,7 @@ class Label:
             text = response_text.strip()
 
             if response_type == 'json':
-                response_data = self.parse_json_response(text, student_id)
+                response_data = self.parse_json_response(text, student_id, finish_reason=choice['finish_reason'])
             elif response_type == 'tsv':
                 response_data = self.parse_non_json_response(text)
             else:
@@ -365,16 +365,20 @@ class Label:
                 raise e
             return None
 
-    def parse_json_response(self, response_text, student_id):
+    def parse_json_response(self, response_text, student_id, finish_reason):
         # capture all data from the first '[' to the last ']', inclusive
         match = re.search(r'(\[.*\])', response_text,re.DOTALL)
         if not match:
+            if finish_reason == 'length':
+                raise RequestTooLargeError(f"{student_id}: no valid JSON data")
             raise InvalidResponseError(f"no valid JSON data:\n{response_text}")
         json_text = match.group(1)
 
         try:
             data = json.loads(json_text)
         except json.JSONDecodeError as e:
+            if finish_reason == 'length':
+                raise RequestTooLargeError(f"{student_id}: JSON decoding error")
             raise InvalidResponseError(f"JSON decoding error: {e}\n{json_text}")
 
         return data
