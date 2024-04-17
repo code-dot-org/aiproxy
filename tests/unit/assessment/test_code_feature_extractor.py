@@ -63,7 +63,7 @@ function draw() {
     code_features.extract_features(code, learning_goal, lesson)
 
     assert code_features.features["object_types"] == {'shapes': 0, 'sprites': 3, 'text': 0}
-    assert code_features.features["movement"] == {'random': 1, 'counter': 1}
+    assert code_features.features["movement"] == {'random': 1, 'counter': 2}
     assert code_features.assessment == 'Limited Evidence'
   
   def test_u3l18_position_feature_extractor(self, code_features):
@@ -213,6 +213,17 @@ function draw() {
     parsed = esprima.parseScript(statement, {'tolerant': True, 'comment': True, 'loc': True})
     result = code_features.binary_expression_helper(parsed.body[0].expression.right)
     assert result == {'left': 'x', 'operator': '+', 'right': -1, 'start': 1, 'end': 1}
+
+  def test_update_expression_helper(self, code_features):
+    statement = "x++"
+    parsed = esprima.parseScript(statement, {'tolerant': True, 'comment': True, 'loc': True})
+    result = code_features.update_expression_helper(parsed.body[0].expression)
+    assert result == {'argument': 'x', 'operator': '++', 'start': 1, 'end': 1}
+
+    statement = "blah.x++"
+    parsed = esprima.parseScript(statement, {'tolerant': True, 'comment': True, 'loc': True})
+    result = code_features.update_expression_helper(parsed.body[0].expression)
+    assert result == {'argument': {'object': 'blah', 'property':'x', 'start': 1, 'end': 1}, 'operator': '++', 'start': 1, 'end': 1}
 
   def test_call_expression_helper(self, code_features):
     statement = """x = 1
