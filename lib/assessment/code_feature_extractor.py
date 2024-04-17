@@ -27,6 +27,8 @@ shape_functions = ['circle',
 
 sprite_functions = ['setAnimation']
 
+obj_movement_props = ['x', 'y', 'veocityX', 'velocityY', 'rotation']
+
 # This class contains delegate and helper functions to extract relevant features
 # from code for assessment. New features should be added to the features dictionary.
 # Add delegate function definitions to the extract_features function.
@@ -100,6 +102,18 @@ class CodeFeatures:
       else:
         args = arg_values
     return {"function": function, "args": args, "start":expression.loc.start.line, "end":expression.loc.end.line}
+  
+  def update_expression_helper(self, expression):
+    argument = {}
+    match expression.argument.type:
+      case "MemberExpression":
+        argument = self.member_expression_helper(expression.argument)
+      case "Identifier":
+        argument = expression.argument.name
+      case _:
+        logging.info("update expression argument outlier", str(expression.argument))
+    return {"operator":expression.operator, "argument":argument, "start":expression.loc.start.line, "end":expression.loc.end.line}
+      
 
   # Helper function to analyze all statements in the draw loop. Sends statements
   # to their respective helper functions for parsing based on statement type.
@@ -115,6 +129,8 @@ class CodeFeatures:
                 draw_loop_body.append(self.call_expression_helper(statement.expression))
               case "AssignmentExpression":
                 draw_loop_body.append(self.variable_assignment_helper(statement))
+              case "UpdateExpression":
+                draw_loop_body.append(self.update_expression_helper(statement.expression))
               case _:
                 logging.info("draw loop outlier expression", str(statement.expression))
           case "VariableDeclaration":
@@ -154,6 +170,8 @@ class CodeFeatures:
                 consequent.append(self.call_expression_helper(statement.expression))
               case "AssignmentExpression":
                 consequent.append(self.variable_assignment_helper(statement))
+              case "UpdateExpression":
+                consequent.append(self.update_expression_helper(statement.expression))
               case _:
                 logging.info("conditional consequent outlier expression", str(statement.expression))
           case "VariableDeclaration":
@@ -173,6 +191,8 @@ class CodeFeatures:
                   alternate.append(self.call_expression_helper(statement.expression))
                 case "AssignmentExpression":
                   alternate.append(self.variable_assignment_helper(statement))
+                case "UpdateExpression":
+                  alternate.append(self.update_expression_helper(statement.expression))
                 case _:
                   logging.info("conditional alternate outlier expression", str(statement.expression))
             case "VariableDeclaration":
@@ -256,9 +276,8 @@ class CodeFeatures:
     draw_loop_info = self.draw_loop_helper(node)
     if draw_loop_info:
       for statement in draw_loop_info:
-        self.draw_loop_info.append(statement)
         if "assignee" in statement:
-          if "object" in statement["assignee"]:
+          if "object" in statement["assignee"] and "property" in statement["assignee"] and statement["assignee"]["property"] in obj_movement_props:
             obj = [obj for obj in self.features["objects"] if obj["identifier"] == statement["assignee"]["object"]]
             if obj:
               if isinstance(statement["value"], dict):
@@ -273,11 +292,23 @@ class CodeFeatures:
                 elif "function" in statement["value"] and statement["value"]["function"] == "randomNumber":
                     self.features["movement"]["random"] += 1
                     self.nodes.append(node)
+        if "operator" in statement and statement["operator"] in ["++", "--"]:
+          if "object" in statement["argument"] and "property" in statement["argument"] and statement["argument"]["property"] in obj_movement_props:
+            obj = [obj for obj in self.features["objects"] if obj["identifier"] == statement["argument"]["object"]]
+            if obj:
+              self.features["movement"]["counter"] += 1
+              self.nodes.append(node)
         if "test" in statement:
           conditional_body = self.flatten_conditional_paths(statement)
           for conditional_statement in conditional_body:
+            if "operator" in conditional_statement and conditional_statement["operator"] in ["++", "--"]:
+              if "object" in conditional_statement["argument"] and "property" in conditional_statement["argument"] and conditional_statement["argument"]["property"] in obj_movement_props:
+                obj = [obj for obj in self.features["objects"] if obj["identifier"] == conditional_statement["argument"]["object"]]
+                if obj:
+                  self.features["movement"]["counter"] += 1
+                  self.nodes.append(node)
             if "assignee" in conditional_statement:
-              if "object" in conditional_statement["assignee"]:
+              if "object" in conditional_statement["assignee"] and "property" in conditional_statement["assignee"] and conditional_statement["assignee"]["property"] in obj_movement_props:
                 obj = [obj for obj in self.features["objects"] if obj["identifier"] == conditional_statement["assignee"]["object"]]
                 if obj:
                   if isinstance(conditional_statement["value"], dict):
@@ -313,6 +344,10 @@ class CodeFeatures:
       node_info = self.variable_assignment_helper(node)
       if type(node_info["assignee"]) is dict and all([k in node_info["assignee"].keys() for k in ["object", "property"]]):
         self.features["property_change"].append({**node_info["assignee"], "draw_loop":False})
+    elif node.type == "ExpressionStatement" and node.expression.type == "UpdateExpression":
+      node_info = self.update_expression_helper(node.expression)
+      if type(node_info["argument"]) is dict and node_info["operator"] in ["++", "--", "~"] and all([k in node_info["argument"].keys() for k in ["object", "property"]]):
+        self.features["property_change"].append({**node_info["argument"], "draw_loop":False})
       
 
   # Extract and store all object and variable data, including object types
