@@ -345,8 +345,7 @@ class Label:
         try:
             choice_text = f"Choice {choice_index}: " if choice_index is not None else ''
             if not response_text:
-                logging.error(f"{student_id} {choice_text} Invalid response: empty response")
-                return None
+                raise InvalidResponseError("empty response")
             text = response_text.strip()
 
             if response_type == 'json':
@@ -369,15 +368,13 @@ class Label:
         # capture all data from the first '[' to the last ']', inclusive
         match = re.search(r'(\[.*\])', response_text,re.DOTALL)
         if not match:
-            logging.error(f"{student_id} Invalid response: no valid JSON data:\n{response_text}")
-            return None
+            raise InvalidResponseError(f"no valid JSON data:\n{response_text}")
         json_text = match.group(1)
 
         try:
             data = json.loads(json_text)
         except json.JSONDecodeError as e:
-            logging.error(f"{student_id} JSON decoding error: {e}\n{json_text}")
-            return None
+            raise InvalidResponseError(f"JSON decoding error: {e}\n{json_text}")
 
         return data
 
