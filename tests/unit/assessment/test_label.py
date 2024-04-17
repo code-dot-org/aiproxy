@@ -18,6 +18,18 @@ def label():
     """
     yield Label()
 
+@pytest.fixture
+def choice():
+    """ Creates a simple openai response choice.
+    """
+    choice = {
+        'finish_reason': 'stop',
+        'index': 0,
+        'message': {
+            'content': ''
+        }
+    }
+    yield choice
 
 class TestRemoveJsComments:
     def test_remove_js_comments(self, label):
@@ -142,14 +154,14 @@ class TestComputeMessages:
 
 
 class TestGetResponseDataIfValid:
-    def test_should_return_none_if_the_response_is_blank(self, label, rubric, student_id):
-        result = label.get_response_data_if_valid("", rubric, student_id)
+    def test_should_return_none_if_the_response_is_blank(self, label, rubric, student_id, choice):
+        result = label.get_response_data_if_valid(choice, rubric, student_id)
 
         assert result is None
 
-    def test_should_log_the_choice_index_if_the_response_is_blank(self, caplog, label, rubric, student_id):
+    def test_should_log_the_choice_index_if_the_response_is_blank(self, caplog, label, rubric, student_id, choice):
         index = random.randint(0, 5)
-        label.get_response_data_if_valid("", rubric, student_id, choice_index=index)
+        label.get_response_data_if_valid(choice, rubric, student_id, choice_index=index)
 
         assert any(filter(lambda x: (f'Choice {index}' in x.message) and x.levelno == logging.ERROR, caplog.records))
 
@@ -158,23 +170,23 @@ class TestGetResponseDataIfValid:
         # We will generate fake openai gpt responses where it gave us the labeled
         # rubrics in CSV or markdown (even though we told it NOT TO grr)
         ai_response = openai_gpt_response(rubric, num_responses=1, output_type=output_type)
-        response = ai_response['choices'][0]['message']['content']
+        choice = ai_response['choices'][0]
 
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
         # It should parse them out to get the same number of rows as the rubric
-        result = label.get_response_data_if_valid(response, rubric, student_id)
+        result = label.get_response_data_if_valid(choice, rubric, student_id)
         assert result is not None
         assert len(result) == len(parsed_rubric)
 
     def test_should_work_for_json_response_type(self, label, rubric, student_id, openai_gpt_response, output_type='json'):
         ai_response = openai_gpt_response(rubric, num_responses=1, output_type=output_type)
-        response = ai_response['choices'][0]['message']['content']
+        choice = ai_response['choices'][0]
 
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
         # It should parse them out to get the same number of rows as the rubric
-        result = label.get_response_data_if_valid(response, rubric, student_id, response_type='json')
+        result = label.get_response_data_if_valid(choice, rubric, student_id, response_type='json')
         assert result is not None
         assert len(result) == len(parsed_rubric)
 
@@ -184,24 +196,26 @@ class TestGetResponseDataIfValid:
         # We will generate fake openai gpt responses where it gave us the labeled
         # rubrics in CSV or markdown (even though we told it NOT TO grr)
         ai_response = openai_gpt_response(rubric, num_responses=1, output_type=output_type)
-        response = "Bogus Weasel lines\n" + ai_response['choices'][0]['message']['content']
+        choice = ai_response['choices'][0]
+        choice['message']['content'] = "Bogus Weasel lines\n" + choice['message']['content']
 
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
         # It should parse them out to get the same number of rows as the rubric
-        result = label.get_response_data_if_valid(response, rubric, student_id)
+        result = label.get_response_data_if_valid(choice, rubric, student_id)
         assert result is not None
         assert len(result) == len(parsed_rubric)
 
     def test_should_work_for_tsv_output_where_it_escapes_tabs(self, label, rubric, student_id, openai_gpt_response):
         # ChatGPT will sometimes give you tsv (yay!) but escape the tabs for some reason (boo!)
         ai_response = openai_gpt_response(rubric, num_responses=1, output_type='tsv')
-        response = ai_response['choices'][0]['message']['content'].replace('\t', '\\t')
+        choice = ai_response['choices'][0]
+        choice['message']['content'] = choice['message']['content'].replace('\t', '\\t')
 
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
         # It should parse them out to get the same number of rows as the rubric
-        result = label.get_response_data_if_valid(response, rubric, student_id)
+        result = label.get_response_data_if_valid(choice, rubric, student_id)
         assert result is not None
         assert len(result) == len(parsed_rubric)
 
@@ -209,14 +223,14 @@ class TestGetResponseDataIfValid:
         # We will generate fake openai gpt responses where it gave us the labeled
         # rubrics in CSV or markdown (even though we told it NOT TO grr)
         ai_response = openai_gpt_response(rubric, num_responses=1, output_type='tsv')
-        response = ai_response['choices'][0]['message']['content']
+        choice = ai_response['choices'][0]
 
         # We can invalidate the response
-        response = response.replace("Observations", " Observations ")
+        choice['message']['content'] = choice['message']['content'].replace("Observations", " Observations ")
 
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
-        result = label.get_response_data_if_valid(response, rubric, student_id)
+        result = label.get_response_data_if_valid(choice, rubric, student_id)
         assert result is not None
         assert len(result) == len(parsed_rubric)
 
@@ -224,18 +238,18 @@ class TestGetResponseDataIfValid:
         # We will occasionally get entries that place lines within the returned data
         # This is true with markdown responses that place a set of '-----' lines
         ai_response = openai_gpt_response(rubric, num_responses=1, output_type='tsv')
-        response = ai_response['choices'][0]['message']['content']
+        choice = ai_response['choices'][0]
 
         # Slide a nonsense line within the response (2nd to last entry)
-        lines = response.splitlines()
+        lines = choice['message']['content'].splitlines()
         lines.append(lines[-1])
         lines[-2] = "--------\t---------\t--------\t---------"
-        response = '\n'.join(lines)
+        choice['message']['content'] = '\n'.join(lines)
 
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
         # Should be fine
-        result = label.get_response_data_if_valid(response, rubric, student_id)
+        result = label.get_response_data_if_valid(choice, rubric, student_id)
         assert result is not None
         assert len(result) == len(parsed_rubric)
 
@@ -243,17 +257,17 @@ class TestGetResponseDataIfValid:
         # We will occasionally get entries that place lines within the returned data
         # This is true with markdown responses that place a set of '-----' lines
         ai_response = openai_gpt_response(rubric, num_responses=1, output_type='tsv')
-        response = ai_response['choices'][0]['message']['content']
+        choice = ai_response['choices'][0]
 
         # Slide a nonsense line within the response (2nd to last entry)
-        lines = response.splitlines()
+        lines = choice['message']['content'].splitlines()
         delimiter = "\n--------\t---------\t--------\t---------\n"
-        response = delimiter.join(lines)
+        choice['message']['content'] = delimiter.join(lines)
 
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
         # Should be fine
-        result = label.get_response_data_if_valid(response, rubric, student_id)
+        result = label.get_response_data_if_valid(choice, rubric, student_id)
         assert result is not None
         assert len(result) == len(parsed_rubric)
 
@@ -261,79 +275,79 @@ class TestGetResponseDataIfValid:
         # We will generate fake openai gpt responses where it gave us the labeled
         # rubrics in CSV or markdown (even though we told it NOT TO grr)
         ai_response = openai_gpt_response(rubric, num_responses=1, output_type='tsv')
-        response = ai_response['choices'][0]['message']['content']
+        choice = ai_response['choices'][0]
 
         # We can invalidate the response
-        response = response.replace("Key Concept", "Bogus Weasel")
+        choice['message']['content'] = choice['message']['content'].replace("Key Concept", "Bogus Weasel")
 
-        result = label.get_response_data_if_valid(response, rubric, student_id)
+        result = label.get_response_data_if_valid(choice, rubric, student_id)
         assert result is None
 
     def test_should_return_none_when_the_columns_are_invalid(self, mocker, label, rubric, student_id, openai_gpt_response):
         # We will generate fake openai gpt responses where it gave us the labeled
         # rubrics in CSV or markdown (even though we told it NOT TO grr)
         ai_response = openai_gpt_response(rubric, num_responses=1, output_type='tsv')
-        response = ai_response['choices'][0]['message']['content']
+        choice = ai_response['choices'][0]
 
         # We can invalidate the response
-        response = response.replace("Observations", "Things I notice")
+        choice['message']['content'] = choice['message']['content'].replace("Observations", "Things I notice")
 
-        result = label.get_response_data_if_valid(response, rubric, student_id)
+        result = label.get_response_data_if_valid(choice, rubric, student_id)
         assert result is None
 
     def test_should_return_none_when_a_key_concept_is_missing(self, mocker, label, rubric, student_id, openai_gpt_response):
         # We will generate fake openai gpt responses where it gave us the labeled
         # rubrics in CSV or markdown (even though we told it NOT TO grr)
         ai_response = openai_gpt_response(rubric, num_responses=1, output_type='tsv')
-        response = ai_response['choices'][0]['message']['content']
+        choice = ai_response['choices'][0]
 
         # Remove a random row from the response (ignoring the first row: the header)
-        lines = response.splitlines()
+        lines = choice['message']['content'].splitlines()
         lines.remove(random.choice(lines[1:]))
-        response = '\n'.join(lines)
+        choice['message']['content'] = '\n'.join(lines)
 
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
-        result = label.get_response_data_if_valid(response, rubric, student_id)
+        result = label.get_response_data_if_valid(choice, rubric, student_id)
         assert result is None
 
     def test_should_return_none_when_a_different_key_concept_is_found(self, mocker, label, rubric, student_id, openai_gpt_response):
         # We will generate fake openai gpt responses where it gave us the labeled
         # rubrics in CSV or markdown (even though we told it NOT TO grr)
         ai_response = openai_gpt_response(rubric, num_responses=1, output_type='tsv')
-        response = ai_response['choices'][0]['message']['content']
+        choice = ai_response['choices'][0]
 
         # Remove a random row from the response (ignoring the first row: the header)
-        lines = response.splitlines()
+        lines = choice['message']['content'].splitlines()
         index = random.randint(1, len(lines) - 1)
         # We can corrupt by just adding a letter to the beginning, which is
         # where the key concept is written out in the TSV result.
         lines[index] = 'x' + lines[index]
-        response = '\n'.join(lines)
+        choice['message']['content'] = '\n'.join(lines)
 
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
-        result = label.get_response_data_if_valid(response, rubric, student_id)
+        result = label.get_response_data_if_valid(choice, rubric, student_id)
         assert result is None
 
     def test_should_return_none_when_there_is_an_invalid_label(self, mocker, label, rubric, student_id, openai_gpt_response):
         # We will generate fake openai gpt responses where it gave us the labeled
         # rubrics in CSV or markdown (even though we told it NOT TO grr)
         ai_response = openai_gpt_response(rubric, num_responses=1, output_type='tsv')
-        response = ai_response['choices'][0]['message']['content']
+        choice = ai_response['choices'][0]
 
         # Remove a random row from the response (ignoring the first row: the header)
-        lines = response.splitlines()
+        lines = choice['message']['content'].splitlines()
         index = random.randint(1, len(lines) - 1)
         # In this case, we can corrupt the third entry (the label)
         entries = lines[index].split('\t')
         entries[2] = 'x' + entries[2]
         lines[index] = '\t'.join(entries)
-        response = '\n'.join(lines)
+        choice['message']['content'] = '\n'.join(lines)
 
         parsed_rubric = list(csv.DictReader(rubric.splitlines()))
 
-        result = label.get_response_data_if_valid(response, rubric, student_id)
+        result = label.get_response_data_if_valid(choice, rubric, student_id)
         assert result is None
 
 
@@ -742,7 +756,7 @@ class TestGetConsensusResponse:
             # Disagreements always happen in the first choice... so they always
             # mean an 'outvote'
             ai_response = openai_gpt_response(rubric, num_responses=num_responses, disagreements=disagreements, output_type='tsv')
-            responses = [label.get_response_data_if_valid(x['message']['content'], rubric, student_id) for x in ai_response['choices']]
+            responses = [label.get_response_data_if_valid(choice, rubric, student_id) for choice in ai_response['choices']]
             # return [list(csv.DictReader(StringIO(x), delimiter='\t')) for x in responses]
             return responses
 
