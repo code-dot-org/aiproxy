@@ -342,20 +342,20 @@ class Label:
         return messages
 
     def get_response_data_if_valid(self, response_text, rubric, student_id, choice_index=None, reraise=False, response_type='tsv'):
-        choice_text = f"Choice {choice_index}: " if choice_index is not None else ''
-        if not response_text:
-            logging.error(f"{student_id} {choice_text} Invalid response: empty response")
-            return None
-        text = response_text.strip()
-
-        if response_type == 'json':
-            response_data = self.parse_json_response(text, student_id)
-        elif response_type == 'tsv':
-            response_data = self.parse_non_json_response(text)
-        else:
-            raise ValueError(f"Invalid response type: {response_type}")
-
         try:
+            choice_text = f"Choice {choice_index}: " if choice_index is not None else ''
+            if not response_text:
+                logging.error(f"{student_id} {choice_text} Invalid response: empty response")
+                return None
+            text = response_text.strip()
+
+            if response_type == 'json':
+                response_data = self.parse_json_response(text, student_id)
+            elif response_type == 'tsv':
+                response_data = self.parse_non_json_response(text)
+            else:
+                raise ValueError(f"Invalid response type: {response_type}")
+
             self._sanitize_server_response(response_data)
             self._validate_server_response(response_data, rubric)
             return [row for row in response_data]
