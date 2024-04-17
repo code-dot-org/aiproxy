@@ -17,6 +17,9 @@ from io import StringIO
 class InvalidResponseError(Exception):
     pass
 
+class RequestTooLargeError(Exception):
+    pass
+
 class Label:
     _bedrock_client = None
     _bedrock_lock = Lock()
@@ -183,7 +186,11 @@ class Label:
         # Post to the AI service
         response = requests.post(api_url, headers=headers, json=data, timeout=120)
 
-        if response.status_code != 200:
+        # context length exceeded
+        if response.status_code == 400 and response.json().get('error', {}).get('code') == 'context_length_exceeded':
+            message = response.json().get('error', {}).get('message')
+            raise RequestTooLargeError(f"{student_id} {message}")
+        elif response.status_code != 200:
             logging.error(f"{student_id} Error calling the API: {response.status_code}")
             logging.info(f"{student_id} Response body: {response.text}")
             return None
