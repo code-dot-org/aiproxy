@@ -380,12 +380,12 @@ class TestAiLabelStudentWork:
         assert set(x['Key Concept'] for x in parsed_rubric) == set(x['Key Concept'] for x in result['data'])
 
     def test_should_raise_request_too_large_when_context_length_exceeded(
-            self, requests_mock, openai_gpt_response_too_large, label, prompt, rubric, code, student_id,
-            examples, num_responses, temperature, llm_model):
+            self, requests_mock, openai_response_too_large, label, prompt, rubric, code, student_id,
+            examples, num_responses, temperature, llm_model, context_length_message):
 
         requests_mock.post(
             'https://api.openai.com/v1/chat/completions',
-            json=openai_gpt_response_too_large,
+            json=openai_response_too_large,
             headers={'Content-Type': 'application/json'},
             status_code=400,
         )
@@ -396,8 +396,7 @@ class TestAiLabelStudentWork:
             label.ai_label_student_work(
                 prompt, rubric, code, student_id, examples(rubric), num_responses, temperature, llm_model
             )
-        message = "This model's maximum context length is 8192 tokens. However, your messages resulted in 9145 tokens. Please reduce the length of the messages."
-        assert message in str(error.value)
+        assert context_length_message in str(error.value)
 
     def test_should_return_data_as_none_when_ai_result_is_empty(self, requests_mock, mocker, openai_gpt_response, label, prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model):
         mock_gpt_response = openai_gpt_response(
