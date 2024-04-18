@@ -294,3 +294,19 @@ def openai_gpt_response(randomstring):
         return f"{data['Key Concept']}{delimiter}{data['Observations']}{delimiter}{data['Grade']}{delimiter}{data['Reason']}\n"
 
     return gen_gpt_response
+
+@pytest.fixture
+def openai_gpt_response_too_large():
+    """ Returns a GPT response indicating the model's context length was exceeded.
+    """
+
+    response_data = {
+        "error": {
+            "message": "This model's maximum context length is 8192 tokens. However, your messages resulted in 9145 tokens. Please reduce the length of the messages.",
+            "type": "invalid_request_error",
+            "param": "messages",
+            "code": "context_length_exceeded"
+        }
+    }
+    # return json.dumps(response_data)
+    return response_data
