@@ -370,6 +370,10 @@ class Label:
             if reraise:
                 raise e
             return None
+        except RequestTooLargeError as e:
+            logging.error(f"{student_id} {choice_text} Request too large: {str(e)}")
+            if reraise:
+                raise e
 
     # gpt-4-0613 has a context window of 8192 tokens, which is the limit for input + output tokens.
     # If the json in the response is unparseable, and the llm says the response was truncated due to length,
