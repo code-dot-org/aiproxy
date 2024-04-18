@@ -371,6 +371,10 @@ class Label:
                 raise e
             return None
 
+    # gpt-4-0613 has a context window of 8192 tokens, which is the limit for input + output tokens.
+    # If the json in the response is unparseable, and the llm says the response was truncated due to length,
+    # then assume the reason for the error is because the input was too large to leave enough remaining tokens
+    # for a valid response.
     def parse_json_response(self, response_text, student_id, finish_reason):
         # capture all data from the first '[' to the last ']', inclusive
         match = re.search(r'(\[.*\])', response_text,re.DOTALL)
