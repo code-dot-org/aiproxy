@@ -186,8 +186,7 @@ class Label:
         # Post to the AI service
         response = requests.post(api_url, headers=headers, json=data, timeout=120)
 
-        # context length exceeded
-        if response.status_code == 400 and response.json().get('error', {}).get('code') == 'context_length_exceeded':
+        if self._openai_context_length_exceeded(response):
             message = response.json().get('error', {}).get('message')
             raise RequestTooLargeError(f"{student_id} {message}")
         elif response.status_code != 200:
@@ -207,6 +206,13 @@ class Label:
             },
             'data': response_data,
         }
+
+    def _openai_context_length_exceeded(self, response):
+        return (
+            response.status_code == 400 and
+            response.headers.get('Content-Type') == 'application/json' and
+            response.json().get('error', {}).get('code') == 'context_length_exceeded'
+        )
 
     def label_student_work(self, prompt, rubric, student_code, student_id, examples=[], use_cached=False, write_cached=False, num_responses=0, temperature=0.0, llm_model="", remove_comments=False, response_type='tsv', cache_prefix="", code_feature_extractor=None, lesson=None):
         if use_cached and os.path.exists(os.path.join(cache_prefix, f"cached_responses/{student_id}.json")):

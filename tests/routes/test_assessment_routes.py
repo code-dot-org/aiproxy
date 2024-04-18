@@ -1,5 +1,6 @@
 import openai
 
+from lib.assessment.label import RequestTooLargeError
 
 class TestPostAssessment:
     """ Tests POST to '/assessment' to start an assessment.
@@ -44,8 +45,8 @@ class TestPostAssessment:
         })
         assert response.status_code == 400
 
-    def test_should_return_400_on_openai_error(self, mocker, client, randomstring):
-        mocker.patch('lib.assessment.assess.label').side_effect = openai.error.InvalidRequestError('', '')
+    def test_should_return_413_on_request_too_large_error(self, mocker, client, randomstring):
+        mocker.patch('lib.assessment.assess.label').side_effect = RequestTooLargeError('')
         response = client.post('/assessment', data={
           "code": randomstring(10),
           "prompt": randomstring(10),
@@ -57,7 +58,7 @@ class TestPostAssessment:
           "num-responses": "1",
           "temperature": "0.2",
         })
-        assert response.status_code == 400
+        assert response.status_code == 413
 
     def test_should_return_400_when_passing_not_a_number_to_num_responses(self, client, randomstring):
         response = client.post('/assessment', data={
