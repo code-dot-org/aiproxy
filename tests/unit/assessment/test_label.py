@@ -350,6 +350,45 @@ class TestGetResponseDataIfValid:
         result = label.get_response_data_if_valid(choice, rubric, student_id)
         assert result is None
 
+    def test_should_raise_request_too_large_when_json_is_truncated_by_llm(self, mocker, label, rubric, student_id, openai_gpt_response):
+        ai_response = openai_gpt_response(rubric, num_responses=1, output_type='json')
+        choice = ai_response['choices'][0]
+        choice['message']['content'] = 'bogus' # no JSON
+        choice['finish_reason'] = 'length' # response was truncated
+
+        with pytest.raises(RequestTooLargeError) as error:
+            label.get_response_data_if_valid(choice, rubric, student_id, response_type='json')
+        assert "no valid JSON data" in str(error.value)
+
+    def test_should_raise_invalid_response_when_untruncated_response_contains_no_json(self, mocker, label, rubric, student_id, openai_gpt_response):
+        ai_response = openai_gpt_response(rubric, num_responses=1, output_type='json')
+        choice = ai_response['choices'][0]
+        choice['message']['content'] = 'bogus' # no JSON
+        choice['finish_reason'] = 'stop' # response was not truncated
+
+        with pytest.raises(InvalidResponseError) as error:
+            label.get_response_data_if_valid(choice, rubric, student_id, reraise=True, response_type='json')
+        assert "no valid JSON data" in str(error.value)
+
+    def test_should_raise_request_too_large_when_truncated_json_is_unparsable(self, mocker, label, rubric, student_id, openai_gpt_response):
+        ai_response = openai_gpt_response(rubric, num_responses=1, output_type='json')
+        choice = ai_response['choices'][0]
+        choice['message']['content'] = '[{]' # bad JSON
+        choice['finish_reason'] = 'length' # response was truncated
+
+        with pytest.raises(RequestTooLargeError) as error:
+            label.get_response_data_if_valid(choice, rubric, student_id, response_type='json')
+        assert "JSON decoding error" in str(error.value)
+
+    def test_should_raise_invalid_response_when_untruncated_json_is_unparsable(self, mocker, label, rubric, student_id, openai_gpt_response):
+        ai_response = openai_gpt_response(rubric, num_responses=1, output_type='json')
+        choice = ai_response['choices'][0]
+        choice['message']['content'] = '[{]' # bad JSON
+        choice['finish_reason'] = 'stop' # response was not truncated
+
+        with pytest.raises(InvalidResponseError) as error:
+            label.get_response_data_if_valid(choice, rubric, student_id, reraise=True, response_type='json')
+        assert "JSON decoding error" in str(error.value)
 
 class TestAiLabelStudentWork:
     def test_should_access_openai(self, requests_mock, openai_gpt_response, label, prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model):
