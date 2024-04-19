@@ -366,12 +366,12 @@ class Label:
             self._validate_server_response(response_data, rubric)
             return [row for row in response_data]
         except InvalidResponseError as e:
-            logging.error(f"{student_id} {choice_text} Invalid response: {str(e)}\n{response_text}")
+            logging.info(f"{student_id} {choice_text} Invalid response: {str(e)}\n{response_text}")
             if reraise:
                 raise e
             return None
         except RequestTooLargeError as e:
-            logging.error(f"{student_id} {choice_text} Request too large: {str(e)}")
+            logging.info(f"{student_id} {choice_text} Request too large: {str(e)}")
             if reraise:
                 raise e
 
