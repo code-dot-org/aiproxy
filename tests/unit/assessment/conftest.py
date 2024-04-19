@@ -87,8 +87,8 @@ def rubric_with_flag(randomstring):
 
     for i in range(0, random.randint(2, 5)):
         key_concept = f"Concept {randomstring(10)}"
-        writer.writerow([key_concept, 'no flag', randomstring(20), randomstring(23), randomstring(25), randomstring(15)])
-    writer.writerow(['Position - Elements and the Coordinate System', 'CFE', randomstring(20), randomstring(23), randomstring(25), randomstring(15)])
+        writer.writerow([key_concept, randomstring(20), randomstring(23), randomstring(25), randomstring(15)])
+    writer.writerow(['Position - Elements and the Coordinate System', randomstring(20), randomstring(23), randomstring(25), randomstring(15)])
 
     yield output.getvalue()
 

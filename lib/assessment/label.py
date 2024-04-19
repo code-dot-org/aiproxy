@@ -59,14 +59,14 @@ class Label:
         learning_goals = [row for row in csv.DictReader(rubric.splitlines()) if row["Key Concept"] in code_feature_extractor]
 
         # Prep output data
-        results = {"metadata": {"agent": ["code feature extractor", "static analysis"]},"data": []}
-
-        # Create instance of feature extractor
-        cfe = CodeFeatures()
+        results = {"metadata": {"agent": "code feature extractor"},"data": []}
 
         # Send each filtered learning goal to code feature extractor and add returned data
         # to output dictionary
         for learning_goal in learning_goals:
+            # Create instance of feature extractor
+            print(f"{learning_goal}, {lesson}")
+            cfe = CodeFeatures()
             cfe.extract_features(student_code, learning_goal, lesson)
             results["data"].append({"Label": cfe.assessment,
                                     "Key Concept": learning_goal["Key Concept"],
@@ -195,7 +195,7 @@ class Label:
 
         return {
             'metadata': {
-                'agent': ['openai'],
+                'agent': 'openai',
                 'usage': info['usage'],
                 'request': data,
             },
@@ -255,7 +255,7 @@ class Label:
 
         # If any learning goals were assessed by the code feature extractor, replace the AI results with cfe results
         if cfe_results:
-            response["metadata"]["agent"].append(cfe_results["metadata"]["agent"])
+            response["metadata"]["agent"] += ", " + cfe_results["metadata"]["agent"]
             new_data = list(filter(lambda assessment: assessment["Key Concept"] not in code_feature_extractor, response["data"]))
             new_data.extend(cfe_results["data"])
             response["data"] = new_data
