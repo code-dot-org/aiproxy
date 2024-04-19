@@ -160,10 +160,11 @@ class TestGetResponseDataIfValid:
         assert result is None
 
     def test_should_log_the_choice_index_if_the_response_is_blank(self, caplog, label, rubric, student_id, choice):
+        caplog.set_level(logging.INFO)
         index = random.randint(0, 5)
         label.get_response_data_if_valid(choice, rubric, student_id, choice_index=index)
 
-        assert any(filter(lambda x: (f'Choice {index}' in x.message) and x.levelno == logging.ERROR, caplog.records))
+        assert any(filter(lambda x: (f'Choice {index}' in x.message) and x.levelno == logging.INFO, caplog.records))
 
     @pytest.mark.parametrize("output_type", ['tsv', 'csv', 'markdown'])
     def test_should_work_for_different_output_types(self, label, rubric, student_id, openai_gpt_response, output_type):
