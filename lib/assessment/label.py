@@ -254,7 +254,7 @@ class Label:
 
         # If any learning goals were assessed by the code feature extractor, replace the AI results with cfe results
         if cfe_results:
-            response["metadata"]["agent"] = response["metadata"]["agent"] + ", " + cfe_results["metadata"]["agent"]
+            response["metadata"]["agent"] += ", " + cfe_results["metadata"]["agent"]
             new_data = list(filter(lambda assessment: assessment["Key Concept"] not in code_feature_extractor, response["data"]))
             new_data.extend(cfe_results["data"])
             response["data"] = new_data
