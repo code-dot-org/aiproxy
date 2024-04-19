@@ -21,7 +21,7 @@ from sklearn.metrics import accuracy_score, confusion_matrix
 from collections import defaultdict
 
 from lib.assessment.config import SUPPORTED_MODELS, DEFAULT_MODEL, VALID_LABELS, LESSONS, DEFAULT_DATASET_NAME, DEFAULT_EXPERIMENT_NAME
-from lib.assessment.label import Label, InvalidResponseError
+from lib.assessment.label import Label, InvalidResponseError, RequestTooLargeError
 from lib.assessment.report import Report
 
 #globals
@@ -267,6 +267,9 @@ def read_and_label_student_work(prompt, rubric, student_file, examples, options,
             cache_prefix=prefix
         )
     except InvalidResponseError as e:
+        # these error details have already been logged
+        labels = None
+    except RequestTooLargeError as e:
         # these error details have already been logged
         labels = None
     except Exception as e:

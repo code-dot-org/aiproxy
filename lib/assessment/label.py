@@ -188,6 +188,7 @@ class Label:
 
         if self._openai_context_length_exceeded(response):
             message = response.json().get('error', {}).get('message')
+            logging.error(f"{student_id} Request too large: {message}")
             raise RequestTooLargeError(f"{student_id} {message}")
         elif response.status_code != 200:
             logging.error(f"{student_id} Error calling the API: {response.status_code}")
