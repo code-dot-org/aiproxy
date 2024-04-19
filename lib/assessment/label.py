@@ -71,7 +71,8 @@ class Label:
             results["data"].append({"Label": cfe.assessment,
                                     "Key Concept": learning_goal["Key Concept"],
                                     "Observations": cfe.features,
-                                    "Reason": learning_goal[cfe.assessment] if cfe.assessment else ''
+                                    "Reason": learning_goal[cfe.assessment] if cfe.assessment else '',
+                                    "Evidence": "cfe"
                                         })
 
         return results
