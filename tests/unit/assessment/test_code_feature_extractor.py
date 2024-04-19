@@ -261,8 +261,52 @@ function draw() {
 }"""
     parsed = esprima.parseScript(statement, {'tolerant': True, 'comment': True, 'loc': True})
     result = code_features.if_statement_helper(parsed.body[0])
-    print(result)
-    assert result == {'test': -1.0, 'consequent': [{'test': True, 'consequent': [{'identifier': 'x', 'value': 1, 'start': 3, 'end': 3}], 'alternate': [], 'start': 2, 'end': 4}, {'test': {'left': 'x', 'operator': '===', 'right': 1, 'start': 5, 'end': 5}, 'consequent': [{'assignee': 'x', 'value': 2, 'start': 6, 'end': 6}], 'alternate': [], 'start': 5, 'end': 7}], 'alternate': [{'test': 'x', 'consequent': [{'identifier': 'y', 'value': 2, 'start': 10, 'end': 10}], 'alternate': [], 'start': 9, 'end': 11}, {'test': {'object': 'x', 'property': 'prop', 'start': 12, 'end': 12}, 'consequent': [{'assignee': 'x', 'value': 2, 'start': 13, 'end': 13}], 'alternate': [], 'start': 12, 'end': 14}, {'function': 'test_func', 'args': [1], 'start': 15, 'end': 15}, {'identifier': 'z', 'value': 1, 'start': 16, 'end': 16}, {'assignee': 'z', 'value': 2, 'start': 17, 'end': 17}], 'start': 1, 'end': 18}
+    assert result == {
+      'alternate': [ { 'alternate': [],
+                   'consequent': [ { 'end': 10,
+                                     'identifier': 'y',
+                                     'start': 10,
+                                     'value': 2}],
+                   'end': 11,
+                   'start': 9,
+                   'test': 'x'},
+                 { 'alternate': [],
+                   'consequent': [ { 'assignee': 'x',
+                                     'end': 13,
+                                     'start': 13,
+                                     'value': 2}],
+                   'end': 14,
+                   'start': 12,
+                   'test': { 'end': 12,
+                             'object': 'x',
+                             'property': 'prop',
+                             'start': 12}},
+                 {'args': [1], 'end': 15, 'function': 'test_func', 'start': 15},
+                 {'end': 16, 'identifier': 'z', 'start': 16, 'value': 1},
+                 {'assignee': 'z', 'end': 17, 'start': 17, 'value': 2}],
+      'consequent': [ { 'alternate': [],
+                    'consequent': [ { 'end': 3,
+                                      'identifier': 'x',
+                                      'start': 3,
+                                      'value': 1}],
+                    'end': 4,
+                    'start': 2,
+                    'test': True},
+                  { 'alternate': [],
+                    'consequent': [ { 'assignee': 'x',
+                                      'end': 6,
+                                      'start': 6,
+                                      'value': 2}],
+                    'end': 7,
+                    'start': 5,
+                    'test': { 'end': 5,
+                              'left': 'x',
+                              'operator': '===',
+                              'right': 1,
+                              'start': 5}}],
+      'end': 18,
+      'start': 1,
+      'test': -1.0}
   
   def test_flatten_conditional_paths(self, code_features):
     statement = """if(-1) {
