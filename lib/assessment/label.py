@@ -61,12 +61,12 @@ class Label:
         # Prep output data
         results = {"metadata": {"agent": "code feature extractor"},"data": []}
 
-        # Create instance of feature extractor
-        cfe = CodeFeatures()
-
         # Send each filtered learning goal to code feature extractor and add returned data
         # to output dictionary
         for learning_goal in learning_goals:
+            # Create instance of feature extractor
+            print(f"{learning_goal}, {lesson}")
+            cfe = CodeFeatures()
             cfe.extract_features(student_code, learning_goal, lesson)
             results["data"].append({"Label": cfe.assessment,
                                     "Key Concept": learning_goal["Key Concept"],

@@ -114,7 +114,7 @@ def get_params(prefix):
         params = json.load(f)
         validate_params(params)
         for k in params.keys():
-            if k in ['model', 'response-type']:
+            if k in ['model', 'response-type', 'lesson', 'code-feature-extractor']:
                 continue
             elif k == 'temperature':
                 params[k] = float(params[k])
@@ -125,7 +125,7 @@ def get_params(prefix):
 
 def validate_params(params):
     required_keys = ['model', 'num-responses', 'temperature']
-    allowed_keys = ['model', 'num-responses', 'temperature', 'remove-comments', 'num-passing-grades', 'response-type']
+    allowed_keys = ['model', 'num-responses', 'temperature', 'remove-comments', 'num-passing-grades', 'response-type', 'lesson', "code-feature-extractor"]
     deprecated_keys = ['num-passing-grades']
     for k in required_keys:
         if k not in params:
@@ -264,7 +264,9 @@ def read_and_label_student_work(prompt, rubric, student_file, examples, options,
             llm_model=options.llm_model or params['model'],
             remove_comments=options.remove_comments or params.get('remove-comments', False),
             response_type=response_type,
-            cache_prefix=prefix
+            cache_prefix=prefix,
+            code_feature_extractor=params.get('code-feature-extractor', None),
+            lesson=params.get('lesson', None),
         )
     except InvalidResponseError as e:
         # these error details have already been logged
