@@ -418,6 +418,119 @@ class TestAiLabelStudentWork:
         # It should contain the concepts given in the rubric
         assert set(x['Key Concept'] for x in parsed_rubric) == set(x['Key Concept'] for x in result['data'])
 
+    def test_should_succeed_when_some_responses_are_invalid(self, requests_mock, openai_gpt_response, label, prompt, rubric, code, student_id, examples, temperature, llm_model):
+        num_responses = 3
+        mock_gpt_response = openai_gpt_response(
+            rubric=rubric,
+            num_responses=num_responses
+        )
+        choices = mock_gpt_response['choices']
+        choices[0]['message']['content'] = 'bogus' # no JSON
+        choices[1]['message']['content'] = '[{]' # bad JSON
+
+        requests_mock.post(
+            'https://api.openai.com/v1/chat/completions',
+            json=mock_gpt_response
+        )
+
+        parsed_rubric = list(csv.DictReader(rubric.splitlines()))
+
+        result = label.ai_label_student_work(
+            prompt, rubric, code, student_id, examples(rubric), num_responses, temperature, llm_model
+        )
+
+        # It should have a metadata and data section
+        assert 'metadata' in result
+        assert 'data' in result
+
+        # It should return just as many labeled rows as there are in the rubric
+        assert len(result['data']) == len(parsed_rubric)
+
+        # It should contain the concepts given in the rubric
+        assert set(x['Key Concept'] for x in parsed_rubric) == set(x['Key Concept'] for x in result['data'])
+
+    def test_should_raise_invalid_response_when_all_responses_are_invalid(self, requests_mock, openai_gpt_response, label, prompt, rubric, code, student_id, examples, temperature, llm_model):
+        num_responses = 3
+        mock_gpt_response = openai_gpt_response(
+            rubric=rubric,
+            num_responses=num_responses,
+            output_type='json'
+        )
+        choices = mock_gpt_response['choices']
+        choices[0]['message']['content'] = 'bogus' # no JSON
+        choices[1]['message']['content'] = '[{]' # bad JSON
+        choices[2]['message']['content'] = 'bogus' # no JSON
+
+        requests_mock.post(
+            'https://api.openai.com/v1/chat/completions',
+            json=mock_gpt_response
+        )
+
+        with pytest.raises(InvalidResponseError) as e:
+            label.ai_label_student_work(
+                prompt, rubric, code, student_id, examples(rubric), num_responses, temperature, llm_model, response_type='json'
+            )
+        assert 'no valid JSON data' in str(e)
+
+    def test_should_succeed_when_some_responses_are_truncated(self, requests_mock, openai_gpt_response, label, prompt, rubric, code, student_id, examples, temperature, llm_model):
+        num_responses = 3
+        mock_gpt_response = openai_gpt_response(
+            rubric=rubric,
+            num_responses=num_responses
+        )
+        choices = mock_gpt_response['choices']
+        choices[0]['message']['content'] = 'bogus' # no JSON
+        choices[0]['finish_reason'] = 'length' # response was truncated
+        choices[1]['message']['content'] = '[{]' # bad JSON
+        choices[1]['finish_reason'] = 'length' # response was truncated
+
+        requests_mock.post(
+            'https://api.openai.com/v1/chat/completions',
+            json=mock_gpt_response
+        )
+
+        parsed_rubric = list(csv.DictReader(rubric.splitlines()))
+
+        result = label.ai_label_student_work(
+            prompt, rubric, code, student_id, examples(rubric), num_responses, temperature, llm_model
+        )
+
+        # It should have a metadata and data section
+        assert 'metadata' in result
+        assert 'data' in result
+
+        # It should return just as many labeled rows as there are in the rubric
+        assert len(result['data']) == len(parsed_rubric)
+
+        # It should contain the concepts given in the rubric
+        assert set(x['Key Concept'] for x in parsed_rubric) == set(x['Key Concept'] for x in result['data'])
+
+    def test_should_raise_too_large_when_all_responses_are_truncated(self, requests_mock, openai_gpt_response, label, prompt, rubric, code, student_id, examples, temperature, llm_model):
+        num_responses = 3
+        mock_gpt_response = openai_gpt_response(
+            rubric=rubric,
+            num_responses=num_responses,
+            output_type='json'
+        )
+        choices = mock_gpt_response['choices']
+        choices[0]['message']['content'] = 'bogus' # no JSON
+        choices[0]['finish_reason'] = 'length' # response was truncated
+        choices[1]['message']['content'] = '[{]' # bad JSON
+        choices[1]['finish_reason'] = 'length' # response was truncated
+        choices[2]['message']['content'] = 'bogus' # no JSON
+        choices[2]['finish_reason'] = 'length' # response was truncated
+
+        requests_mock.post(
+            'https://api.openai.com/v1/chat/completions',
+            json=mock_gpt_response
+        )
+
+        with pytest.raises(RequestTooLargeError) as e:
+            label.ai_label_student_work(
+                prompt, rubric, code, student_id, examples(rubric), num_responses, temperature, llm_model, response_type='json'
+            )
+        assert 'no valid JSON data' in str(e)
+
     def test_should_raise_request_too_large_when_context_length_exceeded(
             self, requests_mock, openai_response_too_large, label, prompt, rubric, code, student_id,
             examples, num_responses, temperature, llm_model, context_length_message):
