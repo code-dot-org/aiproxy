@@ -488,7 +488,7 @@ class TestLabelStudentWork:
         """
 
         def gen_assessment(rubric, metadata={}):
-            result_metadata = {"agent": ["openai"]}
+            result_metadata = {"agent": "openai"}
 
             # Merge any metadata given to us
             result_metadata.update(metadata)
@@ -706,7 +706,7 @@ class TestLabelStudentWork:
         # Get mocks
         cfe_label_student_work_mock = mocker.patch.object(
             Label, 'cfe_label_student_work',
-            return_value={"metadata": {"agent": ["code feature extractor", "static analysis"]},
+            return_value={"metadata": {"agent": "code feature extractor"},
                           "data": [
                               {"Label": "No Evidence",
                                "Key Concept": parsed_rubric[-1]["Key Concept"],
