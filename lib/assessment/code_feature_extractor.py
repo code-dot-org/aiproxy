@@ -40,7 +40,7 @@ class CodeFeatures:
     self.features = {'object_types': {'shapes': 0, 'sprites': 0, 'text': 0},
                      'variables': [],
                      'objects': [],
-                     'movement': {'random': 0, 'counter': 0},
+                     'movement': {'random': {'count': 0, 'lines': []}, 'counter': {'count':0, 'lines': []}},
                      'property_change': []}
 
     # Store relevant parse tree nodes here during extraction. This will be useful
@@ -284,19 +284,23 @@ class CodeFeatures:
                 if "left" in statement["value"]:
                   if statement["assignee"] in [statement["value"]["left"], statement["value"]["right"]]:
                     if statement["value"]["operator"] in ["+", "-"]:
-                      self.features["movement"]["counter"] += 1
+                      self.features["movement"]["counter"]["count"] += 1
+                      self.features["movement"]["counter"]["lines"].append({'start': statement["start"], 'end': statement["end"]})
                       self.nodes.append(node)
                   if [stmnt for stmnt in [statement["value"]["left"], statement["value"]["right"]] if isinstance(stmnt, dict) and "function" in stmnt and "randomNumber" in stmnt["function"]]:
-                    self.features["movement"]["random"] += 1
+                    self.features["movement"]["random"]["count"] += 1
+                    self.features["movement"]["random"]["lines"].append({'start': statement["start"], 'end': statement["end"]})
                     self.nodes.append(node)
                 elif "function" in statement["value"] and statement["value"]["function"] == "randomNumber":
-                    self.features["movement"]["random"] += 1
+                    self.features["movement"]["random"]["count"] += 1
+                    self.features["movement"]["random"]["lines"].append({'start': statement["start"], 'end': statement["end"]})
                     self.nodes.append(node)
         if "operator" in statement and statement["operator"] in ["++", "--"]:
           if "object" in statement["argument"] and "property" in statement["argument"] and statement["argument"]["property"] in obj_movement_props:
             obj = [obj for obj in self.features["objects"] if obj["identifier"] == statement["argument"]["object"]]
             if obj:
-              self.features["movement"]["counter"] += 1
+              self.features["movement"]["counter"]["count"] += 1
+              self.features["movement"]["counter"]["lines"].append({'start': statement["start"], 'end': statement["end"]})
               self.nodes.append(node)
         if "test" in statement:
           conditional_body = self.flatten_conditional_paths(statement)
@@ -305,7 +309,8 @@ class CodeFeatures:
               if "object" in conditional_statement["argument"] and "property" in conditional_statement["argument"] and conditional_statement["argument"]["property"] in obj_movement_props:
                 obj = [obj for obj in self.features["objects"] if obj["identifier"] == conditional_statement["argument"]["object"]]
                 if obj:
-                  self.features["movement"]["counter"] += 1
+                  self.features["movement"]["counter"]["count"] += 1
+                  self.features["movement"]["counter"]["lines"].append({'start': statement["start"], 'end': statement["end"]})
                   self.nodes.append(node)
             if "assignee" in conditional_statement:
               if "object" in conditional_statement["assignee"] and "property" in conditional_statement["assignee"] and conditional_statement["assignee"]["property"] in obj_movement_props:
@@ -315,13 +320,16 @@ class CodeFeatures:
                     if "left" in conditional_statement["value"]:
                       if conditional_statement["assignee"] in [conditional_statement["value"]["left"], conditional_statement["value"]["right"]]:
                         if conditional_statement["value"]["operator"] in ["+", "-"]:
-                          self.features["movement"]["counter"] += 1
+                          self.features["movement"]["counter"]["count"] += 1
+                          self.features["movement"]["counter"]["lines"].append({'start': statement["start"], 'end': statement["end"]})
                           self.nodes.append(node)
                       if [stmnt for stmnt in [conditional_statement["value"]["left"], conditional_statement["value"]["right"]] if isinstance(stmnt, dict) and "function" in stmnt and "randomNumber" in stmnt["function"]]:
-                        self.features["movement"]["random"] += 1
+                        self.features["movement"]["random"]["count"] += 1
+                        self.features["movement"]["random"]["lines"].append({'start': statement["start"], 'end': statement["end"]})
                         self.nodes.append(node)
                     elif "function" in conditional_statement["value"] and conditional_statement["value"]["function"] == "randomNumber":
-                        self.features["movement"]["random"] += 1
+                        self.features["movement"]["random"]["count"] += 1
+                        self.features["movement"]["random"]["lines"].append({'start': statement["start"], 'end': statement["end"]})
                         self.nodes.append(node)
 
   #Extract and store all object properties that are updated
