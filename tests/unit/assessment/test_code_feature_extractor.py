@@ -63,7 +63,11 @@ function draw() {
     code_features.extract_features(code, learning_goal, lesson)
 
     assert code_features.features["object_types"] == {'shapes': 0, 'sprites': 3, 'text': 0}
-    assert code_features.features["movement"] == {'random': 1, 'counter': 2}
+    assert code_features.features["movement"] == {'random': {'count': 1, 
+                                                             'lines': [{'end': 10, 'start': 10}]},
+                                                  'counter': {'count': 2, 
+                                                              'lines': [{'end': 10, 'start': 10}, 
+                                                                        {'end': 11, 'start': 11}]}}
     assert code_features.assessment == 'Limited Evidence'
   
   def test_u3l18_position_feature_extractor(self, code_features):
@@ -100,7 +104,7 @@ function draw() {
     code_features.extract_features(code, learning_goal, lesson)
 
     assert code_features.features["object_types"] == {'shapes': 0, 'sprites': 4, 'text': 1}
-    assert code_features.features["movement"] == {'random': 0, 'counter': 0}
+    assert code_features.features["movement"] == {'random': {'count': 0, 'lines': []}, 'counter': {'count': 0, 'lines': []}}
     assert code_features.assessment == 'Limited Evidence'
 
   def test_u3l14_modularity_feature_extractor(self, code_features):
@@ -122,7 +126,7 @@ function draw() {
     code_features.extract_features(code, learning_goal, lesson)
 
     assert code_features.features["object_types"] == {'shapes': 0, 'sprites': 1, 'text': 0}
-    assert code_features.features["movement"] == {'random': 0, 'counter': 0}
+    assert code_features.features["movement"] == {'random': {'count': 0, 'lines': []}, 'counter': {'count': 0, 'lines': []}}
     assert code_features.features["objects"] == [{'end': 1, 'identifier': 'pacman', 'properties': {'x': [100], 'y': [275]}, 'start': 1, 'type': 'sprite'}]
     assert code_features.features["property_change"] == [   {   'draw_loop': False,
                                'end': 2,
@@ -165,7 +169,7 @@ function draw() {
     code_features.extract_features(code, learning_goal, lesson)
 
     assert code_features.features["object_types"] == {'shapes': 0, 'sprites': 3, 'text': 0}
-    assert code_features.features["movement"] == {'random': 0, 'counter': 0}
+    assert code_features.features["movement"] == {'random': {'count': 0, 'lines': []}, 'counter': {'count': 0, 'lines': []}}
     assert code_features.features["objects"] == [   {   'end': 1,
                        'identifier': 'shai_hulud',
                        'properties': {'x': [100], 'y': [275]},

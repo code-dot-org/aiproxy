@@ -35,8 +35,8 @@ class DecisionTrees:
     text = data["object_types"]["text"]
     total_elements = shapes + sprites + text
 
-    random = data["movement"]["random"]
-    counter = data["movement"]["counter"]
+    random = data["movement"]["random"]["count"]
+    counter = data["movement"]["counter"]["count"]
     movement = random + counter
 
     # Extensive Evidence: At least 2 shapes, 2 sprites, 2 lines of text, and 2 types of movement
@@ -60,8 +60,8 @@ class DecisionTrees:
     other_elements = data["object_types"]["shapes"] + data["object_types"]["text"]
     total_elements = sprites + other_elements
 
-    random = data["movement"]["random"]
-    counter = data["movement"]["counter"]
+    random = data["movement"]["random"]["count"]
+    counter = data["movement"]["counter"]["count"]
     movement = random + counter
 
     # Extensive Evidence: At least 3 sprites, 2 other elements, and 2 types of movement
