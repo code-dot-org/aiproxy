@@ -69,7 +69,7 @@ class CodeFeatures:
         case "UnaryExpression":
           output.append(self.unary_expression_helper(exp))
         case _:
-          logging.info("binary expression outlier", str(exp)) # DEBUG
+          logging.info(f"binary expression outlier: {exp}") # DEBUG
     return {"left": output[0], "operator": expression.operator, "right": output[1], "start": expression.loc.start.line, "end":expression.loc.end.line}
 
   # Helper function for parsing function calls. Outputs a dictionary containing the
@@ -111,7 +111,7 @@ class CodeFeatures:
       case "Identifier":
         argument = expression.argument.name
       case _:
-        logging.info("update expression argument outlier", str(expression.argument))
+        logging.info(f"update expression argument outlier: {expression.argument}")
     return {"operator":expression.operator, "argument":argument, "start":expression.loc.start.line, "end":expression.loc.end.line}
       
 
@@ -132,14 +132,14 @@ class CodeFeatures:
               case "UpdateExpression":
                 draw_loop_body.append(self.update_expression_helper(statement.expression))
               case _:
-                logging.info("draw loop outlier expression", str(statement.expression))
+                logging.info(f"draw loop outlier expression: {statement.expression}")
           case "VariableDeclaration":
             for declaration in self.variable_declaration_helper(statement):
               draw_loop_body.append(declaration)
           case "IfStatement":
             draw_loop_body.append(self.if_statement_helper(statement))
           case _:
-            logging.info("draw loop outlier statement", str(statement))
+            logging.info(f"draw loop outlier statement: {statement}")
       return draw_loop_body
 
   # Helper function to parse all statements in an if block
@@ -160,7 +160,7 @@ class CodeFeatures:
         case "UnaryExpression":
           test = self.unary_expression_helper(node.test)
         case _:
-          logging.info("conditional test outlier", str(node.test))
+          logging.info(f"conditional test outlier: {node.test}")
       consequent = []
       for statement in node.consequent.body:
         match statement.type:
@@ -173,14 +173,14 @@ class CodeFeatures:
               case "UpdateExpression":
                 consequent.append(self.update_expression_helper(statement.expression))
               case _:
-                logging.info("conditional consequent outlier expression", str(statement.expression))
+                logging.info(f"conditional consequent outlier expression: {statement.expression}")
           case "VariableDeclaration":
             for declaration in self.variable_declaration_helper(statement):
               consequent.append(declaration)
           case "IfStatement":
             consequent.append(self.if_statement_helper(statement))
           case _:
-            logging.info("conditional consequent outlier statement", str(statement))
+            logging.info(f"conditional consequent outlier statement: {statement}")
       alternate = []
       if node.alternate and node.alternate.body:
         for statement in node.alternate.body:
@@ -194,14 +194,14 @@ class CodeFeatures:
                 case "UpdateExpression":
                   alternate.append(self.update_expression_helper(statement.expression))
                 case _:
-                  logging.info("conditional alternate outlier expression", str(statement.expression))
+                  logging.info(f"conditional alternate outlier expression: {statement.expression}")
             case "VariableDeclaration":
               for declaration in self.variable_declaration_helper(statement):
                 alternate.append(declaration)
             case "IfStatement":
               alternate.append(self.if_statement_helper(statement))
             case _:
-              logging.info("conditional alternate outlier statement", str(statement))
+              logging.info(f"conditional alternate outlier statement: {statement}")
       return {"test": test, "consequent": consequent, "alternate": alternate, "start":node.loc.start.line, "end":node.loc.end.line}
 
   # This function is used to extract statements from all conditional paths,
@@ -221,10 +221,11 @@ class CodeFeatures:
   # Returns a dict containing the object and the property being operated on.
   def member_expression_helper(self, expression):
     # Get object and property names
+    member_expression = {}
     if expression.object.type == "Identifier":
       member_expression = {"object": expression.object.name, "property": expression.property.name, "start":expression.loc.start.line, "end":expression.loc.end.line}
     else:
-      logging.info("member expression outlier", str(expression)) # DEBUG
+      logging.info(f"member expression outlier: {expression}") # DEBUG
     return member_expression
 
   # Helper function to parse unary functions. Returns a float combining the
@@ -233,7 +234,7 @@ class CodeFeatures:
     if expression.argument.type == "Literal":
       return float(expression.operator + expression.argument.raw)
     else:
-      logging.info("unary expression outlier", str(expression)) #DEBUG
+      logging.info(f"unary expression outlier: {expression}") #DEBUG
 
   def variable_declaration_helper(self, node):
     declarations = []
@@ -265,7 +266,7 @@ class CodeFeatures:
         case "UnaryExpression":
           output.append(self.unary_expression_helper(exp))
         case _:
-          logging.info("variable assignment outlier", str(exp))
+          logging.info(f"variable assignment outlier: {exp}")
     return {"assignee": output[0], "value": output[1], "start":node.loc.start.line, "end":node.loc.end.line}
   
   # Extractor functions: These functions utilize helper functions to return
@@ -404,7 +405,7 @@ class CodeFeatures:
           program_slice = '\n'.join(program.split('\n')[line_num:])
           parse_code(program_slice, delegate)
         else:
-          logging.error("Parsing error", err)
+          logging.error(f"Parsing error: {err}")
 
     # Delegate function for U3L11 'Position - Elements and the Coordinate System'
     def u3l11_position_delegate(node, metadata):
@@ -426,8 +427,12 @@ class CodeFeatures:
     def u3l14_modularity_delegate(node, metadata):
       self.extract_object_and_variable_data(node)
       self.extract_property_assignment(node)
-      
+
     def u3l18_modularity_delegate(node, metadata):
+      self.extract_object_and_variable_data(node)
+      self.extract_property_assignment(node)
+
+    def u3l24_modularity_delegate(node, metadata):
       self.extract_object_and_variable_data(node)
       self.extract_property_assignment(node)
 
@@ -454,3 +459,7 @@ class CodeFeatures:
         parse_code(program, u3l18_modularity_delegate)
         dt = DecisionTrees()
         self.assessment = dt.u3l18_modularity_assessment(self.features)
+      case ['Modularity - Multiple Sprites', 'csd3-2023-L24']:
+        parse_code(program, u3l24_modularity_delegate)
+        dt = DecisionTrees()
+        self.assessment = dt.u3l24_modularity_assessment(self.features)
