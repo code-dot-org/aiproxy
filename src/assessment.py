@@ -13,7 +13,7 @@ from lib.assessment.config import DEFAULT_MODEL
 # Our assessment code
 from lib.assessment import assess
 from lib.assessment.assess import KeyConceptError
-from lib.assessment.label import InvalidResponseError
+from lib.assessment.label import InvalidResponseError, RequestTooLargeError
 
 assessment_routes = Blueprint('assessment_routes', __name__)
 
@@ -50,8 +50,8 @@ def post_assessment():
         )
     except ValueError:
         return "One of the arguments is not parseable as a number", 400
-    except openai.error.InvalidRequestError as e:
-        return str(e), 400
+    except RequestTooLargeError as e:
+        return str(e), 413
     except InvalidResponseError as e:
         return f'InvalidResponseError: {str(e)}', 400
     except KeyConceptError as e:

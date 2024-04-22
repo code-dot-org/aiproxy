@@ -17,6 +17,9 @@ from io import StringIO
 class InvalidResponseError(Exception):
     pass
 
+class RequestTooLargeError(Exception):
+    pass
+
 class Label:
     _bedrock_client = None
     _bedrock_lock = Lock()
@@ -184,7 +187,11 @@ class Label:
         # Post to the AI service
         response = requests.post(api_url, headers=headers, json=data, timeout=120)
 
-        if response.status_code != 200:
+        if self._openai_context_length_exceeded(response):
+            message = response.json().get('error', {}).get('message')
+            logging.error(f"{student_id} Request too large: {message}")
+            raise RequestTooLargeError(f"{student_id} {message}")
+        elif response.status_code != 200:
             logging.error(f"{student_id} Error calling the API: {response.status_code}")
             logging.info(f"{student_id} Response body: {response.text}")
             return None
@@ -201,6 +208,13 @@ class Label:
             },
             'data': response_data,
         }
+
+    def _openai_context_length_exceeded(self, response):
+        return (
+            response.status_code == 400 and
+            response.headers.get('Content-Type') == 'application/json' and
+            response.json().get('error', {}).get('code') == 'context_length_exceeded'
+        )
 
     def label_student_work(self, prompt, rubric, student_code, student_id, examples=[], use_cached=False, write_cached=False, num_responses=0, temperature=0.0, llm_model="", remove_comments=False, response_type='tsv', cache_prefix="", code_feature_extractor=None, lesson=None):
         if use_cached and os.path.exists(os.path.join(cache_prefix, f"cached_responses/{student_id}.json")):
@@ -299,7 +313,7 @@ class Label:
             reraise = len(response_data_choices) == 0 and index == max_index
 
             if choice['message']['content']:
-                response_data = self.get_response_data_if_valid(choice['message']['content'], rubric, student_id, choice_index=index, reraise=reraise, response_type=response_type)
+                response_data = self.get_response_data_if_valid(choice, rubric, student_id, choice_index=index, reraise=reraise, response_type=response_type)
                 if response_data:
                     response_data_choices.append(response_data)
 
@@ -335,43 +349,53 @@ class Label:
         messages.append({'role': 'user', 'content': student_code})
         return messages
 
-    def get_response_data_if_valid(self, response_text, rubric, student_id, choice_index=None, reraise=False, response_type='tsv'):
-        choice_text = f"Choice {choice_index}: " if choice_index is not None else ''
-        if not response_text:
-            logging.error(f"{student_id} {choice_text} Invalid response: empty response")
-            return None
-        text = response_text.strip()
-
-        if response_type == 'json':
-            response_data = self.parse_json_response(text, student_id)
-        elif response_type == 'tsv':
-            response_data = self.parse_non_json_response(text)
-        else:
-            raise ValueError(f"Invalid response type: {response_type}")
-
+    def get_response_data_if_valid(self, choice, rubric, student_id, choice_index=None, reraise=False, response_type='tsv'):
+        response_text = choice['message']['content']
         try:
+            choice_text = f"Choice {choice_index}: " if choice_index is not None else ''
+            if not response_text:
+                raise InvalidResponseError("empty response")
+            text = response_text.strip()
+
+            if response_type == 'json':
+                response_data = self.parse_json_response(text, student_id, finish_reason=choice['finish_reason'])
+            elif response_type == 'tsv':
+                response_data = self.parse_non_json_response(text)
+            else:
+                raise ValueError(f"Invalid response type: {response_type}")
+
             self._sanitize_server_response(response_data)
             self._validate_server_response(response_data, rubric)
             return [row for row in response_data]
         except InvalidResponseError as e:
-            logging.error(f"{student_id} {choice_text} Invalid response: {str(e)}\n{response_text}")
+            logging.info(f"{student_id} {choice_text} Invalid response: {str(e)}\n{response_text}")
             if reraise:
                 raise e
             return None
+        except RequestTooLargeError as e:
+            logging.info(f"{student_id} {choice_text} Request too large: {str(e)}")
+            if reraise:
+                raise e
 
-    def parse_json_response(self, response_text, student_id):
+    # gpt-4-0613 has a context window of 8192 tokens, which is the limit for input + output tokens.
+    # If the json in the response is unparseable, and the llm says the response was truncated due to length,
+    # then assume the reason for the error is because the input was too large to leave enough remaining tokens
+    # for a valid response.
+    def parse_json_response(self, response_text, student_id, finish_reason):
         # capture all data from the first '[' to the last ']', inclusive
         match = re.search(r'(\[.*\])', response_text,re.DOTALL)
         if not match:
-            logging.error(f"{student_id} Invalid response: no valid JSON data:\n{response_text}")
-            return None
+            if finish_reason == 'length':
+                raise RequestTooLargeError(f"{student_id}: no valid JSON data")
+            raise InvalidResponseError(f"no valid JSON data:\n{response_text}")
         json_text = match.group(1)
 
         try:
             data = json.loads(json_text)
         except json.JSONDecodeError as e:
-            logging.error(f"{student_id} JSON decoding error: {e}\n{json_text}")
-            return None
+            if finish_reason == 'length':
+                raise RequestTooLargeError(f"{student_id}: JSON decoding error")
+            raise InvalidResponseError(f"JSON decoding error: {e}\n{json_text}")
 
         return data
 
