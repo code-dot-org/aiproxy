@@ -229,6 +229,13 @@ function draw() {
                                'object': 'fremen',
                                'start': 12}]
     assert code_features.assessment == 'Extensive Evidence'
+    assert code_features.evidence == ['Line 1: sprite created',
+                                      'Line 2: sprite created',
+                                      'Line 3: sprite created',
+                                      'Line 4: property assignment',
+                                      'Line 7: property assignment',
+                                      'Line 9: property assignment',
+                                      'Line 12: property assignment']
 
   def test_binary_expression_helper(self, code_features):
     statement = "x = x + 1"

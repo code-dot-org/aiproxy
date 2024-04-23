@@ -446,6 +446,7 @@ class CodeFeatures:
     def u3l11_position_delegate(node, metadata):
       # extract_object_types(node)
       self.extract_object_and_variable_data(node)
+      
 
     # Delegate function for U3L14 'Position and Movement'
     def u3l14_position_delegate(node, metadata):
