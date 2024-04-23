@@ -450,13 +450,11 @@ class CodeFeatures:
 
     # Delegate function for U3L14 'Position and Movement'
     def u3l14_position_delegate(node, metadata):
-      # extract_object_types(node)
       self.extract_object_and_variable_data(node)
       self.extract_movement_types(node)
 
     # Delegate function for U3L18 'Position and Movement'
     def u3l18_position_delegate(node, metadata):
-      # extract_object_types(node)
       self.extract_object_and_variable_data(node)
       self.extract_movement_types(node)
 
@@ -491,3 +489,5 @@ class CodeFeatures:
         parse_code(program, u3l18_modularity_delegate)
         dt = DecisionTrees()
         self.assessment = dt.u3l18_modularity_assessment(self.features)
+
+    self.evidence = [f'{evidence} ({learning_goal["Key Concept"]})' for evidence in self.evidence]

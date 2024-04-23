@@ -35,11 +35,11 @@ rect(50, 240, 75, 25);"""
 
     assert code_features.features["object_types"] == {'shapes': 1, 'sprites': 2, 'text': 1}
     assert code_features.assessment == 'Convincing Evidence'
-    assert code_features.evidence == ['Line 1: background created',
-                                      'Line 2: sprite created',
-                                      'Line 3: sprite created',
-                                      'Line 11: text line created',
-                                      'Line 12: shape created']
+    assert code_features.evidence == ['Line 1: background created (Position - Elements and the Coordinate System)',
+                                      'Line 2: sprite created (Position - Elements and the Coordinate System)',
+                                      'Line 3: sprite created (Position - Elements and the Coordinate System)',
+                                      'Line 11: text line created (Position - Elements and the Coordinate System)',
+                                      'Line 12: shape created (Position - Elements and the Coordinate System)']
 
   def test_u3l14_position_feature_extractor(self, code_features):
     learning_goal = {"Key Concept": "Position and Movement",
@@ -74,12 +74,12 @@ function draw() {
                                                               'lines': [{'end': 10, 'start': 10}, 
                                                                         {'end': 11, 'start': 11}]}}
     assert code_features.assessment == 'Limited Evidence'
-    assert code_features.evidence == ['Line 1: sprite created',
-                                      'Line 2: sprite created',
-                                      'Line 5: sprite created',
-                                      'Line 10: counter movement',
-                                      'Line 10: random movement',
-                                      'Line 11: counter movement'
+    assert code_features.evidence == ['Line 1: sprite created (Position and Movement)',
+                                      'Line 2: sprite created (Position and Movement)',
+                                      'Line 5: sprite created (Position and Movement)',
+                                      'Line 10: counter movement (Position and Movement)',
+                                      'Line 10: random movement (Position and Movement)',
+                                      'Line 11: counter movement (Position and Movement)'
                                       ]
   
   def test_u3l18_position_feature_extractor(self, code_features):
@@ -118,11 +118,11 @@ function draw() {
     assert code_features.features["object_types"] == {'shapes': 0, 'sprites': 4, 'text': 1}
     assert code_features.features["movement"] == {'random': {'count': 0, 'lines': []}, 'counter': {'count': 0, 'lines': []}}
     assert code_features.assessment == 'Limited Evidence'
-    assert code_features.evidence == ['Line 1: sprite created',
-                                      'Line 3: sprite created',
-                                      'Line 6: sprite created',
-                                      'Line 9: sprite created',
-                                      'Line 15: text line created'
+    assert code_features.evidence == ['Line 1: sprite created (Position and Movement)',
+                                      'Line 3: sprite created (Position and Movement)',
+                                      'Line 6: sprite created (Position and Movement)',
+                                      'Line 9: sprite created (Position and Movement)',
+                                      'Line 15: text line created (Position and Movement)'
                                       ]
 
   def test_u3l14_modularity_feature_extractor(self, code_features):
@@ -162,10 +162,10 @@ function draw() {
                                'object': 'pacman',
                                'start': 7}]
     assert code_features.assessment == 'Convincing Evidence'
-    assert code_features.evidence == ['Line 1: sprite created',
-                                      'Line 2: property assignment',
-                                      'Line 5: property assignment',
-                                      'Line 7: property assignment'
+    assert code_features.evidence == ['Line 1: sprite created (Modularity - Sprites and Sprite Properties)',
+                                      'Line 2: property assignment (Modularity - Sprites and Sprite Properties)',
+                                      'Line 5: property assignment (Modularity - Sprites and Sprite Properties)',
+                                      'Line 7: property assignment (Modularity - Sprites and Sprite Properties)'
                                       ]
 
   def test_u3l18_modularity_feature_extractor(self, code_features):
@@ -229,13 +229,13 @@ function draw() {
                                'object': 'fremen',
                                'start': 12}]
     assert code_features.assessment == 'Extensive Evidence'
-    assert code_features.evidence == ['Line 1: sprite created',
-                                      'Line 2: sprite created',
-                                      'Line 3: sprite created',
-                                      'Line 4: property assignment',
-                                      'Line 7: property assignment',
-                                      'Line 9: property assignment',
-                                      'Line 12: property assignment']
+    assert code_features.evidence == ['Line 1: sprite created (Modularity - Multiple Sprites)',
+                                      'Line 2: sprite created (Modularity - Multiple Sprites)',
+                                      'Line 3: sprite created (Modularity - Multiple Sprites)',
+                                      'Line 4: property assignment (Modularity - Multiple Sprites)',
+                                      'Line 7: property assignment (Modularity - Multiple Sprites)',
+                                      'Line 9: property assignment (Modularity - Multiple Sprites)',
+                                      'Line 12: property assignment (Modularity - Multiple Sprites)']
 
   def test_binary_expression_helper(self, code_features):
     statement = "x = x + 1"
@@ -282,6 +282,7 @@ function draw() {
   if(x === 1) {
     x = 2;
   }
+  x++;
 } else {
   if(x) {
     var y = 2;
@@ -292,32 +293,38 @@ function draw() {
   test_func(1);
   var z = 1
   z = 2
+  y--;
 }"""
     parsed = esprima.parseScript(statement, {'tolerant': True, 'comment': True, 'loc': True})
     result = code_features.if_statement_helper(parsed.body[0])
     assert result == {
       'alternate': [ { 'alternate': [],
-                   'consequent': [ { 'end': 10,
+                   'consequent': [ { 'end': 11,
                                      'identifier': 'y',
-                                     'start': 10,
+                                     'start': 11,
                                      'value': 2}],
-                   'end': 11,
-                   'start': 9,
+                   'end': 12,
+                   'start': 10,
                    'test': 'x'},
                  { 'alternate': [],
                    'consequent': [ { 'assignee': 'x',
-                                     'end': 13,
-                                     'start': 13,
+                                     'end': 14,
+                                     'start': 14,
                                      'value': 2}],
-                   'end': 14,
-                   'start': 12,
-                   'test': { 'end': 12,
+                   'end': 15,
+                   'start': 13,
+                   'test': { 'end': 13,
                              'object': 'x',
                              'property': 'prop',
-                             'start': 12}},
-                 {'args': [1], 'end': 15, 'function': 'test_func', 'start': 15},
-                 {'end': 16, 'identifier': 'z', 'start': 16, 'value': 1},
-                 {'assignee': 'z', 'end': 17, 'start': 17, 'value': 2}],
+                             'start': 13}},
+                 {'args': [1], 'end': 16, 'function': 'test_func', 'start': 16},
+                 {'end': 17, 'identifier': 'z', 'start': 17, 'value': 1},
+                 {'assignee': 'z', 'end': 18, 'start': 18, 'value': 2},
+                 {'argument': 'y',
+                  'operator': '--',
+                  'start': 19,
+                  'end': 19,
+                  }],
       'consequent': [ { 'alternate': [],
                     'consequent': [ { 'end': 3,
                                       'identifier': 'x',
@@ -337,8 +344,12 @@ function draw() {
                               'left': 'x',
                               'operator': '===',
                               'right': 1,
-                              'start': 5}}],
-      'end': 18,
+                              'start': 5}},
+                              {'argument': 'x',
+                               'end': 8,
+                               'operator': '++',
+                               'start': 8}],
+      'end': 20,
       'start': 1,
       'test': -1.0}
   
