@@ -75,7 +75,7 @@ class Label:
                                     "Key Concept": learning_goal["Key Concept"],
                                     "Observations": cfe.features,
                                     "Reason": learning_goal[cfe.assessment] if cfe.assessment else '',
-                                    "Evidence": "cfe"
+                                    "Evidence": cfe.evidence,
                                         })
 
         return results
