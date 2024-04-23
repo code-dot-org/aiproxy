@@ -35,6 +35,11 @@ rect(50, 240, 75, 25);"""
 
     assert code_features.features["object_types"] == {'shapes': 1, 'sprites': 2, 'text': 1}
     assert code_features.assessment == 'Convincing Evidence'
+    assert code_features.evidence == ['Line 1: background created',
+                                      'Line 2: sprite created',
+                                      'Line 3: sprite created',
+                                      'Line 11: text line created',
+                                      'Line 12: shape created']
 
   def test_u3l14_position_feature_extractor(self, code_features):
     learning_goal = {"Key Concept": "Position and Movement",
@@ -69,6 +74,13 @@ function draw() {
                                                               'lines': [{'end': 10, 'start': 10}, 
                                                                         {'end': 11, 'start': 11}]}}
     assert code_features.assessment == 'Limited Evidence'
+    assert code_features.evidence == ['Line 1: sprite created',
+                                      'Line 2: sprite created',
+                                      'Line 5: sprite created',
+                                      'Line 10: counter movement',
+                                      'Line 10: random movement',
+                                      'Line 11: counter movement'
+                                      ]
   
   def test_u3l18_position_feature_extractor(self, code_features):
     learning_goal = {"Key Concept": "Position and Movement",
@@ -106,6 +118,12 @@ function draw() {
     assert code_features.features["object_types"] == {'shapes': 0, 'sprites': 4, 'text': 1}
     assert code_features.features["movement"] == {'random': {'count': 0, 'lines': []}, 'counter': {'count': 0, 'lines': []}}
     assert code_features.assessment == 'Limited Evidence'
+    assert code_features.evidence == ['Line 1: sprite created',
+                                      'Line 3: sprite created',
+                                      'Line 6: sprite created',
+                                      'Line 9: sprite created',
+                                      'Line 15: text line created'
+                                      ]
 
   def test_u3l14_modularity_feature_extractor(self, code_features):
     learning_goal = {"Key Concept": "Modularity - Sprites and Sprite Properties"
@@ -144,6 +162,11 @@ function draw() {
                                'object': 'pacman',
                                'start': 7}]
     assert code_features.assessment == 'Convincing Evidence'
+    assert code_features.evidence == ['Line 1: sprite created',
+                                      'Line 2: property assignment',
+                                      'Line 5: property assignment',
+                                      'Line 7: property assignment'
+                                      ]
 
   def test_u3l18_modularity_feature_extractor(self, code_features):
     learning_goal = {"Key Concept": "Modularity - Multiple Sprites"
@@ -334,3 +357,8 @@ x = -1
     result2 = code_features.variable_assignment_helper(parsed.body[2])
     assert result == {'assignee': 'x', 'value': {'function': 'test_func', 'args': [1], 'start': 2, 'end': 2}, 'start': 2, 'end': 2}
     assert result2 == {'assignee': 'x', 'value': -1.0, 'start': 3, 'end': 3}
+
+  def test_save_evidence_string_generates_valid_strings(self, code_features):
+    code_features.save_evidence_string(1, 2, "multiple line evidence test")
+    code_features.save_evidence_string(3, 3, "single line evidence test")
+    assert code_features.evidence == ["Lines 1-2: multiple line evidence test", "Line 3: single line evidence test"]

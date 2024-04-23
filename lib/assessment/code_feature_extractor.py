@@ -52,6 +52,16 @@ class CodeFeatures:
     # assessment results here
     self.assessment = ''
 
+    # Store a list of evidence strings that can be used to annotate student code
+    # in the code editor on the front end
+    self.evidence = []
+
+  # Function to generate evidence strings during feature extraction
+  def save_evidence_string(self, start, end, message):
+    evidence_string = f"Lines {start}-{end}: {message}" if start != end else f"Line {start}: {message}"
+    if evidence_string not in self.evidence:
+      self.evidence.append(evidence_string)
+
   # Helper function for parsing binary expressions.
   # Outputs a dictionary containing both sides of the expression and the operator
   def binary_expression_helper(self, expression):
@@ -282,18 +292,20 @@ class CodeFeatures:
             if obj:
               if isinstance(statement["value"], dict):
                 if "left" in statement["value"]:
-                  if statement["assignee"] in [statement["value"]["left"], statement["value"]["right"]]:
-                    if statement["value"]["operator"] in ["+", "-"]:
-                      self.features["movement"]["counter"]["count"] += 1
-                      self.features["movement"]["counter"]["lines"].append({'start': statement["start"], 'end': statement["end"]})
-                      self.nodes.append(node)
+                  if statement["assignee"] in [statement["value"]["left"], statement["value"]["right"]] and statement["value"]["operator"] in ["+", "-"]:
+                    self.features["movement"]["counter"]["count"] += 1
+                    self.features["movement"]["counter"]["lines"].append({'start': statement["start"], 'end': statement["end"]})
+                    self.save_evidence_string(statement["start"], statement["end"], "counter movement")
+                    self.nodes.append(node)
                   if [stmnt for stmnt in [statement["value"]["left"], statement["value"]["right"]] if isinstance(stmnt, dict) and "function" in stmnt and "randomNumber" in stmnt["function"]]:
                     self.features["movement"]["random"]["count"] += 1
                     self.features["movement"]["random"]["lines"].append({'start': statement["start"], 'end': statement["end"]})
+                    self.save_evidence_string(statement["start"], statement["end"], "random movement")
                     self.nodes.append(node)
                 elif "function" in statement["value"] and statement["value"]["function"] == "randomNumber":
                     self.features["movement"]["random"]["count"] += 1
                     self.features["movement"]["random"]["lines"].append({'start': statement["start"], 'end': statement["end"]})
+                    self.save_evidence_string(statement["start"], statement["end"], "random movement")
                     self.nodes.append(node)
         if "operator" in statement and statement["operator"] in ["++", "--"]:
           if "object" in statement["argument"] and "property" in statement["argument"] and statement["argument"]["property"] in obj_movement_props:
@@ -301,6 +313,7 @@ class CodeFeatures:
             if obj:
               self.features["movement"]["counter"]["count"] += 1
               self.features["movement"]["counter"]["lines"].append({'start': statement["start"], 'end': statement["end"]})
+              self.save_evidence_string(statement["start"], statement["end"], "counter movement")
               self.nodes.append(node)
         if "test" in statement:
           conditional_body = self.flatten_conditional_paths(statement)
@@ -311,6 +324,7 @@ class CodeFeatures:
                 if obj:
                   self.features["movement"]["counter"]["count"] += 1
                   self.features["movement"]["counter"]["lines"].append({'start': statement["start"], 'end': statement["end"]})
+                  self.save_evidence_string(statement["start"], statement["end"], "counter movement")
                   self.nodes.append(node)
             if "assignee" in conditional_statement:
               if "object" in conditional_statement["assignee"] and "property" in conditional_statement["assignee"] and conditional_statement["assignee"]["property"] in obj_movement_props:
@@ -322,14 +336,17 @@ class CodeFeatures:
                         if conditional_statement["value"]["operator"] in ["+", "-"]:
                           self.features["movement"]["counter"]["count"] += 1
                           self.features["movement"]["counter"]["lines"].append({'start': statement["start"], 'end': statement["end"]})
+                          self.save_evidence_string(statement["start"], statement["end"], "counter movement")
                           self.nodes.append(node)
                       if [stmnt for stmnt in [conditional_statement["value"]["left"], conditional_statement["value"]["right"]] if isinstance(stmnt, dict) and "function" in stmnt and "randomNumber" in stmnt["function"]]:
                         self.features["movement"]["random"]["count"] += 1
                         self.features["movement"]["random"]["lines"].append({'start': statement["start"], 'end': statement["end"]})
+                        self.save_evidence_string(statement["start"], statement["end"], "random movement")
                         self.nodes.append(node)
                     elif "function" in conditional_statement["value"] and conditional_statement["value"]["function"] == "randomNumber":
                         self.features["movement"]["random"]["count"] += 1
                         self.features["movement"]["random"]["lines"].append({'start': statement["start"], 'end': statement["end"]})
+                        self.save_evidence_string(statement["start"], statement["end"], "random movement")
                         self.nodes.append(node)
 
   #Extract and store all object properties that are updated
@@ -343,19 +360,23 @@ class CodeFeatures:
         if property["start"] >= draw_loop_start and property["end"] <= draw_loop_end:
           property["draw_loop"] = True
         new_properties.append(property)
+        self.save_evidence_string(property["start"], property["end"], "property assignment")
       self.features["property_change"] = new_properties
     elif node.type == "ExpressionStatement" and node.expression.type == "CallExpression":
       node_info = self.call_expression_helper(node.expression)
       if type(node_info["function"]) is dict and all([k in node_info["function"].keys() for k in ["object", "method"]]) and node_info["function"]["method"] in sprite_functions:
         self.features["property_change"].append({**node_info["function"], "draw_loop":False})
+        self.save_evidence_string(node_info["start"], node_info["end"], "property assignment")
     elif node.type == "ExpressionStatement" and node.expression.type == "AssignmentExpression":
       node_info = self.variable_assignment_helper(node)
       if type(node_info["assignee"]) is dict and all([k in node_info["assignee"].keys() for k in ["object", "property"]]):
         self.features["property_change"].append({**node_info["assignee"], "draw_loop":False})
+        self.save_evidence_string(node_info["start"], node_info["end"], "property assignment")
     elif node.type == "ExpressionStatement" and node.expression.type == "UpdateExpression":
       node_info = self.update_expression_helper(node.expression)
       if type(node_info["argument"]) is dict and node_info["operator"] in ["++", "--", "~"] and all([k in node_info["argument"].keys() for k in ["object", "property"]]):
         self.features["property_change"].append({**node_info["argument"], "draw_loop":False})
+        self.save_evidence_string(node_info["start"], node_info["end"], "property assignment")
       
 
   # Extract and store all object and variable data, including object types
@@ -367,30 +388,37 @@ class CodeFeatures:
             if node_info["value"]["function"] == "createSprite":
               self.features["objects"].append({"identifier": node_info["identifier"], "properties": node_info["value"]["args"], "type": "sprite", "start": node_info["start"], "end": node_info["end"]})
               self.features["object_types"]["sprites"] += 1
+              self.save_evidence_string(node_info["start"], node_info["end"], "sprite created")
               self.nodes.append(node)
             elif node_info["value"]["function"] == "text":
               self.features["objects"].append({"identifier": node_info["identifier"], "properties": node_info["value"]["args"], "type": "text", "start": node_info["start"], "end": node_info["end"]})
               self.features["object_types"]["text"] += 1
+              self.save_evidence_string(node_info["start"], node_info["end"], "text line created")
               self.nodes.append(node)
             elif node_info["value"]["function"] in shape_functions:
               self.features["objects"].append({"identifier": node_info["identifier"], "properties": node_info["value"]["args"], "type": "shape", "start": node_info["start"], "end": node_info["end"]})
               self.features["object_types"]["shapes"] += 1
+              self.save_evidence_string(node_info["start"], node_info["end"], "shape created")
               self.nodes.append(node)
           else:
             self.features["variables"].append({"identifier": node_info["identifier"], "value": node_info["value"], "start": node_info["start"], "end": node_info["end"]})
+            self.save_evidence_string(node_info["start"], node_info["end"], "variable declaration")
             self.nodes.append(node)
     elif node.type == "ExpressionStatement" and node.expression.type == "CallExpression":
       node_info = self.call_expression_helper(node.expression)
       if node_info["function"] == "background":
         self.features["objects"].append({"identifier": '', "properties": node_info["args"], "type": "background", "start": node_info["start"], "end": node_info["end"]})
+        self.save_evidence_string(node_info["start"], node_info["end"], "background created")
         self.nodes.append(node)
       elif node_info["function"] == "text":
         self.features["objects"].append({"identifier": '', "properties": node_info["args"], "type": "text", "start": node_info["start"], "end": node_info["end"]})
         self.features["object_types"]["text"] += 1
+        self.save_evidence_string(node_info["start"], node_info["end"], "text line created")
         self.nodes.append(node)
       elif node_info["function"] in shape_functions:
         self.features["objects"].append({"identifier": '', "properties": node_info["args"], "type": "shape", "start": node_info["start"], "end": node_info["end"]})
         self.features["object_types"]["shapes"] += 1
+        self.save_evidence_string(node_info["start"], node_info["end"], "shape created")
         self.nodes.append(node)
 
   # Function to extract features for learning goals. Contains delegate functions
