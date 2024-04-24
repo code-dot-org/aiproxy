@@ -68,7 +68,6 @@ class Label:
         # to output dictionary
         for learning_goal in learning_goals:
             # Create instance of feature extractor
-            print(f"{learning_goal}, {lesson}")
             cfe = CodeFeatures()
             cfe.extract_features(student_code, learning_goal, lesson)
             results["data"].append({"Label": cfe.assessment,
