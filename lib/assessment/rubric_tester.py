@@ -196,7 +196,7 @@ def validate_students(student_files, actual_labels):
         raise Exception(f"unexpected students: {unexpected_students}")
 
 
-def compute_accuracy(actual_labels, predicted_labels, passing_labels):
+def compute_accuracy(actual_labels, predicted_labels, is_pass_fail):
     actual_by_criteria = defaultdict(list)
     predicted_by_criteria = defaultdict(list)
     confusion_by_criteria = {}
@@ -213,12 +213,12 @@ def compute_accuracy(actual_labels, predicted_labels, passing_labels):
     accuracy_by_criteria = {}
 
     for criteria in predicted_by_criteria.keys():
-        if (passing_labels):
-            pass_string = "/".join(passing_labels)
-            fail_string = "/".join([label for label in VALID_LABELS if label not in passing_labels])
+        if (is_pass_fail):
+            pass_string = "/".join(PASSING_LABELS)
+            fail_string = "/".join([label for label in VALID_LABELS if label not in PASSING_LABELS])
             label_names = [pass_string, fail_string]
-            predicted_by_criteria[criteria] = list(map(lambda x: pass_string if x in passing_labels else fail_string, predicted_by_criteria[criteria]))
-            actual_by_criteria[criteria] = list(map(lambda x: pass_string if x in passing_labels else fail_string, actual_by_criteria[criteria]))
+            predicted_by_criteria[criteria] = list(map(lambda x: pass_string if x in PASSING_LABELS else fail_string, predicted_by_criteria[criteria]))
+            actual_by_criteria[criteria] = list(map(lambda x: pass_string if x in PASSING_LABELS else fail_string, actual_by_criteria[criteria]))
         
         predicted = predicted_by_criteria[criteria]
         actual = actual_by_criteria[criteria]
@@ -341,13 +341,11 @@ def main():
         predicted_labels = {student_id: labels['data'] for student_id, labels in predicted_labels if labels}
 
         for is_pass_fail in [True, False]:
-            passing_labels = PASSING_LABELS if is_pass_fail else None
-
             output_filename = 'report-pass-fail.html' if is_pass_fail else 'report-exact-match.html'
             output_file = os.path.join(experiment_lesson_prefix, output_dir_name, output_filename)
 
             # calculate accuracy and generate report
-            accuracy_by_criteria, overall_accuracy, confusion_by_criteria, overall_confusion, label_names = compute_accuracy(actual_labels, predicted_labels, passing_labels)
+            accuracy_by_criteria, overall_accuracy, confusion_by_criteria, overall_confusion, label_names = compute_accuracy(actual_labels, predicted_labels, is_pass_fail)
             overall_accuracy_percent = overall_accuracy * 100
             accuracy_by_criteria_percent = {k:v*100 for k,v in accuracy_by_criteria.items()}
             input_params = {
@@ -370,7 +368,7 @@ def main():
                 accuracy=overall_accuracy_percent,
                 predicted_labels=predicted_labels,
                 actual_labels=actual_labels,
-                passing_labels=passing_labels,
+                is_pass_fail=is_pass_fail,
                 accuracy_by_criteria=accuracy_by_criteria_percent,
                 errors=errors,
                 input_params=input_params,

@@ -4,18 +4,18 @@ import io
 import json
 import math
 from typing import List, Dict, Any
-from lib.assessment.config import VALID_LABELS
+from lib.assessment.config import VALID_LABELS, PASSING_LABELS
 
 class Report:
-    def _compute_pass_fail_cell_color(self, actual, predicted, passing_labels):
-        if Report.accurate(actual, predicted, passing_labels):
+    def _compute_pass_fail_cell_color(self, actual, predicted):
+        if Report.accurate_pass_fail(actual, predicted):
             return 'green'
         else:
             return 'red'
 
-    def _compute_predicted_cell_color(self, predicted, actual, passing_labels):
-        if passing_labels:
-            return self._compute_pass_fail_cell_color(actual, predicted, passing_labels)
+    def _compute_predicted_cell_color(self, predicted, actual, is_pass_fail):
+        if is_pass_fail:
+            return self._compute_pass_fail_cell_color(actual, predicted)
 
         actual_index = VALID_LABELS.index(actual) if actual in VALID_LABELS else None
         predicted_index = VALID_LABELS.index(predicted) if predicted in VALID_LABELS else None
@@ -83,9 +83,9 @@ class Report:
         confusion_table += '</table>'
         return confusion_table
 
-    def generate_html_output(self, output_file, prompt, rubric, accuracy=None, predicted_labels=None, actual_labels=None, passing_labels=None, accuracy_by_criteria=None, errors=[], input_params={}, confusion_by_criteria=None, overall_confusion=None, label_names=None, prefix='sample_code'):
+    def generate_html_output(self, output_file, prompt, rubric, accuracy=None, predicted_labels=None, actual_labels=None, is_pass_fail=False, accuracy_by_criteria=None, errors=[], input_params={}, confusion_by_criteria=None, overall_confusion=None, label_names=None, prefix='sample_code'):
         link_base_url = f'file://{os.getcwd()}/{prefix}'
-        title_suffix = 'pass-fail' if passing_labels else 'exact-match'
+        title_suffix = 'pass-fail' if is_pass_fail else 'exact-match'
         doc_title = f"{input_params['lesson_name']}-{title_suffix}"
 
         with open(output_file, 'w+') as file:
@@ -110,7 +110,7 @@ class Report:
                 file.write(f'  <p style="color: red">{", ".join(errors)} failed to load</p>\n')
 
             accuracy = 'N/A' if accuracy is None or math.isnan(accuracy) else f'{int(accuracy)}%'
-            report_type = 'Pass/Fail' if passing_labels else 'Exact Match'
+            report_type = 'Pass/Fail' if is_pass_fail else 'Exact Match'
             file.write(f'  <h2>Overall Accuracy ({report_type}): {accuracy}</h2>\n')
             
             if accuracy_by_criteria is not None:
@@ -141,7 +141,7 @@ class Report:
                         actual = actual_labels[student_id][criteria]
                         predicted = label['Label']
                         reason = label['Reason']
-                        cell_color = self._compute_predicted_cell_color(predicted, actual, passing_labels)
+                        cell_color = self._compute_predicted_cell_color(predicted, actual, is_pass_fail)
                         file.write(f'    <tr><td>{criteria}</td><td>{observations}</td><td>{evidence}</td><td>{actual}</td><td style="background-color: {cell_color};">{predicted}</td><td>{reason}</td></tr>\n')
                     file.write('  </table>\n')
 
@@ -149,8 +149,5 @@ class Report:
             file.write('</html>\n')
 
     @staticmethod
-    def accurate(actual_label, predicted_label, passing_labels):
-        if passing_labels:
-            return passing_labels.count(actual_label) == passing_labels.count(predicted_label)
-        else:
-            return actual_label == predicted_label
+    def accurate_pass_fail(actual_label, predicted_label):
+        return PASSING_LABELS.count(actual_label) == PASSING_LABELS.count(predicted_label)
