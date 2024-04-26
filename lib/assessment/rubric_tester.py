@@ -78,8 +78,6 @@ def command_line_options():
 
     args.passing_labels = get_passing_labels(args.num_passing_labels)
 
-    args.output_filename = 'report-pass-fail.html' if args.passing_labels else 'report-exact-match.html'
-
     if args.student_ids:
         args.student_ids = args.student_ids.split(',')
 
@@ -340,8 +338,7 @@ def main():
         rubric = standard_rubric
 
         # set up output and cache directories
-        output_file = os.path.join(experiment_lesson_prefix, output_dir_name, options.output_filename)
-        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+        os.makedirs(os.path.join(experiment_lesson_prefix, output_dir_name), exist_ok=True)
         os.makedirs(os.path.join(experiment_lesson_prefix, cache_dir_name), exist_ok=True)
         if not options.use_cached:
             for file in glob.glob(f'{os.path.join(experiment_lesson_prefix, cache_dir_name)}/*'):
@@ -354,6 +351,9 @@ def main():
         errors = [student_id for student_id, labels in predicted_labels if not labels]
         # predicted_labels contains metadata and data (labels), we care about the data key
         predicted_labels = {student_id: labels['data'] for student_id, labels in predicted_labels if labels}
+
+        output_filename = 'report-pass-fail.html' if options.passing_labels else 'report-exact-match.html'
+        output_file = os.path.join(experiment_lesson_prefix, output_dir_name, output_filename)
 
         # calculate accuracy and generate report
         accuracy_by_criteria, overall_accuracy, confusion_by_criteria, overall_confusion, label_names = compute_accuracy(actual_labels, predicted_labels, options.passing_labels)
@@ -390,7 +390,7 @@ def main():
         )
         logging.info(f"lesson {lesson} finished in {int(time.time() - main_start_time)} seconds")
 
-        if options.accuracy and accuracy_thresholds is not None:
+        if options.accuracy and accuracy_thresholds is not None and options.passing_labels is None:
             if overall_accuracy < accuracy_thresholds[lesson]['overall']:
                 accuracy_pass = False
                 accuracy_failures[lesson] = {}
