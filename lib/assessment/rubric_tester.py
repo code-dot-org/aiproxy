@@ -57,8 +57,6 @@ def command_line_options():
                         help=f"Which LLM model to use. Supported models: {', '.join(SUPPORTED_MODELS)}. Defaults to required params.json value.")
     parser.add_argument('-n', '--num-responses', type=int, default=None,
                         help='Number of responses to generate for each student. Defaults to required params.json value.')
-    parser.add_argument('-p', '--num-passing-labels', type=int,
-                        help='Number of labels which are considered passing.')
     parser.add_argument('-s', '--max-num-students', type=int, default=100,
                         help='Maximum number of students to label. Defaults to 100 students.')
     parser.add_argument('--student-ids', type=str,
@@ -75,8 +73,6 @@ def command_line_options():
                         help='Generate confidence levels for each learning goal')
 
     args = parser.parse_args()
-
-    args.passing_labels = get_passing_labels(args.num_passing_labels)
 
     if args.student_ids:
         args.student_ids = args.student_ids.split(',')
