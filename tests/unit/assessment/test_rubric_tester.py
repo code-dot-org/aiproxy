@@ -7,7 +7,6 @@ from types import SimpleNamespace
 
 from lib.assessment.rubric_tester import (
     read_and_label_student_work,
-    get_passing_labels,
     read_inputs,
     get_student_files,
     get_actual_labels,
