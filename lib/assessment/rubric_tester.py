@@ -88,14 +88,6 @@ def command_line_options():
 
     return args
 
-
-def get_passing_labels(num_passing_labels):
-    if num_passing_labels:
-        return VALID_LABELS[:num_passing_labels]
-    else:
-        return None
-
-
 def read_inputs(prompt_file, standard_rubric_file, prefix):
     with open(os.path.join(prefix, prompt_file), 'r') as f:
         prompt = f.read()
