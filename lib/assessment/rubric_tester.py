@@ -352,75 +352,78 @@ def main():
         # predicted_labels contains metadata and data (labels), we care about the data key
         predicted_labels = {student_id: labels['data'] for student_id, labels in predicted_labels if labels}
 
-        output_filename = 'report-pass-fail.html' if options.passing_labels else 'report-exact-match.html'
-        output_file = os.path.join(experiment_lesson_prefix, output_dir_name, output_filename)
+        for is_pass_fail in [True, False]:
+            passing_labels = VALID_LABELS[:2] if is_pass_fail else None
 
-        # calculate accuracy and generate report
-        accuracy_by_criteria, overall_accuracy, confusion_by_criteria, overall_confusion, label_names = compute_accuracy(actual_labels, predicted_labels, options.passing_labels)
-        overall_accuracy_percent = overall_accuracy * 100
-        accuracy_by_criteria_percent = {k:v*100 for k,v in accuracy_by_criteria.items()}
-        input_params = {
-            "dataset_name": options.dataset_name,
-            "experiment_name": options.experiment_name,
-            "lesson_name": lesson,
-            "model_params": {
-                "model": options.llm_model or params['model'],
-                "num_responses": options.num_responses or params['num-responses'],
-                "temperature": options.temperature or params['temperature'],
-                "remove_comments": options.remove_comments or params.get('remove-comments', False),
-                "response_type": response_type,
+            output_filename = 'report-pass-fail.html' if passing_labels else 'report-exact-match.html'
+            output_file = os.path.join(experiment_lesson_prefix, output_dir_name, output_filename)
+
+            # calculate accuracy and generate report
+            accuracy_by_criteria, overall_accuracy, confusion_by_criteria, overall_confusion, label_names = compute_accuracy(actual_labels, predicted_labels, passing_labels)
+            overall_accuracy_percent = overall_accuracy * 100
+            accuracy_by_criteria_percent = {k:v*100 for k,v in accuracy_by_criteria.items()}
+            input_params = {
+                "dataset_name": options.dataset_name,
+                "experiment_name": options.experiment_name,
+                "lesson_name": lesson,
+                "model_params": {
+                    "model": options.llm_model or params['model'],
+                    "num_responses": options.num_responses or params['num-responses'],
+                    "temperature": options.temperature or params['temperature'],
+                    "remove_comments": options.remove_comments or params.get('remove-comments', False),
+                    "response_type": response_type,
+                }
             }
-        }
-        report = Report()
-        report.generate_html_output(
-            output_file,
-            prompt,
-            rubric,
-            accuracy=overall_accuracy_percent,
-            predicted_labels=predicted_labels,
-            actual_labels=actual_labels,
-            passing_labels=options.passing_labels,
-            accuracy_by_criteria=accuracy_by_criteria_percent,
-            errors=errors,
-            input_params=input_params,
-            confusion_by_criteria=confusion_by_criteria,
-            overall_confusion=overall_confusion,
-            label_names=label_names,
-            prefix=experiment_lesson_prefix
-        )
-        logging.info(f"lesson {lesson} finished in {int(time.time() - main_start_time)} seconds")
+            report = Report()
+            report.generate_html_output(
+                output_file,
+                prompt,
+                rubric,
+                accuracy=overall_accuracy_percent,
+                predicted_labels=predicted_labels,
+                actual_labels=actual_labels,
+                passing_labels=passing_labels,
+                accuracy_by_criteria=accuracy_by_criteria_percent,
+                errors=errors,
+                input_params=input_params,
+                confusion_by_criteria=confusion_by_criteria,
+                overall_confusion=overall_confusion,
+                label_names=label_names,
+                prefix=experiment_lesson_prefix
+            )
+            logging.info(f"lesson {lesson} finished in {int(time.time() - main_start_time)} seconds")
 
-        if options.accuracy and accuracy_thresholds is not None and options.passing_labels is None:
-            if overall_accuracy < accuracy_thresholds[lesson]['overall']:
-                accuracy_pass = False
-                accuracy_failures[lesson] = {}
-                accuracy_failures[lesson]['overall'] = {}
-                accuracy_failures[lesson]['overall']['accuracy_score'] = overall_accuracy
-                accuracy_failures[lesson]['overall']['threshold'] = accuracy_thresholds[lesson]['overall']
-            for key_concept in accuracy_by_criteria:
-                if accuracy_by_criteria[key_concept] < accuracy_thresholds[lesson]['key_concepts'][key_concept]:
+            if options.accuracy and accuracy_thresholds is not None and passing_labels is None:
+                if overall_accuracy < accuracy_thresholds[lesson]['overall']:
                     accuracy_pass = False
-                    if lesson not in accuracy_failures.keys(): accuracy_failures[lesson] = {}
-                    if 'key_concepts' not in accuracy_failures[lesson].keys(): accuracy_failures[lesson]['key_concepts'] = {}
-                    if key_concept not in accuracy_failures[lesson]['key_concepts'].keys() : accuracy_failures[lesson]['key_concepts'][key_concept] = {}
-                    accuracy_failures[lesson]['key_concepts'][key_concept]['accuracy_score'] = accuracy_by_criteria[key_concept]
-                    accuracy_failures[lesson]['key_concepts'][key_concept]['threshold'] = accuracy_thresholds[lesson]['key_concepts'][key_concept]
+                    accuracy_failures[lesson] = {}
+                    accuracy_failures[lesson]['overall'] = {}
+                    accuracy_failures[lesson]['overall']['accuracy_score'] = overall_accuracy
+                    accuracy_failures[lesson]['overall']['threshold'] = accuracy_thresholds[lesson]['overall']
+                for key_concept in accuracy_by_criteria:
+                    if accuracy_by_criteria[key_concept] < accuracy_thresholds[lesson]['key_concepts'][key_concept]:
+                        accuracy_pass = False
+                        if lesson not in accuracy_failures.keys(): accuracy_failures[lesson] = {}
+                        if 'key_concepts' not in accuracy_failures[lesson].keys(): accuracy_failures[lesson]['key_concepts'] = {}
+                        if key_concept not in accuracy_failures[lesson]['key_concepts'].keys() : accuracy_failures[lesson]['key_concepts'][key_concept] = {}
+                        accuracy_failures[lesson]['key_concepts'][key_concept]['accuracy_score'] = accuracy_by_criteria[key_concept]
+                        accuracy_failures[lesson]['key_concepts'][key_concept]['threshold'] = accuracy_thresholds[lesson]['key_concepts'][key_concept]
 
-        os.system(f"open {output_file}")
+            os.system(f"open {output_file}")
 
-        if options.generate_confidence:
-            if options.passing_labels:
-                confidence_pass_fail = get_pass_fail_confidence(accuracy_by_criteria)
-                with open(os.path.join(experiment_lesson_prefix, 'confidence.json'), 'w') as f:
-                    json.dump(confidence_pass_fail, f, indent=2)
-                    f.write('\n')
-                    logging.info(f"writing {os.path.join(experiment_lesson_prefix, 'confidence.json')}")
-            else:
-                confidence_exact_match = get_exact_match_confidence(confusion_by_criteria)
-                with open(os.path.join(experiment_lesson_prefix, 'confidence-exact.json'), 'w') as f:
-                    json.dump(confidence_exact_match, f, indent=2)
-                    f.write('\n')
-                    logging.info(f"writing {os.path.join(experiment_lesson_prefix, 'confidence-exact.json')}")
+            if options.generate_confidence:
+                if passing_labels:
+                    confidence_pass_fail = get_pass_fail_confidence(accuracy_by_criteria)
+                    with open(os.path.join(experiment_lesson_prefix, 'confidence.json'), 'w') as f:
+                        json.dump(confidence_pass_fail, f, indent=2)
+                        f.write('\n')
+                        logging.info(f"writing {os.path.join(experiment_lesson_prefix, 'confidence.json')}")
+                else:
+                    confidence_exact_match = get_exact_match_confidence(confusion_by_criteria)
+                    with open(os.path.join(experiment_lesson_prefix, 'confidence-exact.json'), 'w') as f:
+                        json.dump(confidence_exact_match, f, indent=2)
+                        f.write('\n')
+                        logging.info(f"writing {os.path.join(experiment_lesson_prefix, 'confidence-exact.json')}")
 
     if not accuracy_pass and len(accuracy_failures.keys()) > 0:
         logging.error(f"The following thresholds were not met:\n{pp.pformat(accuracy_failures)}")
