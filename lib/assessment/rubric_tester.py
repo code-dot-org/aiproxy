@@ -20,7 +20,7 @@ import subprocess
 from sklearn.metrics import accuracy_score, confusion_matrix
 from collections import defaultdict
 
-from lib.assessment.config import SUPPORTED_MODELS, DEFAULT_MODEL, VALID_LABELS, LESSONS, DEFAULT_DATASET_NAME, DEFAULT_EXPERIMENT_NAME
+from lib.assessment.config import SUPPORTED_MODELS, DEFAULT_MODEL, VALID_LABELS, PASSING_LABELS, LESSONS, DEFAULT_DATASET_NAME, DEFAULT_EXPERIMENT_NAME
 from lib.assessment.label import Label, InvalidResponseError, RequestTooLargeError
 from lib.assessment.report import Report
 from lib.assessment.confidence import get_pass_fail_confidence, get_exact_match_confidence
@@ -341,7 +341,7 @@ def main():
         predicted_labels = {student_id: labels['data'] for student_id, labels in predicted_labels if labels}
 
         for is_pass_fail in [True, False]:
-            passing_labels = VALID_LABELS[:2] if is_pass_fail else None
+            passing_labels = PASSING_LABELS if is_pass_fail else None
 
             output_filename = 'report-pass-fail.html' if is_pass_fail else 'report-exact-match.html'
             output_file = os.path.join(experiment_lesson_prefix, output_dir_name, output_filename)
