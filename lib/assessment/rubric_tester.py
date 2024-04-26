@@ -71,6 +71,8 @@ def command_line_options():
                         help='Remove comments from student code before evaluating')
     parser.add_argument('-g', '--generate-confidence', action='store_true',
                         help='Generate confidence levels for each learning goal')
+    parser.add_argument('-w', '--workers', type=int, default=7,
+                        help='Number of workers to use for processing. Defaults to 7 workers.')
 
     args = parser.parse_args()
 
@@ -333,7 +335,7 @@ def main():
                 os.remove(file)
 
         # call label function to either call openAI or read from cache
-        with concurrent.futures.ThreadPoolExecutor(max_workers=7) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=options.workers) as executor:
             predicted_labels = list(executor.map(lambda student_file: read_and_label_student_work(prompt, rubric, student_file, examples, options, params, experiment_lesson_prefix, response_type), student_files))
 
         errors = [student_id for student_id, labels in predicted_labels if not labels]
