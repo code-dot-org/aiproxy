@@ -355,7 +355,7 @@ def main():
         for is_pass_fail in [True, False]:
             passing_labels = VALID_LABELS[:2] if is_pass_fail else None
 
-            output_filename = 'report-pass-fail.html' if passing_labels else 'report-exact-match.html'
+            output_filename = 'report-pass-fail.html' if is_pass_fail else 'report-exact-match.html'
             output_file = os.path.join(experiment_lesson_prefix, output_dir_name, output_filename)
 
             # calculate accuracy and generate report
@@ -393,7 +393,7 @@ def main():
             )
             logging.info(f"lesson {lesson} finished in {int(time.time() - main_start_time)} seconds")
 
-            if options.accuracy and accuracy_thresholds is not None and passing_labels is None:
+            if options.accuracy and accuracy_thresholds is not None and not is_pass_fail:
                 if overall_accuracy < accuracy_thresholds[lesson]['overall']:
                     accuracy_pass = False
                     accuracy_failures[lesson] = {}
@@ -412,7 +412,7 @@ def main():
             os.system(f"open {output_file}")
 
             if options.generate_confidence:
-                if passing_labels:
+                if is_pass_fail:
                     confidence_pass_fail = get_pass_fail_confidence(accuracy_by_criteria)
                     with open(os.path.join(experiment_lesson_prefix, 'confidence.json'), 'w') as f:
                         json.dump(confidence_pass_fail, f, indent=2)
