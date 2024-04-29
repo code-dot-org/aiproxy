@@ -397,7 +397,8 @@ def main():
                         accuracy_failures[lesson]['key_concepts'][key_concept]['accuracy_score'] = accuracy_by_criteria[key_concept]
                         accuracy_failures[lesson]['key_concepts'][key_concept]['threshold'] = accuracy_thresholds[lesson]['key_concepts'][key_concept]
 
-            os.system(f"open {output_file}")
+            if not is_pass_fail:
+                os.system(f"open {output_file}")
 
             if options.generate_confidence:
                 if is_pass_fail:
