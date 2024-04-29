@@ -1,4 +1,7 @@
 VALID_LABELS = ["Extensive Evidence", "Convincing Evidence", "Limited Evidence", "No Evidence"]
+
+PASSING_LABELS = VALID_LABELS[:2]
+
 # do not include gpt-4, so that we always know what version of the model we are using.
 SUPPORTED_MODELS = [
     'bedrock.anthropic.claude-v2',

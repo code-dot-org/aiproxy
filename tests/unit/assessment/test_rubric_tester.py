@@ -7,7 +7,6 @@ from types import SimpleNamespace
 
 from lib.assessment.rubric_tester import (
     read_and_label_student_work,
-    get_passing_labels,
     read_inputs,
     get_student_files,
     get_actual_labels,
@@ -55,19 +54,6 @@ class TestReadAndLabelStudentWork:
 
         assert result[0] == student_id
         assert result[1] == labels
-
-
-class TestGetPassingLabels:
-    def test_should_return_all_values_when_input_would_indicate_all_values(self):
-        assert len(get_passing_labels(4)) == 4
-        assert get_passing_labels(4).sort() == ['Extensive Evidence', 'Convincing Evidence', 'Limited Evidence', 'No Evidence'].sort()
-
-    def test_should_simply_return_top_values(self):
-        assert len(get_passing_labels(2)) == 2
-        assert get_passing_labels(2).sort() == ['Extensive Evidence', 'Convincing Evidence'].sort()
-
-    def test_should_return_none_if_the_number_of_passing_labels_is_none(self):
-        assert get_passing_labels(0) is None
 
 
 class TestReadInputs:
