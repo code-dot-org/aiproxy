@@ -191,6 +191,7 @@ class DecisionTrees:
   def u3l18_modularity_assessment(self, data):
     sprites = data["object_types"]["sprites"]
 
+    # set of sprites that have a property set inside the drawloop (including calling setAnimation)
     sprites_updated_in_draw = set([property["object"] for property in data["property_change"] if
                                    any([obj["identifier"] == property["object"] and
                                         obj["type"]=="sprite" for obj in data["objects"]])
@@ -215,4 +216,40 @@ class DecisionTrees:
 
     # No Evidence: No sprites
     else:
-      self.assessment = "No Evidence"
+      self.assessment = "Limited Evidence"
+  
+  def u3l24_modularity_assessment(self, data):
+    sprites = data["object_types"]["sprites"]
+
+    # set of sprites that have their animation set outside the drawloop
+    animation_set = set([property["object"] for property in data["property_change"] if
+                                   any([obj["identifier"] == property["object"] and
+                                        obj["type"]=="sprite" for obj in data["objects"]])
+                                  and property["draw_loop"] == False
+                                  and "method" in property.keys()
+                                  and property["method"] == "setAnimation"
+                                  ])
+    
+    # set of sprites that have velocity set outside the drawloop
+    velocity_set = set([property["object"] for property in data["property_change"] if
+                                   any([obj["identifier"] == property["object"] and
+                                        obj["type"]=="sprite" for obj in data["objects"]])
+                                  and property["draw_loop"] == False
+                                  and "property" in property.keys()
+                                  and "velocity" in property["property"]
+                                  ])
+
+    # Extensive Evidence: At least 3 sprites, at least 3 of them have properties updated in the draw loop
+    if sprites >= 4 and len(animation_set) >= 4 and len(velocity_set) >= 2:
+      return "Extensive Evidence"
+
+    # Convincing Evidence: At least 1 sprites, at least 1 of them have properties updated in the draw loop
+    elif sprites >= 3 and len(animation_set) >= 3 and len(velocity_set) >= 1:
+      return "Convincing Evidence"
+
+    # Limited Evidence: At least 2 sprites
+    elif sprites >= 2 and len(animation_set) >= 2:
+      return "Limited Evidence"
+
+    # No Evidence: No sprites
+    return "No Evidence"

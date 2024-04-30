@@ -2,6 +2,9 @@ import pytest
 from lib.assessment.code_feature_extractor import CodeFeatures
 import esprima
 
+import pprint
+pp = pprint.PrettyPrinter(indent=2)
+
 @pytest.fixture
 def code_features():
     """ Creates a Label() instance for any test that has a 'label' parameter.
@@ -168,6 +171,99 @@ function draw() {
                                'method': 'setAnimation',
                                'object': 'fremen',
                                'start': 12}]
+
+  def test_u3l24_modularity_feature_extractor(self, code_features):
+    learning_goal = {"Key Concept": "Modularity - Multiple Sprites"
+                     }
+    code = """var shai_hulud = createSprite(100, 275);
+var muadib = createSprite(50, 100);
+muadib.setAnimation("muadib");
+var fremen = createSprite(0, 275);
+fremen.setAnimation("fremen");
+fremen.velocityY = 1;
+shai_hulud.setAnimation("worm");
+shai_hulud.velocityX = 2;
+function draw() {
+    rhythm = randomNumber(1, 100);
+    muadib.x = muadib.x + 2;
+    if (rhythm < 50){
+        shai_hulud.visible = False;
+      }
+    if (muadib.x == shai_hulud.x && rhythm > 50) {
+        muadib.setAnimation("eyes of ibad");
+        fremen.setAnimation("lisan al gaib");
+    }
+}
+"""
+
+    lesson="csd3-2023-L24"
+
+    code_features.extract_features(code, learning_goal, lesson)
+
+    assert code_features.features["object_types"] == {'shapes': 0, 'sprites': 3, 'text': 0}
+    assert code_features.features["movement"] == {'random': 0, 'counter': 0}
+    assert code_features.features["objects"] == [ { 'end': 1,
+                              'identifier': 'shai_hulud',
+                              'properties': {'x': [100], 'y': [275]},
+                              'start': 1,
+                              'type': 'sprite'},
+                            { 'end': 2,
+                              'identifier': 'muadib',
+                              'properties': {'x': [50], 'y': [100]},
+                              'start': 2,
+                              'type': 'sprite'},
+                            { 'end': 4,
+                              'identifier': 'fremen',
+                              'properties': {'x': [0], 'y': [275]},
+                              'start': 4,
+                              'type': 'sprite'}]
+    assert code_features.features["property_change"] == [ { 'draw_loop': False,
+                              'end': 3,
+                              'method': 'setAnimation',
+                              'object': 'muadib',
+                              'start': 3},
+                            { 'draw_loop': False,
+                              'end': 5,
+                              'method': 'setAnimation',
+                              'object': 'fremen',
+                              'start': 5},
+                            { 'draw_loop': False,
+                              'end': 6,
+                              'object': 'fremen',
+                              'property': 'velocityY',
+                              'start': 6},
+                            { 'draw_loop': False,
+                              'end': 7,
+                              'method': 'setAnimation',
+                              'object': 'shai_hulud',
+                              'start': 7},
+                            { 'draw_loop': False,
+                              'end': 8,
+                              'object': 'shai_hulud',
+                              'property': 'velocityX',
+                              'start': 8},
+                            { 'draw_loop': True,
+                              'end': 11,
+                              'object': 'muadib',
+                              'property': 'x',
+                              'start': 11},
+                            { 'draw_loop': True,
+                              'end': 13,
+                              'object': 'shai_hulud',
+                              'property': 'visible',
+                              'start': 13},
+                            { 'draw_loop': True,
+                              'end': 16,
+                              'method': 'setAnimation',
+                              'object': 'muadib',
+                              'start': 16},
+                            { 'draw_loop': True,
+                              'end': 17,
+                              'method': 'setAnimation',
+                              'object': 'fremen',
+                              'start': 17}]
+    assert code_features.assessment == 'Convincing Evidence'
+
 
   def test_binary_expression_helper(self, code_features):
     statement = "x = x + 1"

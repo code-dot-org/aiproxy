@@ -15,26 +15,20 @@ def report():
 
 
 class TestAccurate:
-    def test_should_just_match_actual_to_predicted_if_no_passing_labels(self):
-        assert Report.accurate('No Evidence', 'No Evidence', None)
-
-    def test_should_return_false_when_actual_is_not_predicted_if_no_passing_labels(self):
-        assert Report.accurate('No Evidence', 'Limited Evidence', None) == False
-
     def test_should_count_equal_number_of_matching_labels_in_given_passing_labels(self):
-        assert Report.accurate('Convincing Evidence', 'Convincing Evidence', ['Convincing Evidence', 'Extensive Evidence'])
+        assert Report.accurate_pass_fail('Convincing Evidence', 'Convincing Evidence')
 
     def test_should_be_true_when_actual_not_matching_predicted_but_both_in_given_passing_labels(self):
-        assert Report.accurate('Convincing Evidence', 'Extensive Evidence', ['Convincing Evidence', 'Extensive Evidence'])
+        assert Report.accurate_pass_fail('Convincing Evidence', 'Extensive Evidence')
 
     def test_should_return_true_when_neither_are_in_set_of_passing_labels(self):
-        assert Report.accurate('No Evidence', 'Limited Evidence', ['Convincing Evidence', 'Extensive Evidence'])
+        assert Report.accurate_pass_fail('No Evidence', 'Limited Evidence')
 
     def test_should_return_false_when_actual_is_not_in_set_of_passing_labels(self):
-        assert Report.accurate('No Evidence', 'Convincing Evidence', ['Convincing Evidence', 'Extensive Evidence']) == False
+        assert Report.accurate_pass_fail('No Evidence', 'Convincing Evidence') == False
 
     def test_should_return_false_when_predicted_is_not_in_set_of_passing_labels(self):
-        assert Report.accurate('Convincing Evidence', 'No Evidence', ['Convincing Evidence', 'Extensive Evidence']) == False
+        assert Report.accurate_pass_fail('Convincing Evidence', 'No Evidence') == False
 
 
 class TestGenerateHtmlOutput:
@@ -284,14 +278,13 @@ class TestGenerateHtmlOutput:
                 actual_labels[student_id] = actual_labels.get(student_id, {})
                 actual_labels[student_id][key_concept] = random_label_generator()
 
-        passing_labels = ['Extensive Evidence', 'Convincing Evidence']
         report.generate_html_output(
             output_file,
             prompt,
             rubric,
             predicted_labels=predicted_labels,
             actual_labels=actual_labels,
-            passing_labels=passing_labels,
+            is_pass_fail=True,
             input_params={'lesson_name': 'my-lesson'},
         )
 
@@ -332,4 +325,3 @@ class TestGenerateHtmlOutput:
         # Find all of the random strings we used as errored student ids
         for error in errors:
             assert error in output
-            
