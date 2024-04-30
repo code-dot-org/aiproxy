@@ -11,6 +11,7 @@ from threading import Lock
 from typing import List, Dict, Any
 from lib.assessment.config import VALID_LABELS
 from lib.assessment.code_feature_extractor import CodeFeatures
+from lib.assessment.decision_trees import DecisionTrees
 
 from io import StringIO
 
@@ -70,12 +71,14 @@ class Label:
             # Create instance of feature extractor
             print(f"{learning_goal}, {lesson}")
             cfe = CodeFeatures()
-            cfe.extract_features(student_code, learning_goal, lesson)
-            results["data"].append({"Label": cfe.assessment,
+            dt = DecisionTrees()
+            cfe.extract_features(student_code)
+            dt.assess(cfe.features, learning_goal, lesson)
+            results["data"].append({"Label": dt.assessment,
                                     "Key Concept": learning_goal["Key Concept"],
                                     "Observations": cfe.features,
-                                    "Reason": learning_goal[cfe.assessment] if cfe.assessment else '',
-                                    "Evidence": cfe.evidence,
+                                    "Reason": learning_goal[dt.assessment] if dt.assessment else '',
+                                    "Evidence": dt.evidence,
                                         })
 
         return results
