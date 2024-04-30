@@ -22,6 +22,8 @@ class DecisionTrees:
         self.u3l14_modularity_assessment(features)
       case ['Modularity - Multiple Sprites', 'csd3-2023-L18']:
         self.u3l18_modularity_assessment(features)
+      case ['Modularity - Multiple Sprites', 'csd3-2023-L24']:
+        self.u3l24_modularity_assessment(features)
 
   # Evidence generation functions
   def save_evidence_string(self, start, end, message):
@@ -67,6 +69,26 @@ class DecisionTrees:
       else:
         self.save_evidence_string(prop["start"], prop["end"], f"{prop['object']} object updated by its {prop['method']} method {'in' if prop['draw_loop'] else 'outside of'} the draw loop")
 
+  def animation_evidence(self, data):
+    sprite_animations = [prop for prop in data["property_change"] if any([obj["identifier"] == prop["object"] and
+                         obj["type"]=="sprite" for obj in data["objects"]]) and 
+                         prop["draw_loop"] == False and 
+                         "method" in prop.keys() and 
+                         prop["method"] == "setAnimation"
+                        ]
+    for prop in sprite_animations:
+      self.save_evidence_string(prop["start"], prop["end"], f"{prop['object']} sprite's animation is properly set")
+
+  def velocity_evidence(self, data):
+    velocity_sprites = [prop for prop in data["property_change"] if any([obj["identifier"] == prop["object"] and
+                        obj["type"]=="sprite" for obj in data["objects"]]) and 
+                        prop["draw_loop"] == False and
+                        "property" in prop.keys() and 
+                        "velocity" in prop["property"]
+                       ]
+    for prop in velocity_sprites:
+      self.save_evidence_string(prop["start"], prop["end"], f"{prop['object']} object's velocity updated outside of the draw loop")
+      
   # All decision tree functions should receive the code feature dictionary from the
   # CodeFeatureExtractor class when called.
   # Function to statically assess U3L11 'Position - Elements and the Coordinate System'
@@ -239,17 +261,29 @@ class DecisionTrees:
                                   and "velocity" in property["property"]
                                   ])
 
-    # Extensive Evidence: At least 3 sprites, at least 3 of them have properties updated in the draw loop
+    # Extensive Evidence: At least 4 sprites are created and their animations are set properly. 
+    # The velocities of at least 2 obstacle sprites are properly set outside the draw loop.
     if sprites >= 4 and len(animation_set) >= 4 and len(velocity_set) >= 2:
-      return "Extensive Evidence"
+      self.sprites_evidence(data, sprites)
+      self.animation_evidence(data)
+      self.velocity_evidence(data)
+      self.assessment = "Extensive Evidence"
 
-    # Convincing Evidence: At least 1 sprites, at least 1 of them have properties updated in the draw loop
+    # Convincing Evidence: At least 3 sprites are created and their animations are set properly. 
+    # The velocity of at least 1 obstacle sprite is properly set outside the draw loop.
     elif sprites >= 3 and len(animation_set) >= 3 and len(velocity_set) >= 1:
-      return "Convincing Evidence"
+      self.sprites_evidence(data, sprites)
+      self.animation_evidence(data)
+      self.velocity_evidence(data)
+      self.assessment = "Convincing Evidence"
 
-    # Limited Evidence: At least 2 sprites
+    # Limited Evidence: At least 2 sprites were created and their animations were set. 
+    # There are no velocities for obstacles set properly outside the draw loop.
     elif sprites >= 2 and len(animation_set) >= 2:
-      return "Limited Evidence"
+      self.sprites_evidence(data, sprites)
+      self.assessment = "Limited Evidence"
 
-    # No Evidence: No sprites
-    return "No Evidence"
+    # No Evidence: Either the program only contains the “player” sprite provided by the starter code, 
+    # or the sprites are not properly created.
+    else:
+      self.assessment = "No Evidence"

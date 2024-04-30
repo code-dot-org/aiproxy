@@ -90,6 +90,28 @@ class TestDecisionTrees:
                                        "Line 7: muadib object's x property updated in the draw loop", 
                                        "Line 9: shai_hulud object's visible property updated in the draw loop", 
                                        'Line 12: fremen object updated by its setAnimation method in the draw loop']
+    
+  def test_assess_u3l24_modularity(self, decision_trees):
+    learning_goal = {"Key Concept": "Modularity - Multiple Sprites"}
+    lesson = "csd3-2023-L24"
+    features = {'object_types': {'shapes': 0, 'sprites': 3, 'text': 0}, 
+                'variables': [], 
+                'objects': [{'identifier': 'shai_hulud', 'properties': {'x': [100], 'y': [275]}, 'type': 'sprite', 'start': 1, 'end': 1}, {'identifier': 'muadib', 'properties': {'x': [50], 'y': [100]}, 'type': 'sprite', 'start': 2, 'end': 2}, {'identifier': 'fremen', 'properties': {'x': [0], 'y': [275]}, 'type': 'sprite', 'start': 4, 'end': 4}], 
+                'movement': {'random': {'count': 0, 'lines': []}, 'counter': {'count': 1, 'lines': [{'start': 11, 'end': 11}]}}, 
+                'property_change': [{'object': 'muadib', 'method': 'setAnimation', 'start': 3, 'end': 3, 'draw_loop': False}, {'object': 'fremen', 'method': 'setAnimation', 'start': 5, 'end': 5, 'draw_loop': False}, {'object': 'fremen', 'property': 'velocityY', 'start': 6, 'end': 6, 'draw_loop': False}, {'object': 'shai_hulud', 'method': 'setAnimation', 'start': 7, 'end': 7, 'draw_loop': False}, {'object': 'shai_hulud', 'property': 'velocityX', 'start': 8, 'end': 8, 'draw_loop': False}, {'object': 'muadib', 'property': 'x', 'start': 11, 'end': 11, 'draw_loop': True}, {'object': 'shai_hulud', 'property': 'visible', 'start': 13, 'end': 13, 'draw_loop': True}, {'object': 'muadib', 'method': 'setAnimation', 'start': 16, 'end': 16, 'draw_loop': True}, {'object': 'fremen', 'method': 'setAnimation', 'start': 17, 'end': 17, 'draw_loop': True}]}
+
+    decision_trees.assess(features, learning_goal, lesson)
+    print(decision_trees.evidence)
+    assert decision_trees.assessment == 'Convincing Evidence'
+    assert decision_trees.evidence == ['Line 1: Code contains 3 sprites', 
+                                       'Line 2: Code contains 3 sprites', 
+                                       'Line 4: Code contains 3 sprites', 
+                                       "Line 3: muadib sprite's animation is properly set", 
+                                       "Line 5: fremen sprite's animation is properly set", 
+                                       "Line 7: shai_hulud sprite's animation is properly set", 
+                                       "Line 6: fremen object's velocity updated outside of the draw loop", 
+                                       "Line 8: shai_hulud object's velocity updated outside of the draw loop"]
+
 
   def test_save_evidence_string_generates_valid_strings(self, decision_trees):
     decision_trees.save_evidence_string(1, 2, "multiple line evidence test")

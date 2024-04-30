@@ -173,8 +173,6 @@ function draw() {
                                'start': 12}]
 
   def test_u3l24_modularity_feature_extractor(self, code_features):
-    learning_goal = {"Key Concept": "Modularity - Multiple Sprites"
-                     }
     code = """var shai_hulud = createSprite(100, 275);
 var muadib = createSprite(50, 100);
 muadib.setAnimation("muadib");
@@ -196,12 +194,10 @@ function draw() {
 }
 """
 
-    lesson="csd3-2023-L24"
-
-    code_features.extract_features(code, learning_goal, lesson)
+    code_features.extract_features(code)
 
     assert code_features.features["object_types"] == {'shapes': 0, 'sprites': 3, 'text': 0}
-    assert code_features.features["movement"] == {'random': 0, 'counter': 0}
+    assert code_features.features["movement"] == {'random': {'count': 0, 'lines': []}, 'counter': {'count': 1, 'lines': [{'end': 11, 'start': 11}]}}
     assert code_features.features["objects"] == [ { 'end': 1,
                               'identifier': 'shai_hulud',
                               'properties': {'x': [100], 'y': [275]},
@@ -262,8 +258,6 @@ function draw() {
                               'method': 'setAnimation',
                               'object': 'fremen',
                               'start': 17}]
-    assert code_features.assessment == 'Convincing Evidence'
-
 
   def test_binary_expression_helper(self, code_features):
     statement = "x = x + 1"
