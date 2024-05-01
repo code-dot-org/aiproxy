@@ -13,12 +13,6 @@ def code_features():
 
 class TestCodeFeatureExtractor:
   def test_u3l11_position_feature_extractor(self, code_features):
-    learning_goal = {"Key Concept": "Position - Elements and the Coordinate System",
-                     "Extensive Evidence": "At least 2 shapes, 2 sprites, and 2 lines of text are placed correctly on the screen using the coordinate system.",
-                     "Convincing Evidence": "At least 1 shape, 2 sprites, and 1 line of text are placed on the screen using the coordinate system.",
-                     "Limited Evidence": "A cumulative of at least a total of 3 elements are placed on the screen using the coordinate system (e.g 2 sprites & 1 line of text or 1 sprite, 1 shape, & 1 line of text)",
-                     "No Evidence": "No elements (shapes, sprites, or text) are placed on the screen using the coordinate system."
-                     }
     code = """background("black");
 var animalhead_duck1 = createSprite(352, 200);
 var animalhead_frog_1 = createSprite(46, 200);
@@ -32,21 +26,12 @@ fill("white");
 text("Fortnite", 175, 200);
 rect(50, 240, 75, 25);"""
 
-    lesson="csd3-2023-L11"
-
-    code_features.extract_features(code, learning_goal, lesson)
+    code_features.extract_features(code)
 
     assert code_features.features["object_types"] == {'shapes': 1, 'sprites': 2, 'text': 1}
-    assert code_features.assessment == 'Convincing Evidence'
 
   def test_u3l14_position_feature_extractor(self, code_features):
-    learning_goal = {"Key Concept": "Position and Movement",
-                     "Instructions": "(1) list the name of each sprite placed on the screen. (2) list each shape placed on the screen. (3) list each line of text placed on the screen (4) list the lines of code inside of the draw loop that update the position of sprites, shapes, or text on the screen. (5) list any sprites, shapes, or text that use random movement. (6) list any sprites, shapes, or text that use the counter pattern",
-                     "Extensive Evidence": "At least 2 shapes, 2 sprites, and 2 lines of text are placed correctly on the screen using the coordinate system. At least 2 elements move in different ways.",
-                     "Convincing Evidence": "At least 1 shape, 2 sprites, and 1 line of text are placed on the screen using the coordinate system. At least 1 element moves during the program.",
-                     "Limited Evidence": "A cumulative of at least a total of 3 elements are placed on the screen using the coordinate system (e.g 2 sprites & 1 line of text or 1 sprite, 1 shape, & 1 line of text).",
-                     "No Evidence": "No elements (sprites, shapes, or text) are placed on the screen using the coordinate system."
-                     }
+    
     code = """var backgroundSprite = createSprite(200, 200);
 var snowman = createSprite(200, 200);
 snowman.setAnimation("snowman");
@@ -61,22 +46,16 @@ function draw() {
   drawSprites();
 }"""
 
-    lesson="csd3-2023-L14"
-
-    code_features.extract_features(code, learning_goal, lesson)
+    code_features.extract_features(code)
 
     assert code_features.features["object_types"] == {'shapes': 0, 'sprites': 3, 'text': 0}
-    assert code_features.features["movement"] == {'random': 1, 'counter': 2}
-    assert code_features.assessment == 'Limited Evidence'
+    assert code_features.features["movement"] == {'random': {'count': 1, 
+                                                             'lines': [{'end': 10, 'start': 10}]},
+                                                  'counter': {'count': 2, 
+                                                              'lines': [{'end': 10, 'start': 10}, 
+                                                                        {'end': 11, 'start': 11}]}}
   
   def test_u3l18_position_feature_extractor(self, code_features):
-    learning_goal = {"Key Concept": "Position and Movement",
-                     "Instructions": "(1) list all sprites placed on the screen. (2) list all other elements placed on the screen. (3) describe the movement of each sprite and other elements placed on the screen.",
-                     "Extensive Evidence": "At least 3 sprites and at least 2 other elements are placed on the screen using the coordinate system. The sprites move in different ways.",
-                     "Convincing Evidence": "At least 2 sprites and 1 other element is placed on the screen using the coordinate system. The sprites move during the program.",
-                     "Limited Evidence": "At least one element is placed on the screen using the coordinate system.",
-                     "No Evidence": "No elements (sprites or shapes) are placed on the screen using the coordinate system."
-                     }
     code = """var grass1 = createSprite(200, 200);
 grass1.setAnimation("grass1");
 var girl = createSprite(200, 70);
@@ -98,17 +77,13 @@ function draw() {
   }
 }"""
 
-    lesson="csd3-2023-L18"
-
-    code_features.extract_features(code, learning_goal, lesson)
+    code_features.extract_features(code)
 
     assert code_features.features["object_types"] == {'shapes': 0, 'sprites': 4, 'text': 1}
-    assert code_features.features["movement"] == {'random': 0, 'counter': 0}
-    assert code_features.assessment == 'Limited Evidence'
+    assert code_features.features["movement"] == {'random': {'count': 0, 'lines': []}, 'counter': {'count': 0, 'lines': []}}
+
 
   def test_u3l14_modularity_feature_extractor(self, code_features):
-    learning_goal = {"Key Concept": "Modularity - Sprites and Sprite Properties"
-                     }
     code = """var pacman = createSprite(100, 275);
 pacman.setAnimation("pacman");
 function draw() {
@@ -119,13 +94,10 @@ function draw() {
       }
 }
 """
-
-    lesson="csd3-2023-L14"
-
-    code_features.extract_features(code, learning_goal, lesson)
+    code_features.extract_features(code)
 
     assert code_features.features["object_types"] == {'shapes': 0, 'sprites': 1, 'text': 0}
-    assert code_features.features["movement"] == {'random': 0, 'counter': 0}
+    assert code_features.features["movement"] == {'random': {'count': 0, 'lines': []}, 'counter': {'count': 1, 'lines': [{'end': 5, 'start': 5}]}}
     assert code_features.features["objects"] == [{'end': 1, 'identifier': 'pacman', 'properties': {'x': [100], 'y': [275]}, 'start': 1, 'type': 'sprite'}]
     assert code_features.features["property_change"] == [   {   'draw_loop': False,
                                'end': 2,
@@ -142,11 +114,8 @@ function draw() {
                                'method': 'setAnimation',
                                'object': 'pacman',
                                'start': 7}]
-    assert code_features.assessment == 'Convincing Evidence'
 
   def test_u3l18_modularity_feature_extractor(self, code_features):
-    learning_goal = {"Key Concept": "Modularity - Multiple Sprites"
-                     }
     code = """var shai_hulud = createSprite(100, 275);
 var muadib = createSprite(50, 100);
 var fremen = createSprite(0, 275);
@@ -163,12 +132,10 @@ function draw() {
 }
 """
 
-    lesson="csd3-2023-L18"
-
-    code_features.extract_features(code, learning_goal, lesson)
-
+    code_features.extract_features(code)
+    print(code_features.features) 
     assert code_features.features["object_types"] == {'shapes': 0, 'sprites': 3, 'text': 0}
-    assert code_features.features["movement"] == {'random': 0, 'counter': 0}
+    assert code_features.features["movement"] == {'random': {'count': 0, 'lines': []}, 'counter': {'count': 1, 'lines': [{'start': 7, 'end': 7}]}}
     assert code_features.features["objects"] == [   {   'end': 1,
                        'identifier': 'shai_hulud',
                        'properties': {'x': [100], 'y': [275]},
@@ -204,11 +171,8 @@ function draw() {
                                'method': 'setAnimation',
                                'object': 'fremen',
                                'start': 12}]
-    assert code_features.assessment == 'Extensive Evidence'
 
   def test_u3l24_modularity_feature_extractor(self, code_features):
-    learning_goal = {"Key Concept": "Modularity - Multiple Sprites"
-                     }
     code = """var shai_hulud = createSprite(100, 275);
 var muadib = createSprite(50, 100);
 muadib.setAnimation("muadib");
@@ -230,12 +194,10 @@ function draw() {
 }
 """
 
-    lesson="csd3-2023-L24"
-
-    code_features.extract_features(code, learning_goal, lesson)
+    code_features.extract_features(code)
 
     assert code_features.features["object_types"] == {'shapes': 0, 'sprites': 3, 'text': 0}
-    assert code_features.features["movement"] == {'random': 0, 'counter': 0}
+    assert code_features.features["movement"] == {'random': {'count': 0, 'lines': []}, 'counter': {'count': 1, 'lines': [{'end': 11, 'start': 11}]}}
     assert code_features.features["objects"] == [ { 'end': 1,
                               'identifier': 'shai_hulud',
                               'properties': {'x': [100], 'y': [275]},
@@ -296,8 +258,6 @@ function draw() {
                               'method': 'setAnimation',
                               'object': 'fremen',
                               'start': 17}]
-    assert code_features.assessment == 'Convincing Evidence'
-
 
   def test_binary_expression_helper(self, code_features):
     statement = "x = x + 1"
@@ -344,6 +304,7 @@ function draw() {
   if(x === 1) {
     x = 2;
   }
+  x++;
 } else {
   if(x) {
     var y = 2;
@@ -354,32 +315,38 @@ function draw() {
   test_func(1);
   var z = 1
   z = 2
+  y--;
 }"""
     parsed = esprima.parseScript(statement, {'tolerant': True, 'comment': True, 'loc': True})
     result = code_features.if_statement_helper(parsed.body[0])
     assert result == {
       'alternate': [ { 'alternate': [],
-                   'consequent': [ { 'end': 10,
+                   'consequent': [ { 'end': 11,
                                      'identifier': 'y',
-                                     'start': 10,
+                                     'start': 11,
                                      'value': 2}],
-                   'end': 11,
-                   'start': 9,
+                   'end': 12,
+                   'start': 10,
                    'test': 'x'},
                  { 'alternate': [],
                    'consequent': [ { 'assignee': 'x',
-                                     'end': 13,
-                                     'start': 13,
+                                     'end': 14,
+                                     'start': 14,
                                      'value': 2}],
-                   'end': 14,
-                   'start': 12,
-                   'test': { 'end': 12,
+                   'end': 15,
+                   'start': 13,
+                   'test': { 'end': 13,
                              'object': 'x',
                              'property': 'prop',
-                             'start': 12}},
-                 {'args': [1], 'end': 15, 'function': 'test_func', 'start': 15},
-                 {'end': 16, 'identifier': 'z', 'start': 16, 'value': 1},
-                 {'assignee': 'z', 'end': 17, 'start': 17, 'value': 2}],
+                             'start': 13}},
+                 {'args': [1], 'end': 16, 'function': 'test_func', 'start': 16},
+                 {'end': 17, 'identifier': 'z', 'start': 17, 'value': 1},
+                 {'assignee': 'z', 'end': 18, 'start': 18, 'value': 2},
+                 {'argument': 'y',
+                  'operator': '--',
+                  'start': 19,
+                  'end': 19,
+                  }],
       'consequent': [ { 'alternate': [],
                     'consequent': [ { 'end': 3,
                                       'identifier': 'x',
@@ -399,8 +366,12 @@ function draw() {
                               'left': 'x',
                               'operator': '===',
                               'right': 1,
-                              'start': 5}}],
-      'end': 18,
+                              'start': 5}},
+                              {'argument': 'x',
+                               'end': 8,
+                               'operator': '++',
+                               'start': 8}],
+      'end': 20,
       'start': 1,
       'test': -1.0}
   

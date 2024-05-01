@@ -11,6 +11,7 @@ from threading import Lock
 from typing import List, Dict, Any
 from lib.assessment.config import VALID_LABELS
 from lib.assessment.code_feature_extractor import CodeFeatures
+from lib.assessment.decision_trees import DecisionTrees
 
 from io import StringIO
 
@@ -64,16 +65,19 @@ class Label:
         # Prep output data
         results = {"metadata": {"agent": "code feature extractor"},"data": []}
 
-        # Send each filtered learning goal to code feature extractor and add returned data
-        # to output dictionary
+        # Extract features from student code
+        cfe = CodeFeatures()
+        cfe.extract_features(student_code)
+
+        # Send extracted features through decision tree for each learning goal with CFE enabled
         for learning_goal in learning_goals:
-            # Create instance of feature extractor
-            cfe = CodeFeatures()
-            cfe.extract_features(student_code, learning_goal, lesson)
-            results["data"].append({"Label": cfe.assessment,
+            dt = DecisionTrees()
+            dt.assess(cfe.features, learning_goal, lesson)
+            results["data"].append({"Label": dt.assessment,
                                     "Key Concept": learning_goal["Key Concept"],
                                     "Observations": cfe.features,
-                                    "Reason": learning_goal[cfe.assessment] if cfe.assessment else ''
+                                    "Reason": learning_goal[dt.assessment] if dt.assessment else '',
+                                    "Evidence": dt.evidence,
                                         })
 
         return results

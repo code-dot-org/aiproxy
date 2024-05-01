@@ -203,7 +203,8 @@ def test_assessment_cfe():
             num_responses=int(params["num-responses"]),
             temperature=float(params["temperature"]),
             code_feature_extractor=params["code-feature-extractor"],
-            lesson=params["lesson"]
+            lesson=params["lesson"],
+            response_type=params["response-type"]
         )
     except ValueError as e:
         return "One of the arguments is not parseable as a number: {}".format(str(e)), 400

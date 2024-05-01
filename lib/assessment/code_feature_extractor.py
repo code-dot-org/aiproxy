@@ -40,17 +40,13 @@ class CodeFeatures:
     self.features = {'object_types': {'shapes': 0, 'sprites': 0, 'text': 0},
                      'variables': [],
                      'objects': [],
-                     'movement': {'random': 0, 'counter': 0},
+                     'movement': {'random': {'count': 0, 'lines': []}, 'counter': {'count':0, 'lines': []}},
                      'property_change': []}
 
     # Store relevant parse tree nodes here during extraction. This will be useful
     # For returning metadata like line and column numbers or for exploring additional
     # info about the extracted features
     self.nodes = []
-
-    # For learning goals that are assessed by decision tree and not the LLM, store the
-    # assessment results here
-    self.assessment = ''
 
   # Helper function for parsing binary expressions.
   # Outputs a dictionary containing both sides of the expression and the operator
@@ -283,21 +279,24 @@ class CodeFeatures:
             if obj:
               if isinstance(statement["value"], dict):
                 if "left" in statement["value"]:
-                  if statement["assignee"] in [statement["value"]["left"], statement["value"]["right"]]:
-                    if statement["value"]["operator"] in ["+", "-"]:
-                      self.features["movement"]["counter"] += 1
-                      self.nodes.append(node)
+                  if statement["assignee"] in [statement["value"]["left"], statement["value"]["right"]] and statement["value"]["operator"] in ["+", "-"]:
+                    self.features["movement"]["counter"]["count"] += 1
+                    self.features["movement"]["counter"]["lines"].append({'start': statement["start"], 'end': statement["end"]})
+                    self.nodes.append(node)
                   if [stmnt for stmnt in [statement["value"]["left"], statement["value"]["right"]] if isinstance(stmnt, dict) and "function" in stmnt and "randomNumber" in stmnt["function"]]:
-                    self.features["movement"]["random"] += 1
+                    self.features["movement"]["random"]["count"] += 1
+                    self.features["movement"]["random"]["lines"].append({'start': statement["start"], 'end': statement["end"]})
                     self.nodes.append(node)
                 elif "function" in statement["value"] and statement["value"]["function"] == "randomNumber":
-                    self.features["movement"]["random"] += 1
+                    self.features["movement"]["random"]["count"] += 1
+                    self.features["movement"]["random"]["lines"].append({'start': statement["start"], 'end': statement["end"]})
                     self.nodes.append(node)
         if "operator" in statement and statement["operator"] in ["++", "--"]:
           if "object" in statement["argument"] and "property" in statement["argument"] and statement["argument"]["property"] in obj_movement_props:
             obj = [obj for obj in self.features["objects"] if obj["identifier"] == statement["argument"]["object"]]
             if obj:
-              self.features["movement"]["counter"] += 1
+              self.features["movement"]["counter"]["count"] += 1
+              self.features["movement"]["counter"]["lines"].append({'start': statement["start"], 'end': statement["end"]})
               self.nodes.append(node)
         if "test" in statement:
           conditional_body = self.flatten_conditional_paths(statement)
@@ -306,7 +305,8 @@ class CodeFeatures:
               if "object" in conditional_statement["argument"] and "property" in conditional_statement["argument"] and conditional_statement["argument"]["property"] in obj_movement_props:
                 obj = [obj for obj in self.features["objects"] if obj["identifier"] == conditional_statement["argument"]["object"]]
                 if obj:
-                  self.features["movement"]["counter"] += 1
+                  self.features["movement"]["counter"]["count"] += 1
+                  self.features["movement"]["counter"]["lines"].append({'start': statement["start"], 'end': statement["end"]})
                   self.nodes.append(node)
             if "assignee" in conditional_statement:
               if "object" in conditional_statement["assignee"] and "property" in conditional_statement["assignee"] and conditional_statement["assignee"]["property"] in obj_movement_props:
@@ -316,13 +316,16 @@ class CodeFeatures:
                     if "left" in conditional_statement["value"]:
                       if conditional_statement["assignee"] in [conditional_statement["value"]["left"], conditional_statement["value"]["right"]]:
                         if conditional_statement["value"]["operator"] in ["+", "-"]:
-                          self.features["movement"]["counter"] += 1
+                          self.features["movement"]["counter"]["count"] += 1
+                          self.features["movement"]["counter"]["lines"].append({'start': statement["start"], 'end': statement["end"]})
                           self.nodes.append(node)
                       if [stmnt for stmnt in [conditional_statement["value"]["left"], conditional_statement["value"]["right"]] if isinstance(stmnt, dict) and "function" in stmnt and "randomNumber" in stmnt["function"]]:
-                        self.features["movement"]["random"] += 1
+                        self.features["movement"]["random"]["count"] += 1
+                        self.features["movement"]["random"]["lines"].append({'start': statement["start"], 'end': statement["end"]})
                         self.nodes.append(node)
                     elif "function" in conditional_statement["value"] and conditional_statement["value"]["function"] == "randomNumber":
-                        self.features["movement"]["random"] += 1
+                        self.features["movement"]["random"]["count"] += 1
+                        self.features["movement"]["random"]["lines"].append({'start': statement["start"], 'end': statement["end"]})
                         self.nodes.append(node)
 
   #Extract and store all object properties that are updated
@@ -350,7 +353,6 @@ class CodeFeatures:
       if type(node_info["argument"]) is dict and node_info["operator"] in ["++", "--", "~"] and all([k in node_info["argument"].keys() for k in ["object", "property"]]):
         self.features["property_change"].append({**node_info["argument"], "draw_loop":False})
       
-
   # Extract and store all object and variable data, including object types
   def extract_object_and_variable_data(self, node):
     if node.type == "VariableDeclaration":
@@ -389,12 +391,12 @@ class CodeFeatures:
   # Function to extract features for learning goals. Contains delegate functions
   # to be used with the parser. Does not return any values, but should populate
   # the features dictionary with values based on parse results
-  def extract_features(self, program, learning_goal, lesson):
+  def extract_features(self, program):
 
     # Function to parse code using esprima. If the code reaches an error state that
     # esprima cannot handle, it will be logged, and parsing will continue from
     # the next line of code.
-    def parse_code(program, delegate):
+    def parse_code(program):
       try:
         parsed = esprima.parseScript(program, {'tolerant': True, 'comment': True, 'loc': True}, delegate)
       except Exception as e:
@@ -407,59 +409,10 @@ class CodeFeatures:
         else:
           logging.error(f"Parsing error: {err}")
 
-    # Delegate function for U3L11 'Position - Elements and the Coordinate System'
-    def u3l11_position_delegate(node, metadata):
-      # extract_object_types(node)
-      self.extract_object_and_variable_data(node)
-
-    # Delegate function for U3L14 'Position and Movement'
-    def u3l14_position_delegate(node, metadata):
-      # extract_object_types(node)
+    # Delegate function to run feature extractors during code parsing
+    def delegate(node, metadata):
       self.extract_object_and_variable_data(node)
       self.extract_movement_types(node)
-
-    # Delegate function for U3L18 'Position and Movement'
-    def u3l18_position_delegate(node, metadata):
-      # extract_object_types(node)
-      self.extract_object_and_variable_data(node)
-      self.extract_movement_types(node)
-
-    def u3l14_modularity_delegate(node, metadata):
-      self.extract_object_and_variable_data(node)
       self.extract_property_assignment(node)
 
-    def u3l18_modularity_delegate(node, metadata):
-      self.extract_object_and_variable_data(node)
-      self.extract_property_assignment(node)
-
-    def u3l24_modularity_delegate(node, metadata):
-      self.extract_object_and_variable_data(node)
-      self.extract_property_assignment(node)
-
-    # Add conditionals for future learning goals here
-    # TODO: Add list or file to store names of learning goals that are being statically assessed
-    match [learning_goal["Key Concept"], lesson]:
-      case ['Position - Elements and the Coordinate System', 'csd3-2023-L11']:
-        parse_code(program, u3l11_position_delegate)
-        dt = DecisionTrees()
-        self.assessment = dt.u3l11_position_assessment(self.features)
-      case ['Position and Movement', 'csd3-2023-L14']:
-        parse_code(program, u3l14_position_delegate)
-        dt = DecisionTrees()
-        self.assessment = dt.u3l14_position_assessment(self.features)
-      case ['Position and Movement', 'csd3-2023-L18']:
-        parse_code(program, u3l18_position_delegate)
-        dt = DecisionTrees()
-        self.assessment = dt.u3l18_position_assessment(self.features)
-      case ['Modularity - Sprites and Sprite Properties', 'csd3-2023-L14']:
-        parse_code(program, u3l14_modularity_delegate)
-        dt = DecisionTrees()
-        self.assessment = dt.u3l14_modularity_assessment(self.features)
-      case ['Modularity - Multiple Sprites', 'csd3-2023-L18']:
-        parse_code(program, u3l18_modularity_delegate)
-        dt = DecisionTrees()
-        self.assessment = dt.u3l18_modularity_assessment(self.features)
-      case ['Modularity - Multiple Sprites', 'csd3-2023-L24']:
-        parse_code(program, u3l24_modularity_delegate)
-        dt = DecisionTrees()
-        self.assessment = dt.u3l24_modularity_assessment(self.features)
+    parse_code(program)

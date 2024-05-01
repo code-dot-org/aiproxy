@@ -27,17 +27,20 @@ to be classified as each of the four possible grades.
 
 when choosing a grade for each Key Concept, please follow the following steps:
 1. follow the instructions in the Instructions column from the rubric to generate observations about the student's program. Include the result to the Observations column in your response.
-2. based on those observations, determine the highest grade which accurately describes the student's program. Write this result to the Grade column in your response.
-3. write a reason for your grade in the Reason column, citing evidence from the Observations column when possible.
+2. follow the instructions in the Instructions column from the rubric to generate observations about the student's program. These will be placed in the Evidence column in your response. Observations will include actual lines of code from the student work. These observations are marked by the number of lines of code preceding the actual line of code within the student work. The code and line numbers will precede each observation in the form of this example: "Lines 5-7: The sprite is defined here. `mySprite = createSprite(100, 100);`". You must include the actual code next to the line numbers in the Evidence column in your response. You must include this observed code within backticks in the exact way as the provided example.
+3. based on those observations, provide a step-by-step description of your reasoning to determine the student's grade in the Reason field. The Reason field should end with the text "Decision:" followed by one of the grades Extensive Evidence, Convincing Evidence, Limited Evidence, or No Evidence.
+4. in the Grade field, write only the grade you decided on in the Reason field. To decide on the grade, look only at what follows the text "Decision:" at the end of the Reason field.
 
-Please provide your evaluation formatted as a TSV table including a header row
-with column names Key Concept, Observations, Grade, and Reason. There should be one
-non-header row for each Key Concept. You must not omit the Grade which should be one of the following:
+Please provide your evaluation formatted as a JSON-encoded array of objects,
+with one object per Key Concept, where each object has four properties: Key Concept, Observations, Evidence, Reason, and Grade.
+You must include the Grade field, which must be one of the following:
 
 - Extensive Evidence
 - Convincing Evidence
 - Limited Evidence
-- No Evidence.
+- No Evidence
+
+Please always provide your response in JSON format.
 
 When considering the "Position - Elements and the Coordinate System" rubric item, please
 assign Limited Evidence to any program that has created no shapes. They have created no
@@ -47,5 +50,3 @@ shapes if they do not use any of the following functions:
 Code that creates no shapes is never to be assigned the grade Convincing Evidence or
 Extensive Evidence. Code that creates no shapes should be assigned either No Evidence or
 Limited Evidence.
-
-Please always provide a TSV table as a result.
