@@ -98,20 +98,18 @@ class DecisionTrees:
     sprites = data["object_types"]["sprites"]
     text = data["object_types"]["text"]
     total_elements = shapes + sprites + text
+    self.object_types_evidence(data, shapes, sprites, text)
 
     # Extensive Evidence: At least 2 shapes, 2 sprites, and 2 lines of text
     if shapes >= 2 and sprites >= 2 and text >= 2:
-      self.object_types_evidence(data, shapes, sprites, text)
       self.assessment = "Extensive Evidence"
 
     # Convincing Evidence: At least 1 shape, 2 sprites, and 1 line of text
     elif shapes >= 1 and sprites >= 2 and text >= 1:
-      self.object_types_evidence(data, shapes, sprites, text)
       self.assessment = "Convincing Evidence"
 
     # Limited Evidence: A cumulative of at least a total of 3 elements
     elif total_elements >= 3:
-      self.total_objects_evidence(data, total_elements)
       self.assessment =  "Limited Evidence"
 
     # No Evidence: No elements placed using the coordinate system.
@@ -128,22 +126,19 @@ class DecisionTrees:
     random = data["movement"]["random"]["count"]
     counter = data["movement"]["counter"]["count"]
     movement = random + counter
+    self.object_types_evidence(data, shapes, sprites, text)
+    self.movement_types_evidence(data, random, counter)
 
     # Extensive Evidence: At least 2 shapes, 2 sprites, 2 lines of text, and 2 types of movement
     if shapes >= 2 and sprites >= 2 and text >= 2 and random > 0 and counter > 0:
-      self.object_types_evidence(data, shapes, sprites, text)
-      self.movement_types_evidence(data, random, counter)
       self.assessment = "Extensive Evidence"
 
     # Convincing Evidence: At least 1 shape, 2 sprites, 1 line of text, and some movement
     elif shapes >= 1 and sprites >= 2 and text >= 1 and movement > 0:
-      self.object_types_evidence(data, shapes, sprites, text)
-      self.movement_types_evidence(data, random, counter)
       self.assessment = "Convincing Evidence"
 
     # Limited Evidence: A cumulative of at least a total of 3 elements
     elif total_elements >= 3:
-      self.total_objects_evidence(data, total_elements)
       self.assessment = "Limited Evidence"
 
     # No Evidence: No elements placed using the coordinate system.
@@ -159,22 +154,19 @@ class DecisionTrees:
     random = data["movement"]["random"]["count"]
     counter = data["movement"]["counter"]["count"]
     movement = random + counter
+    self.sprites_and_other_elements_evidence(data, sprites, other_elements)
+    self.movement_types_evidence(data, random, counter)
 
     # Extensive Evidence: At least 3 sprites, 2 other elements, and 2 types of movement
     if sprites >= 3 and other_elements >= 1 and counter > 0 and random > 0:
-      self.sprites_and_other_elements_evidence(data, sprites, other_elements)
-      self.movement_types_evidence(data, random, counter)
       self.assessment = "Extensive Evidence"
 
     # Convincing Evidence: At least 2 sprites, 1 other element, and some movement
     elif sprites >= 2 and other_elements > 0 and movement > 0:
-      self.sprites_and_other_elements_evidence(data, sprites, other_elements)
-      self.movement_types_evidence(data, random, counter)
       self.assessment = "Convincing Evidence"
 
     # Limited Evidence: A cumulative of at least a total of 1 element
     elif total_elements >= 1:
-      self.total_objects_evidence(data, total_elements)
       self.assessment = "Limited Evidence"
 
     # No Evidence: No elements placed using the coordinate system.
@@ -188,22 +180,20 @@ class DecisionTrees:
                                    any([obj["identifier"] == property["object"] and
                                         obj["type"]=="sprite" for obj in data["objects"]])
                                   and property["draw_loop"] == True])
+    
+    self.sprites_evidence(data, sprites)
+    self.object_props_updated_evidence(data)
 
     # Extensive Evidence: At least 2 sprites, at least 2 of them have properties updated in the draw loop
     if sprites >= 2 and len(sprites_updated_in_draw) >= 2:
-      self.sprites_evidence(data, sprites)
-      self.object_props_updated_evidence(data)
       self.assessment = "Extensive Evidence"
 
     # Convincing Evidence: At least 1 sprites, at least 1 of them have properties updated in the draw loop
     elif sprites >= 1 and len(sprites_updated_in_draw) >= 1:
-      self.sprites_evidence(data, sprites)
-      self.object_props_updated_evidence(data)
       self.assessment = "Convincing Evidence"
 
     # Limited Evidence: At least 1 sprites
     elif sprites >= 1:
-      self.sprites_evidence(data, sprites)
       self.assessment = "Limited Evidence"
 
     # No Evidence: No sprites
@@ -218,22 +208,20 @@ class DecisionTrees:
                                    any([obj["identifier"] == property["object"] and
                                         obj["type"]=="sprite" for obj in data["objects"]])
                                   and property["draw_loop"] == True])
-
+    
+    self.sprites_evidence(data, sprites)
+    self.object_props_updated_evidence(data)
+    
     # Extensive Evidence: At least 3 sprites, at least 3 of them have properties updated in the draw loop
     if sprites >= 3 and len(sprites_updated_in_draw) >= 3:
-      self.sprites_evidence(data, sprites)
-      self.object_props_updated_evidence(data)
       self.assessment = "Extensive Evidence"
 
     # Convincing Evidence: At least 1 sprites, at least 1 of them have properties updated in the draw loop
     elif sprites >= 1 and len(sprites_updated_in_draw) >= 1:
-      self.sprites_evidence(data, sprites)
-      self.object_props_updated_evidence(data)
       self.assessment = "Convincing Evidence"
 
     # Limited Evidence: At least 2 sprites
     elif sprites >= 1:
-      self.sprites_evidence(data, sprites)
       self.assessment = "Limited Evidence"
 
     # No Evidence: No sprites
@@ -260,27 +248,24 @@ class DecisionTrees:
                                   and "property" in property.keys()
                                   and "velocity" in property["property"]
                                   ])
+    
+    self.sprites_evidence(data, sprites)
+    self.animation_evidence(data)
+    self.velocity_evidence(data)
 
     # Extensive Evidence: At least 4 sprites are created and their animations are set properly. 
     # The velocities of at least 2 obstacle sprites are properly set outside the draw loop.
     if sprites >= 4 and len(animation_set) >= 4 and len(velocity_set) >= 2:
-      self.sprites_evidence(data, sprites)
-      self.animation_evidence(data)
-      self.velocity_evidence(data)
       self.assessment = "Extensive Evidence"
 
     # Convincing Evidence: At least 3 sprites are created and their animations are set properly. 
     # The velocity of at least 1 obstacle sprite is properly set outside the draw loop.
     elif sprites >= 3 and len(animation_set) >= 3 and len(velocity_set) >= 1:
-      self.sprites_evidence(data, sprites)
-      self.animation_evidence(data)
-      self.velocity_evidence(data)
       self.assessment = "Convincing Evidence"
 
     # Limited Evidence: At least 2 sprites were created and their animations were set. 
     # There are no velocities for obstacles set properly outside the draw loop.
     elif sprites >= 2 and len(animation_set) >= 2:
-      self.sprites_evidence(data, sprites)
       self.assessment = "Limited Evidence"
 
     # No Evidence: Either the program only contains the “player” sprite provided by the starter code, 

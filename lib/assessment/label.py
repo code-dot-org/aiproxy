@@ -65,13 +65,13 @@ class Label:
         # Prep output data
         results = {"metadata": {"agent": "code feature extractor"},"data": []}
 
-        # Send each filtered learning goal to code feature extractor and add returned data
-        # to output dictionary
+        # Extract features from student code
+        cfe = CodeFeatures()
+        cfe.extract_features(student_code)
+
+        # Send extracted features through decision tree for each learning goal with CFE enabled
         for learning_goal in learning_goals:
-            # Create instance of feature extractor
-            cfe = CodeFeatures()
             dt = DecisionTrees()
-            cfe.extract_features(student_code)
             dt.assess(cfe.features, learning_goal, lesson)
             results["data"].append({"Label": dt.assessment,
                                     "Key Concept": learning_goal["Key Concept"],

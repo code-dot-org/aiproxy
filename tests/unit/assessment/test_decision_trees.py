@@ -35,9 +35,13 @@ class TestDecisionTrees:
 
     decision_trees.assess(features, learning_goal, lesson)
     assert decision_trees.assessment == 'Limited Evidence'
-    assert decision_trees.evidence == ['Line 1: Code contains 3 total elements',
-                                       'Line 2: Code contains 3 total elements',
-                                       'Line 5: Code contains 3 total elements',]
+    print(decision_trees.evidence)
+    assert decision_trees.evidence == ['Line 1: Code contains 3 sprites', 
+                                       'Line 2: Code contains 3 sprites', 
+                                       'Line 5: Code contains 3 sprites', 
+                                       'Line 10: Code contains 1 instance of movement using the randomNumber() function', 
+                                       'Line 10: Code contains 2 instances of movement using the counter pattern', 
+                                       'Line 11: Code contains 2 instances of movement using the counter pattern']
     
   def test_assess_u3l18_position(self, decision_trees):
     learning_goal = {"Key Concept": "Position and Movement"}
@@ -50,11 +54,11 @@ class TestDecisionTrees:
     
     decision_trees.assess(features, learning_goal, lesson)
     assert decision_trees.assessment == 'Limited Evidence'
-    assert decision_trees.evidence == ['Line 1: Code contains 5 total elements', 
-                                       'Line 3: Code contains 5 total elements', 
-                                       'Line 6: Code contains 5 total elements', 
-                                       'Line 9: Code contains 5 total elements', 
-                                       'Line 15: Code contains 5 total elements']
+    assert decision_trees.evidence == ['Line 1: Code contains 4 sprites', 
+                                       'Line 3: Code contains 4 sprites', 
+                                       'Line 6: Code contains 4 sprites', 
+                                       'Line 9: Code contains 4 sprites', 
+                                       'Line 15: Code contains 1 non-sprite element']
     
   def test_assess_u3l14_modularity(self, decision_trees):
     learning_goal = {"Key Concept": "Modularity - Sprites and Sprite Properties"}
