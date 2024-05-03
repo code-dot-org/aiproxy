@@ -14,14 +14,16 @@ class DecisionTrees:
     match [learning_goal["Key Concept"], lesson]:
       case ['Position - Elements and the Coordinate System', 'csd3-2023-L11']:
         self.u3l11_position_assessment(features)
-      case ['Position and Movement', 'csd3-2023-L14']:
-        self.u3l14_position_assessment(features)
-      case ['Position and Movement', 'csd3-2023-L18']:
-        self.u3l18_position_assessment(features)
       case ['Modularity - Sprites and Sprite Properties', 'csd3-2023-L14']:
         self.u3l14_modularity_assessment(features)
+      case ['Position and Movement', 'csd3-2023-L14']:
+        self.u3l14_position_assessment(features)
+      case ['Algorithms and Control - Conditionals', 'csd3-2023-L18']:
+        self.u3l18_algorithms_conditionals_assessment(features)
       case ['Modularity - Multiple Sprites', 'csd3-2023-L18']:
         self.u3l18_modularity_assessment(features)
+      case ['Position and Movement', 'csd3-2023-L18']:
+        self.u3l18_position_assessment(features)
       case ['Modularity - Multiple Sprites', 'csd3-2023-L24']:
         self.u3l24_modularity_assessment(features)
 
@@ -88,6 +90,18 @@ class DecisionTrees:
                        ]
     for prop in velocity_sprites:
       self.save_evidence_string(prop["start"], prop["end"], f"{prop['object']} object's velocity updated outside of the draw loop")
+
+  def user_trigger_conditional_evidence(self, data):
+    for statement in data:
+      self.save_evidence_string(statement['start'], statement['end'], "conditional triggered by user interaction")
+
+  def variable_triggered_conditional_evidence(self, data):
+    for statement in data:
+      self.save_evidence_string(statement['start'], statement['end'], "conditional triggered by variable value")
+
+  def object_triggered_conditional_evidence(self, data):
+    for statement in data:
+      self.save_evidence_string(statement['start'], statement['end'], "conditional triggered by object property value")
       
   # All decision tree functions should receive the code feature dictionary from the
   # CodeFeatureExtractor class when called.
@@ -172,7 +186,61 @@ class DecisionTrees:
     # No Evidence: No elements placed using the coordinate system.
     else:
       self.assessment = "No Evidence"
+
+  def u3l18_algorithms_conditionals_assessment(self, data):
+
+    conditionals_in_draw_loop = [statement for statement in data["conditionals"] if statement['draw_loop']]
+    
+    user_trigger = False
+    user_triggered_conditionals = [statement for statement in conditionals_in_draw_loop if "user_interaction" in statement.keys() and statement["user_interaction"]]
+    if user_triggered_conditionals:
+      user_trigger = True
+      self.user_trigger_conditional_evidence(user_triggered_conditionals)
+    
+    value_trigger = False
+    variables_in_code = [statement['identifier'] for statement in data['variables']]
+    if variables_in_code:
+      variables_in_conditional_tests = [statement for statement in conditionals_in_draw_loop if 'identifier' in statement.keys() and statement['identifier'] in variables_in_code]
+      for statement in conditionals_in_draw_loop:
+        if 'left' in statement:
+          if type(statement['left']) == dict and 'identifier' in statement["left"].keys():
+            variables_in_conditional_tests.append(statement)
+          elif type(statement['right']) == dict and 'identifier' in statement['right'].keys():
+            variables_in_conditional_tests.append(statement)
+      self.variable_triggered_conditional_evidence(variables_in_conditional_tests)
   
+    objects_in_code = [statement['identifier'] for statement in data['objects']]
+    if objects_in_code:
+      objects_in_conditional_tests = [statement for statement in conditionals_in_draw_loop if 'object' in statement.keys() and statement['object'] in objects_in_code]
+      for statement in conditionals_in_draw_loop:
+        if 'left' in statement:
+          if type(statement['left']) == dict and 'object' in statement["left"].keys():
+            objects_in_conditional_tests.append(statement)
+          elif type(statement['right']) == dict and 'object' in statement['right'].keys():
+            objects_in_conditional_tests.append(statement)
+      self.object_triggered_conditional_evidence(objects_in_conditional_tests)
+
+    if variables_in_conditional_tests or objects_in_conditional_tests:
+      value_trigger = True
+
+    # Extensive Evidence: Your program uses at least 3 conditionals inside the draw loop - 
+    # 1 (or more) responds to user input and 1 (or more) is triggered by a variable or sprite property.
+    if len(conditionals_in_draw_loop) >= 3 and user_trigger and value_trigger:
+      self.assessment = "Extensive Evidence"
+
+    # Convincing Evidence: Your program uses at least 2 conditionals inside the draw loop - 
+    # 1 that responds to user input and 1 that is triggered by a variable or sprite property.
+    elif len(conditionals_in_draw_loop) >= 2 and user_trigger and value_trigger:
+      self.assessment = "Convincing Evidence"
+    # Limited Evidence: Your program either has conditionals that all respond to user input 
+    # (or all using sprite properties/variables) or only has 1 conditional inside the draw loop.
+    elif len(conditionals_in_draw_loop) >= 1 and (user_trigger or value_trigger):
+      self.assessment = "Limited Evidence"
+
+    # No Evidence: Your program does not use any conditionals.
+    else:
+      self.assessment = "No Evidence"
+
   def u3l14_modularity_assessment(self, data):
     sprites = data["object_types"]["sprites"]
 
