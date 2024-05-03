@@ -21,6 +21,9 @@ class InvalidResponseError(Exception):
 class RequestTooLargeError(Exception):
     pass
 
+class OpenaiServerError(Exception):
+    pass
+
 class Label:
     _bedrock_client = None
     _bedrock_lock = Lock()
@@ -189,7 +192,11 @@ class Label:
         # Post to the AI service
         response = requests.post(api_url, headers=headers, json=data, timeout=120)
 
-        if self._openai_context_length_exceeded(response):
+        if response.status_code == 500:
+            logging.info(f"{student_id} Error calling the API: {response.status_code}")
+            logging.info(f"{student_id} Response body: {response.text}")
+            raise OpenaiServerError(f"Error calling OpenAI API: {response.text}")
+        elif self._openai_context_length_exceeded(response):
             message = response.json().get('error', {}).get('message')
             logging.error(f"{student_id} Request too large: {message}")
             raise RequestTooLargeError(f"{student_id} {message}")
