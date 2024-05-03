@@ -7,6 +7,7 @@ import os
 import openai
 import json
 import logging
+import requests
 
 from lib.assessment.config import DEFAULT_MODEL
 
@@ -56,6 +57,8 @@ def post_assessment():
         return f'InvalidResponseError: {str(e)}', 400
     except KeyConceptError as e:
         return e, 400
+    except requests.exceptions.ReadTimeout as e:
+        return f"OpenAI timeout: #{e}: ", 504
 
     if not isinstance(labels, dict) or not isinstance(labels.get("data"), list):
         return "response from AI or service not valid", 400
