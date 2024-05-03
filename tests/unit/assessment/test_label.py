@@ -706,6 +706,8 @@ class TestLabelStudentWork:
         return gen_assessment
 
     def test_should_log_timeout(self, mocker, caplog, label, prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model):
+        caplog.set_level(logging.INFO)
+
         # Mock out static assessment
         mocker.patch.object(Label, 'test_for_blank_code').return_value = None
 
@@ -722,7 +724,7 @@ class TestLabelStudentWork:
                 remove_comments=False
             )
 
-        assert any(filter(lambda x: ('request timed out' in x.message) and x.levelno == logging.ERROR, caplog.records))
+        assert any(filter(lambda x: ('request timed out' in x.message) and x.levelno == logging.INFO, caplog.records))
 
     def test_should_open_cached_responses_when_asked_and_they_exist(self, mocker, label, prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model):
         filename = f'cached_responses/{student_id}.json'
