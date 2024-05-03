@@ -9,7 +9,7 @@ import boto3
 from threading import Lock
 
 from typing import List, Dict, Any
-from lib.assessment.config import VALID_LABELS
+from lib.assessment.config import VALID_LABELS, OPENAI_API_TIMEOUT
 from lib.assessment.code_feature_extractor import CodeFeatures
 from lib.assessment.decision_trees import DecisionTrees
 
@@ -190,7 +190,7 @@ class Label:
         }
 
         # Post to the AI service
-        response = requests.post(api_url, headers=headers, json=data, timeout=120)
+        response = requests.post(api_url, headers=headers, json=data, timeout=OPENAI_API_TIMEOUT)
 
         if response.status_code == 500:
             logging.info(f"{student_id} Error calling the API: {response.status_code}")
