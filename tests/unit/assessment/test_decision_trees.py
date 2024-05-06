@@ -23,6 +23,21 @@ class TestDecisionTrees:
                                        'Line 3: Code contains 2 sprites', 
                                        'Line 11: Code contains 1 line of text', 
                                        'Line 12: Code contains 1 shape']
+    
+  def test_assess_u3l14_modularity(self, decision_trees):
+    learning_goal = {"Key Concept": "Modularity - Sprites and Sprite Properties"}
+    lesson="csd3-2023-L14"
+    features = {'object_types': {'shapes': 0, 'sprites': 1, 'text': 0}, 
+                'variables': [], 
+                'objects': [{'identifier': 'pacman', 'properties': {'x': [100], 'y': [275]}, 'type': 'sprite', 'start': 1, 'end': 1}], 
+                'movement': {'random': {'count': 0, 'lines': []}, 'counter': {'count': 1, 'lines': [{'start': 5, 'end': 5}]}}, 
+                'property_change': [{'object': 'pacman', 'method': 'setAnimation', 'start': 2, 'end': 2, 'draw_loop': False}, {'object': 'pacman', 'property': 'x', 'start': 5, 'end': 5, 'draw_loop': True}, {'object': 'pacman', 'method': 'setAnimation', 'start': 7, 'end': 7, 'draw_loop': True}]}
+    decision_trees.assess(features, learning_goal, lesson)
+    assert decision_trees.assessment == 'Convincing Evidence'
+    assert decision_trees.evidence == ['Line 1: Code contains 1 sprite', 
+                                       'Line 2: pacman object updated by its setAnimation method outside of the draw loop', 
+                                       "Line 5: pacman object's x property updated in the draw loop", 
+                                       'Line 7: pacman object updated by its setAnimation method in the draw loop']
 
   def test_assess_u3l14_position(self, decision_trees):
     learning_goal = {"Key Concept": "Position and Movement"}
@@ -42,23 +57,6 @@ class TestDecisionTrees:
                                        'Line 10: Code contains 1 instance of movement using the randomNumber() function', 
                                        'Line 10: Code contains 2 instances of movement using the counter pattern', 
                                        'Line 11: Code contains 2 instances of movement using the counter pattern']
-    
-  def test_assess_u3l18_position(self, decision_trees):
-    learning_goal = {"Key Concept": "Position and Movement"}
-    lesson="csd3-2023-L18"
-    features = {'object_types': {'shapes': 0, 'sprites': 4, 'text': 1}, 
-                'variables': [], 
-                'objects': [{'identifier': 'grass1', 'properties': {'x': [200], 'y': [200]}, 'type': 'sprite', 'start': 1, 'end': 1}, {'identifier': 'girl', 'properties': {'x': [200], 'y': [70]}, 'type': 'sprite', 'start': 3, 'end': 3}, {'identifier': 'Boy', 'properties': {'x': [260], 'y': [65]}, 'type': 'sprite', 'start': 6, 'end': 6}, {'identifier': 'flowers1', 'properties': {'x': [360], 'y': [85]}, 'type': 'sprite', 'start': 9, 'end': 9}, {'identifier': '', 'properties': {'str': ['Boy put the puss'], 'x': [90], 'y': [65]}, 'type': 'text', 'start': 15, 'end': 15}], 
-                'movement': {'random': {'count': 0, 'lines': []}, 'counter': {'count': 0, 'lines': []}}, 
-                'property_change': [{'object': 'grass1', 'method': 'setAnimation', 'start': 2, 'end': 2, 'draw_loop': False}, {'object': 'girl', 'method': 'setAnimation', 'start': 4, 'end': 4, 'draw_loop': False}, {'object': 'girl', 'property': 'scale', 'start': 5, 'end': 5, 'draw_loop': False}, {'object': 'Boy', 'method': 'setAnimation', 'start': 7, 'end': 7, 'draw_loop': False}, {'object': 'Boy', 'property': 'scale', 'start': 8, 'end': 8, 'draw_loop': False}, {'object': 'flowers1', 'method': 'setAnimation', 'start': 10, 'end': 10, 'draw_loop': False}, {'object': 'flowers1', 'property': 'scale', 'start': 11, 'end': 11, 'draw_loop': False}, {'object': 'flowers1', 'property': 'rotation', 'start': 17, 'end': 17, 'draw_loop': True}]}
-    
-    decision_trees.assess(features, learning_goal, lesson)
-    assert decision_trees.assessment == 'Limited Evidence'
-    assert decision_trees.evidence == ['Line 1: Code contains 4 sprites', 
-                                       'Line 3: Code contains 4 sprites', 
-                                       'Line 6: Code contains 4 sprites', 
-                                       'Line 9: Code contains 4 sprites', 
-                                       'Line 15: Code contains 1 non-sprite element']
     
   def test_assess_u3l18_algorithms_conditionals(self, decision_trees):
     learning_goal = {"Key Concept": "Algorithms and Control - Conditionals"}
@@ -115,21 +113,6 @@ class TestDecisionTrees:
                                        'Line 26: conditional triggered by object property value', 
                                        'Line 30: conditional triggered by object property value']
     
-  def test_assess_u3l14_modularity(self, decision_trees):
-    learning_goal = {"Key Concept": "Modularity - Sprites and Sprite Properties"}
-    lesson="csd3-2023-L14"
-    features = {'object_types': {'shapes': 0, 'sprites': 1, 'text': 0}, 
-                'variables': [], 
-                'objects': [{'identifier': 'pacman', 'properties': {'x': [100], 'y': [275]}, 'type': 'sprite', 'start': 1, 'end': 1}], 
-                'movement': {'random': {'count': 0, 'lines': []}, 'counter': {'count': 1, 'lines': [{'start': 5, 'end': 5}]}}, 
-                'property_change': [{'object': 'pacman', 'method': 'setAnimation', 'start': 2, 'end': 2, 'draw_loop': False}, {'object': 'pacman', 'property': 'x', 'start': 5, 'end': 5, 'draw_loop': True}, {'object': 'pacman', 'method': 'setAnimation', 'start': 7, 'end': 7, 'draw_loop': True}]}
-    decision_trees.assess(features, learning_goal, lesson)
-    assert decision_trees.assessment == 'Convincing Evidence'
-    assert decision_trees.evidence == ['Line 1: Code contains 1 sprite', 
-                                       'Line 2: pacman object updated by its setAnimation method outside of the draw loop', 
-                                       "Line 5: pacman object's x property updated in the draw loop", 
-                                       'Line 7: pacman object updated by its setAnimation method in the draw loop']
-    
   def test_assess_u3l18_modularity(self, decision_trees):
     learning_goal = {"Key Concept": "Modularity - Multiple Sprites"}
     lesson = "csd3-2023-L18"
@@ -149,6 +132,23 @@ class TestDecisionTrees:
                                        "Line 7: muadib object's x property updated in the draw loop", 
                                        "Line 9: shai_hulud object's visible property updated in the draw loop", 
                                        'Line 12: fremen object updated by its setAnimation method in the draw loop']
+    
+  def test_assess_u3l18_position(self, decision_trees):
+    learning_goal = {"Key Concept": "Position and Movement"}
+    lesson="csd3-2023-L18"
+    features = {'object_types': {'shapes': 0, 'sprites': 4, 'text': 1}, 
+                'variables': [], 
+                'objects': [{'identifier': 'grass1', 'properties': {'x': [200], 'y': [200]}, 'type': 'sprite', 'start': 1, 'end': 1}, {'identifier': 'girl', 'properties': {'x': [200], 'y': [70]}, 'type': 'sprite', 'start': 3, 'end': 3}, {'identifier': 'Boy', 'properties': {'x': [260], 'y': [65]}, 'type': 'sprite', 'start': 6, 'end': 6}, {'identifier': 'flowers1', 'properties': {'x': [360], 'y': [85]}, 'type': 'sprite', 'start': 9, 'end': 9}, {'identifier': '', 'properties': {'str': ['Boy put the puss'], 'x': [90], 'y': [65]}, 'type': 'text', 'start': 15, 'end': 15}], 
+                'movement': {'random': {'count': 0, 'lines': []}, 'counter': {'count': 0, 'lines': []}}, 
+                'property_change': [{'object': 'grass1', 'method': 'setAnimation', 'start': 2, 'end': 2, 'draw_loop': False}, {'object': 'girl', 'method': 'setAnimation', 'start': 4, 'end': 4, 'draw_loop': False}, {'object': 'girl', 'property': 'scale', 'start': 5, 'end': 5, 'draw_loop': False}, {'object': 'Boy', 'method': 'setAnimation', 'start': 7, 'end': 7, 'draw_loop': False}, {'object': 'Boy', 'property': 'scale', 'start': 8, 'end': 8, 'draw_loop': False}, {'object': 'flowers1', 'method': 'setAnimation', 'start': 10, 'end': 10, 'draw_loop': False}, {'object': 'flowers1', 'property': 'scale', 'start': 11, 'end': 11, 'draw_loop': False}, {'object': 'flowers1', 'property': 'rotation', 'start': 17, 'end': 17, 'draw_loop': True}]}
+    
+    decision_trees.assess(features, learning_goal, lesson)
+    assert decision_trees.assessment == 'Limited Evidence'
+    assert decision_trees.evidence == ['Line 1: Code contains 4 sprites', 
+                                       'Line 3: Code contains 4 sprites', 
+                                       'Line 6: Code contains 4 sprites', 
+                                       'Line 9: Code contains 4 sprites', 
+                                       'Line 15: Code contains 1 non-sprite element']
     
   def test_assess_u3l24_modularity(self, decision_trees):
     learning_goal = {"Key Concept": "Modularity - Multiple Sprites"}
@@ -170,7 +170,6 @@ class TestDecisionTrees:
                                        "Line 7: shai_hulud sprite's animation is properly set", 
                                        "Line 6: fremen object's velocity updated outside of the draw loop", 
                                        "Line 8: shai_hulud object's velocity updated outside of the draw loop"]
-
 
   def test_save_evidence_string_generates_valid_strings(self, decision_trees):
     decision_trees.save_evidence_string(1, 2, "multiple line evidence test")
