@@ -2,6 +2,7 @@ import esprima
 from lib.assessment.decision_trees import DecisionTrees
 import logging
 
+# Lists of arguments for object creation functions
 function_args = {
     "arc": ["x", "y", "w", "h", "start", "stop"],
     "background": ["color"],
@@ -17,6 +18,7 @@ function_args = {
     "text": ["str", "x", "y", "width", "height"]
 }
 
+# List of functions that draw a shape to the screen
 shape_functions = ['circle',
                    'ellipse',
                    'quad',
@@ -25,10 +27,13 @@ shape_functions = ['circle',
                    'shape',
                    'triangle']
 
+# List of sprite object functions
 sprite_functions = ['setAnimation']
 
+# List of object properties that are used for movement
 obj_movement_props = ['x', 'y', 'veocityX', 'velocityY', 'rotation']
 
+# List of functions that allow user interaction
 user_interaction_functions = ['keyDown', 
                               'keyWentDown', 
                               'keyWentUp', 
@@ -289,17 +294,39 @@ class CodeFeatures:
 
   # Extract and store data about conditional test statements
   def extract_conditional_tests(self, node):
+
+    # If node is the draw loop, make sure that all conditionals within the draw loop are flagged
     draw_loop = self.draw_loop_helper(node)
     if draw_loop:
       for i, statement in enumerate(self.features['conditionals']):
         if 'start' in statement and statement['start'] >= self.features['draw_loop']['start'] and statement['end'] <= self.features['draw_loop']['end']:
           self.features['conditionals'][i]['draw_loop'] = True
+
+    # If node is a conditional, parse position and trigger information and save the test to features
     conditional = self.if_statement_helper(node)
     if conditional:
-      if 'start' in self.features['draw_loop'].keys() and statement['start'] >= self.features['draw_loop']['start'] and statement['end'] <= self.features['draw_loop']['end']:
-        self.features['conditionals'].append({**conditional['test'], 'draw_loop': True})
+      if 'start' in self.features['draw_loop'].keys() and conditional['start'] >= self.features['draw_loop']['start'] and conditional['end'] <= self.features['draw_loop']['end']:
+        conditional_test = {**conditional['test'], 'draw_loop': True}
       else:
-        self.features['conditionals'].append({**conditional['test'], 'draw_loop': False})
+        conditional_test = {**conditional['test'], 'draw_loop': False}
+      
+      # If conditional test is a binary expression, check both sides for trigger
+      if 'left' in conditional_test:
+        if type(conditional_test['left']) == dict and 'identifier' in conditional_test["left"].keys() or type(conditional_test['right']) == dict and 'identifier' in conditional_test['right'].keys():
+          conditional_test = {**conditional_test, 'trigger': 'variable'}
+        elif type(conditional_test['left']) == dict and 'object' in conditional_test["left"].keys() or type(conditional_test['right']) == dict and 'object' in conditional_test['right'].keys():
+          conditional_test = {**conditional_test, 'trigger': 'object'}
+        elif type(conditional_test['left']) == dict and 'user_interaction' in conditional_test["left"].keys() or type(conditional_test['right']) == dict and 'user_interaction' in conditional_test['right'].keys():
+          conditional_test = {**conditional_test, 'trigger': 'user'}
+      elif 'user_interaction' in conditional_test:
+        conditional_test = {**conditional_test, 'trigger': 'user'}
+      elif 'object' in conditional_test:
+        conditional_test = {**conditional_test, 'trigger': 'object'}
+      elif 'identifier' in conditional_test:
+        conditional_test = {**conditional_test, 'trigger': 'variable'}
+      else:
+        conditional_test = {**conditional_test, 'trigger': 'untracked'}
+      self.features['conditionals'].append(conditional_test)
 
   # Extract and store counter and random movement instances in features dictionary
   def extract_movement_types(self, node):

@@ -94,12 +94,12 @@ class TestDecisionTrees:
                                     {'object': 'ball', 'property': 'visible', 'start': 34, 'end': 34, 'draw_loop': True}, 
                                     {'object': 'backround', 'method': 'setAnimation', 'start': 40, 'end': 40, 'draw_loop': True}, 
                                     {'object': 'robot', 'property': 'scale', 'start': 45, 'end': 45, 'draw_loop': True}], 
-                'conditionals': [{'function': 'keyDown', 'args': ['right'], 'user_interaction': True, 'start': 20, 'end': 20, 'draw_loop': True}, 
-                                  {'function': 'keyDown', 'args': ['left'], 'user_interaction': True, 'start': 17, 'end': 17, 'draw_loop': True}, 
-                                  {'left': {'object': 'robot', 'property': 'x', 'start': 26, 'end': 26}, 'operator': '>', 'right': 280, 'start': 26, 'end': 26, 'draw_loop': True}, 
-                                  {'left': {'object': 'ball', 'property': 'y', 'start': 30, 'end': 30}, 'operator': '<', 'right': 117, 'start': 30, 'end': 30, 'draw_loop': True}, 
-                                  {'left': {'identifier': 'knifeRotation'}, 'operator': '>', 'right': {'literal': 360}, 'start': 39, 'end': 39, 'draw_loop': True}, 
-                                  {'left': {'identifier': 'knifeRotation'}, 'operator': '>', 'right': {'literal': 500}, 'start': 44, 'end': 44, 'draw_loop': True}], 
+                'conditionals': [{'function': 'keyDown', 'args': ['right'], 'user_interaction': True, 'start': 20, 'end': 20, 'draw_loop': True, 'trigger': 'user'}, 
+                                  {'function': 'keyDown', 'args': ['left'], 'user_interaction': True, 'start': 17, 'end': 17, 'draw_loop': True, 'trigger': 'user'}, 
+                                  {'left': {'object': 'robot', 'property': 'x', 'start': 26, 'end': 26}, 'operator': '>', 'right': 280, 'start': 26, 'end': 26, 'draw_loop': True, 'trigger': 'object'}, 
+                                  {'left': {'object': 'ball', 'property': 'y', 'start': 30, 'end': 30}, 'operator': '<', 'right': 117, 'start': 30, 'end': 30, 'draw_loop': True, 'trigger': 'object'}, 
+                                  {'left': {'identifier': 'knifeRotation'}, 'operator': '>', 'right': {'literal': 360}, 'start': 39, 'end': 39, 'draw_loop': True, 'trigger': 'variable'}, 
+                                  {'left': {'identifier': 'knifeRotation'}, 'operator': '>', 'right': {'literal': 500}, 'start': 44, 'end': 44, 'draw_loop': True, 'trigger': 'variable'}], 
                 'draw_loop': {'start': 15, 'end': 52}}
 
     decision_trees.assess(features, learning_goal, lesson)
