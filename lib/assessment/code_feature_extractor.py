@@ -2,6 +2,7 @@ import esprima
 from lib.assessment.decision_trees import DecisionTrees
 import logging
 
+# Lists of arguments for object creation functions
 function_args = {
     "arc": ["x", "y", "w", "h", "start", "stop"],
     "background": ["color"],
@@ -17,6 +18,7 @@ function_args = {
     "text": ["str", "x", "y", "width", "height"]
 }
 
+# List of functions that draw a shape to the screen
 shape_functions = ['circle',
                    'ellipse',
                    'quad',
@@ -25,9 +27,22 @@ shape_functions = ['circle',
                    'shape',
                    'triangle']
 
+# List of sprite object functions
 sprite_functions = ['setAnimation']
 
+# List of object properties that are used for movement
 obj_movement_props = ['x', 'y', 'veocityX', 'velocityY', 'rotation']
+
+# List of functions that allow user interaction
+user_interaction_functions = ['keyDown', 
+                              'keyWentDown', 
+                              'keyWentUp', 
+                              'mouseDidMove', 
+                              'mouseDown', 
+                              'mouseIsOver', 
+                              'mousePressedOver', 
+                              'mouseWentDown', 
+                              'mouseWentUp']
 
 # This class contains delegate and helper functions to extract relevant features
 # from code for assessment. New features should be added to the features dictionary.
@@ -41,7 +56,9 @@ class CodeFeatures:
                      'variables': [],
                      'objects': [],
                      'movement': {'random': {'count': 0, 'lines': []}, 'counter': {'count':0, 'lines': []}},
-                     'property_change': []}
+                     'property_change': [],
+                     'conditionals': [],
+                     'draw_loop': {}}
 
     # Store relevant parse tree nodes here during extraction. This will be useful
     # For returning metadata like line and column numbers or for exploring additional
@@ -57,16 +74,16 @@ class CodeFeatures:
         case "MemberExpression":
           output.append(self.member_expression_helper(exp))
         case "Identifier":
-          output.append(exp.name)
+          output.append({'identifier': exp.name})
         case "Literal":
-          output.append(exp.value)
+          output.append({'literal': exp.value})
         case "CallExpression":
           output.append(self.call_expression_helper(exp))
         case "UnaryExpression":
           output.append(self.unary_expression_helper(exp))
         case _:
           logging.info(f"binary expression outlier: {exp}") # DEBUG
-    return {"left": output[0], "operator": expression.operator, "right": output[1], "start": expression.loc.start.line, "end":expression.loc.end.line}
+    return {"left": output[0], "operator": expression.operator, "right": output[1], "start": expression.loc.start.line, "end": expression.loc.end.line}
 
   # Helper function for parsing function calls. Outputs a dictionary containing the
   # function identifier and the arguments. Arguments are labeled with their respective
@@ -74,9 +91,14 @@ class CodeFeatures:
   def call_expression_helper(self, expression):
     # Get function / method identifier
     if expression.callee.type == "MemberExpression":
-      function = {"object": expression.callee.object.name, "method": expression.callee.property.name, "start":expression.loc.start.line, "end":expression.loc.end.line}
+      function = {"object": expression.callee.object.name, "method": expression.callee.property.name, "start": expression.loc.start.line, "end": expression.loc.end.line}
     else:
       function = expression.callee.name
+    
+    if function in user_interaction_functions:
+      user_interaction = True
+    else:
+      user_interaction = False
 
     # Get arguments
     args = {}
@@ -97,25 +119,15 @@ class CodeFeatures:
           args[arg_names[i]] = [value]
       else:
         args = arg_values
-    return {"function": function, "args": args, "start":expression.loc.start.line, "end":expression.loc.end.line}
-  
-  def update_expression_helper(self, expression):
-    argument = {}
-    match expression.argument.type:
-      case "MemberExpression":
-        argument = self.member_expression_helper(expression.argument)
-      case "Identifier":
-        argument = expression.argument.name
-      case _:
-        logging.info(f"update expression argument outlier: {expression.argument}")
-    return {"operator":expression.operator, "argument":argument, "start":expression.loc.start.line, "end":expression.loc.end.line}
+    return {"function": function, "args": args, 'user_interaction': user_interaction, "start": expression.loc.start.line, "end": expression.loc.end.line}
       
-
   # Helper function to analyze all statements in the draw loop. Sends statements
   # to their respective helper functions for parsing based on statement type.
   # Returns a list of all statement outputs.
   def draw_loop_helper(self, node):
     if node.type == "FunctionDeclaration" and node.id.name == "draw":
+      self.features['draw_loop']['start'] = node.loc.start.line
+      self.features['draw_loop']['end'] = node.loc.end.line
       draw_loop_body = []
       for statement in node.body.body:
         match statement.type:
@@ -141,14 +153,14 @@ class CodeFeatures:
   # Helper function to parse all statements in an if block
   def if_statement_helper(self, node):
     if node.type == "IfStatement":
-      test = None
+      test = {}
       match node.test.type:
         case "Identifier":
-          test = node.test.name
+          test = {'identifier': node.test.name}
         case "MemberExpression":
           test = self.member_expression_helper(node.test)
         case "Literal":
-          test = node.test.value
+          test = {'literal': node.test.value}
         case "BinaryExpression":
           test = self.binary_expression_helper(node.test)
         case "CallExpression":
@@ -198,7 +210,7 @@ class CodeFeatures:
               alternate.append(self.if_statement_helper(statement))
             case _:
               logging.info(f"conditional alternate outlier statement: {statement}")
-      return {"test": test, "consequent": consequent, "alternate": alternate, "start":node.loc.start.line, "end":node.loc.end.line}
+      return {"test": test, "consequent": consequent, "alternate": alternate, "start": node.loc.start.line, "end": node.loc.end.line}
 
   # This function is used to extract statements from all conditional paths,
   # including nested conditionals, for analysis
@@ -219,7 +231,7 @@ class CodeFeatures:
     # Get object and property names
     member_expression = {}
     if expression.object.type == "Identifier":
-      member_expression = {"object": expression.object.name, "property": expression.property.name, "start":expression.loc.start.line, "end":expression.loc.end.line}
+      member_expression = {"object": expression.object.name, "property": expression.property.name, "start": expression.loc.start.line, "end": expression.loc.end.line}
     else:
       logging.info(f"member expression outlier: {expression}") # DEBUG
     return member_expression
@@ -232,6 +244,17 @@ class CodeFeatures:
     else:
       logging.info(f"unary expression outlier: {expression}") #DEBUG
 
+  def update_expression_helper(self, expression):
+    argument = {}
+    match expression.argument.type:
+      case "MemberExpression":
+        argument = self.member_expression_helper(expression.argument)
+      case "Identifier":
+        argument = expression.argument.name
+      case _:
+        logging.info(f"update expression argument outlier: {expression.argument}")
+    return {"operator":expression.operator, "argument":argument, "start": expression.loc.start.line, "end": expression.loc.end.line}
+
   def variable_declaration_helper(self, node):
     declarations = []
     for declaration in node.declarations:
@@ -240,7 +263,7 @@ class CodeFeatures:
         value = self.call_expression_helper(declaration.init)
       else:
         value = declaration.init.value
-      declarations.append({"identifier": identifier, "value": value, "start":node.loc.start.line, "end":node.loc.end.line})
+      declarations.append({"identifier": identifier, "value": value, "start": node.loc.start.line, "end": node.loc.end.line})
     return declarations
 
   # Helper function to parse variable assignment statements. Returns a dict
@@ -263,11 +286,48 @@ class CodeFeatures:
           output.append(self.unary_expression_helper(exp))
         case _:
           logging.info(f"variable assignment outlier: {exp}")
-    return {"assignee": output[0], "value": output[1], "start":node.loc.start.line, "end":node.loc.end.line}
+    return {"assignee": output[0], "value": output[1], "start": node.loc.start.line, "end": node.loc.end.line}
   
   # Extractor functions: These functions utilize helper functions to return
   # information from nodes, then store the relevant code features in the
   # features dictionary.
+
+  # Extract and store data about conditional test statements
+  def extract_conditional_tests(self, node):
+
+    # If node is the draw loop, make sure that all conditionals within the draw loop are flagged
+    draw_loop = self.draw_loop_helper(node)
+    if draw_loop:
+      for i, statement in enumerate(self.features['conditionals']):
+        if 'start' in statement and statement['start'] >= self.features['draw_loop']['start'] and statement['end'] <= self.features['draw_loop']['end']:
+          self.features['conditionals'][i]['draw_loop'] = True
+
+    # If node is a conditional, parse position and trigger information and save the test to features
+    conditional = self.if_statement_helper(node)
+    if conditional:
+      if 'start' in self.features['draw_loop'].keys() and conditional['start'] >= self.features['draw_loop']['start'] and conditional['end'] <= self.features['draw_loop']['end']:
+        conditional_test = {**conditional['test'], 'draw_loop': True}
+      else:
+        conditional_test = {**conditional['test'], 'draw_loop': False}
+      
+      # If conditional test is a binary expression, check both sides for trigger
+      if 'left' in conditional_test:
+        if type(conditional_test['left']) == dict and 'identifier' in conditional_test["left"].keys() or type(conditional_test['right']) == dict and 'identifier' in conditional_test['right'].keys():
+          conditional_test = {**conditional_test, 'trigger': 'variable'}
+        elif type(conditional_test['left']) == dict and 'object' in conditional_test["left"].keys() or type(conditional_test['right']) == dict and 'object' in conditional_test['right'].keys():
+          conditional_test = {**conditional_test, 'trigger': 'object'}
+        elif type(conditional_test['left']) == dict and 'user_interaction' in conditional_test["left"].keys() or type(conditional_test['right']) == dict and 'user_interaction' in conditional_test['right'].keys():
+          conditional_test = {**conditional_test, 'trigger': 'user'}
+      elif 'user_interaction' in conditional_test:
+        conditional_test = {**conditional_test, 'trigger': 'user'}
+      elif 'object' in conditional_test:
+        conditional_test = {**conditional_test, 'trigger': 'object'}
+      elif 'identifier' in conditional_test:
+        conditional_test = {**conditional_test, 'trigger': 'variable'}
+      else:
+        conditional_test = {**conditional_test, 'trigger': 'untracked'}
+      self.features['conditionals'].append(conditional_test)
+
   # Extract and store counter and random movement instances in features dictionary
   def extract_movement_types(self, node):
     draw_loop_info = self.draw_loop_helper(node)
@@ -328,31 +388,6 @@ class CodeFeatures:
                         self.features["movement"]["random"]["lines"].append({'start': statement["start"], 'end': statement["end"]})
                         self.nodes.append(node)
 
-  #Extract and store all object properties that are updated
-  def extract_property_assignment(self, node):
-    if node.type == "FunctionDeclaration" and node.id.name == "draw":
-      draw_loop_start = node.loc.start.line
-      draw_loop_end = node.loc.end.line
-      # For any properties that change in the drawloop, change "draw_loop" to true
-      new_properties = []
-      for property in self.features["property_change"]:
-        if property["start"] >= draw_loop_start and property["end"] <= draw_loop_end:
-          property["draw_loop"] = True
-        new_properties.append(property)
-      self.features["property_change"] = new_properties
-    elif node.type == "ExpressionStatement" and node.expression.type == "CallExpression":
-      node_info = self.call_expression_helper(node.expression)
-      if type(node_info["function"]) is dict and all([k in node_info["function"].keys() for k in ["object", "method"]]) and node_info["function"]["method"] in sprite_functions:
-        self.features["property_change"].append({**node_info["function"], "draw_loop":False})
-    elif node.type == "ExpressionStatement" and node.expression.type == "AssignmentExpression":
-      node_info = self.variable_assignment_helper(node)
-      if type(node_info["assignee"]) is dict and all([k in node_info["assignee"].keys() for k in ["object", "property"]]):
-        self.features["property_change"].append({**node_info["assignee"], "draw_loop":False})
-    elif node.type == "ExpressionStatement" and node.expression.type == "UpdateExpression":
-      node_info = self.update_expression_helper(node.expression)
-      if type(node_info["argument"]) is dict and node_info["operator"] in ["++", "--", "~"] and all([k in node_info["argument"].keys() for k in ["object", "property"]]):
-        self.features["property_change"].append({**node_info["argument"], "draw_loop":False})
-      
   # Extract and store all object and variable data, including object types
   def extract_object_and_variable_data(self, node):
     if node.type == "VariableDeclaration":
@@ -388,6 +423,30 @@ class CodeFeatures:
         self.features["object_types"]["shapes"] += 1
         self.nodes.append(node)
 
+  #Extract and store all object properties that are updated
+  def extract_property_assignment(self, node):
+    draw_loop = self.draw_loop_helper(node)
+    if draw_loop:
+      # For any properties that change in the drawloop, change "draw_loop" to true
+      new_properties = []
+      for property in self.features["property_change"]:
+        if property["start"] >= self.features['draw_loop']['start'] and property["end"] <= self.features['draw_loop']['end']:
+          property["draw_loop"] = True
+        new_properties.append(property)
+      self.features["property_change"] = new_properties
+    elif node.type == "ExpressionStatement" and node.expression.type == "CallExpression":
+      node_info = self.call_expression_helper(node.expression)
+      if type(node_info["function"]) is dict and all([k in node_info["function"].keys() for k in ["object", "method"]]) and node_info["function"]["method"] in sprite_functions:
+        self.features["property_change"].append({**node_info["function"], "draw_loop":False})
+    elif node.type == "ExpressionStatement" and node.expression.type == "AssignmentExpression":
+      node_info = self.variable_assignment_helper(node)
+      if type(node_info["assignee"]) is dict and all([k in node_info["assignee"].keys() for k in ["object", "property"]]):
+        self.features["property_change"].append({**node_info["assignee"], "draw_loop":False})
+    elif node.type == "ExpressionStatement" and node.expression.type == "UpdateExpression":
+      node_info = self.update_expression_helper(node.expression)
+      if type(node_info["argument"]) is dict and node_info["operator"] in ["++", "--", "~"] and all([k in node_info["argument"].keys() for k in ["object", "property"]]):
+        self.features["property_change"].append({**node_info["argument"], "draw_loop":False})
+
   # Function to extract features for learning goals. Contains delegate functions
   # to be used with the parser. Does not return any values, but should populate
   # the features dictionary with values based on parse results
@@ -414,5 +473,6 @@ class CodeFeatures:
       self.extract_object_and_variable_data(node)
       self.extract_movement_types(node)
       self.extract_property_assignment(node)
+      self.extract_conditional_tests(node)
 
     parse_code(program)

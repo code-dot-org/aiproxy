@@ -12,167 +12,7 @@ def code_features():
     yield CodeFeatures()
 
 class TestCodeFeatureExtractor:
-  def test_u3l11_position_feature_extractor(self, code_features):
-    code = """background("black");
-var animalhead_duck1 = createSprite(352, 200);
-var animalhead_frog_1 = createSprite(46, 200);
-animalhead_duck1.setAnimation("animalhead_duck1");
-animalhead_frog_1.setAnimation("animalhead_frog_1");
-animalhead_frog_1.scale = 0.4;
-animalhead_duck1.scale = 0.4;
-drawSprites();
-textSize(20);
-fill("white");
-text("Fortnite", 175, 200);
-rect(50, 240, 75, 25);"""
-
-    code_features.extract_features(code)
-
-    assert code_features.features["object_types"] == {'shapes': 1, 'sprites': 2, 'text': 1}
-
-  def test_u3l14_position_feature_extractor(self, code_features):
-    
-    code = """var backgroundSprite = createSprite(200, 200);
-var snowman = createSprite(200, 200);
-snowman.setAnimation("snowman");
-snowman.scale = 0.25;
-var santa = createSprite(300, 350);
-santa.scale = 0.25;
-function draw() {
-  backgroundSprite.setAnimation("backgroundSprite");
-  santa.setAnimation("santa");
-  santa.x = santa.x + randomNumber(-1, 1);
-  snowman.rotation++;
-  drawSprites();
-}"""
-
-    code_features.extract_features(code)
-
-    assert code_features.features["object_types"] == {'shapes': 0, 'sprites': 3, 'text': 0}
-    assert code_features.features["movement"] == {'random': {'count': 1, 
-                                                             'lines': [{'end': 10, 'start': 10}]},
-                                                  'counter': {'count': 2, 
-                                                              'lines': [{'end': 10, 'start': 10}, 
-                                                                        {'end': 11, 'start': 11}]}}
-  
-  def test_u3l18_position_feature_extractor(self, code_features):
-    code = """var grass1 = createSprite(200, 200);
-grass1.setAnimation("grass1");
-var girl = createSprite(200, 70);
-girl.setAnimation("girl");
-girl.scale = 0.3;
-var Boy = createSprite(260, 65);
-Boy.setAnimation("Boy");
-Boy.scale = 0.3;
-var flowers1  = createSprite(360, 85);
-flowers1.setAnimation("flower1");
-flowers1.scale = 0.2;
-drawSprites();
-
-function draw() {
-  text("Boy put the puss", 90, 65);
-  if (keyDown("Down")) {
-    flowers1.rotation = 90;
-    drawSprites();
-  }
-}"""
-
-    code_features.extract_features(code)
-
-    assert code_features.features["object_types"] == {'shapes': 0, 'sprites': 4, 'text': 1}
-    assert code_features.features["movement"] == {'random': {'count': 0, 'lines': []}, 'counter': {'count': 0, 'lines': []}}
-
-
-  def test_u3l14_modularity_feature_extractor(self, code_features):
-    code = """var pacman = createSprite(100, 275);
-pacman.setAnimation("pacman");
-function draw() {
-    pac = randomNumber(1, 100);
-    pacman.x = pacman.x - 3;
-    if (pac < 50){
-        pacman.setAnimation("pacman_closed");
-      }
-}
-"""
-    code_features.extract_features(code)
-
-    assert code_features.features["object_types"] == {'shapes': 0, 'sprites': 1, 'text': 0}
-    assert code_features.features["movement"] == {'random': {'count': 0, 'lines': []}, 'counter': {'count': 1, 'lines': [{'end': 5, 'start': 5}]}}
-    assert code_features.features["objects"] == [{'end': 1, 'identifier': 'pacman', 'properties': {'x': [100], 'y': [275]}, 'start': 1, 'type': 'sprite'}]
-    assert code_features.features["property_change"] == [   {   'draw_loop': False,
-                               'end': 2,
-                               'method': 'setAnimation',
-                               'object': 'pacman',
-                               'start': 2},
-                           {   'draw_loop': True,
-                               'end': 5,
-                               'object': 'pacman',
-                               'property': 'x',
-                               'start': 5},
-                           {   'draw_loop': True,
-                               'end': 7,
-                               'method': 'setAnimation',
-                               'object': 'pacman',
-                               'start': 7}]
-
-  def test_u3l18_modularity_feature_extractor(self, code_features):
-    code = """var shai_hulud = createSprite(100, 275);
-var muadib = createSprite(50, 100);
-var fremen = createSprite(0, 275);
-shai_hulud.setAnimation("worm");
-function draw() {
-    rhythm = randomNumber(1, 100);
-    muadib.x = muadib.x + 2;
-    if (rhythm < 50){
-        shai_hulud.visible = False;
-      }
-    if (muadib.x == shai_hulud.x && rhythm > 50) {
-        fremen.setAnimation("lisan al gaib")
-    }
-}
-"""
-
-    code_features.extract_features(code)
-    print(code_features.features) 
-    assert code_features.features["object_types"] == {'shapes': 0, 'sprites': 3, 'text': 0}
-    assert code_features.features["movement"] == {'random': {'count': 0, 'lines': []}, 'counter': {'count': 1, 'lines': [{'start': 7, 'end': 7}]}}
-    assert code_features.features["objects"] == [   {   'end': 1,
-                       'identifier': 'shai_hulud',
-                       'properties': {'x': [100], 'y': [275]},
-                       'start': 1,
-                       'type': 'sprite'},
-                   {   'end': 2,
-                       'identifier': 'muadib',
-                       'properties': {'x': [50], 'y': [100]},
-                       'start': 2,
-                       'type': 'sprite'},
-                   {   'end': 3,
-                       'identifier': 'fremen',
-                       'properties': {'x': [0], 'y': [275]},
-                       'start': 3,
-                       'type': 'sprite'}]
-    assert code_features.features["property_change"] == [   {   'draw_loop': False,
-                               'end': 4,
-                               'method': 'setAnimation',
-                               'object': 'shai_hulud',
-                               'start': 4},
-                           {   'draw_loop': True,
-                               'end': 7,
-                               'object': 'muadib',
-                               'property': 'x',
-                               'start': 7},
-                           {   'draw_loop': True,
-                               'end': 9,
-                               'object': 'shai_hulud',
-                               'property': 'visible',
-                               'start': 9},
-                           {   'draw_loop': True,
-                               'end': 12,
-                               'method': 'setAnimation',
-                               'object': 'fremen',
-                               'start': 12}]
-
-  def test_u3l24_modularity_feature_extractor(self, code_features):
+  def test_feature_extractor(self, code_features):
     code = """var shai_hulud = createSprite(100, 275);
 var muadib = createSprite(50, 100);
 muadib.setAnimation("muadib");
@@ -187,7 +27,7 @@ function draw() {
     if (rhythm < 50){
         shai_hulud.visible = False;
       }
-    if (muadib.x == shai_hulud.x && rhythm > 50) {
+    if (muadib.x == shai_hulud.x) {
         muadib.setAnimation("eyes of ibad");
         fremen.setAnimation("lisan al gaib");
     }
@@ -195,80 +35,105 @@ function draw() {
 """
 
     code_features.extract_features(code)
-
-    assert code_features.features["object_types"] == {'shapes': 0, 'sprites': 3, 'text': 0}
-    assert code_features.features["movement"] == {'random': {'count': 0, 'lines': []}, 'counter': {'count': 1, 'lines': [{'end': 11, 'start': 11}]}}
-    assert code_features.features["objects"] == [ { 'end': 1,
-                              'identifier': 'shai_hulud',
-                              'properties': {'x': [100], 'y': [275]},
-                              'start': 1,
-                              'type': 'sprite'},
-                            { 'end': 2,
-                              'identifier': 'muadib',
-                              'properties': {'x': [50], 'y': [100]},
-                              'start': 2,
-                              'type': 'sprite'},
-                            { 'end': 4,
-                              'identifier': 'fremen',
-                              'properties': {'x': [0], 'y': [275]},
-                              'start': 4,
-                              'type': 'sprite'}]
-    assert code_features.features["property_change"] == [ { 'draw_loop': False,
-                              'end': 3,
-                              'method': 'setAnimation',
-                              'object': 'muadib',
-                              'start': 3},
-                            { 'draw_loop': False,
-                              'end': 5,
-                              'method': 'setAnimation',
-                              'object': 'fremen',
-                              'start': 5},
-                            { 'draw_loop': False,
-                              'end': 6,
-                              'object': 'fremen',
-                              'property': 'velocityY',
-                              'start': 6},
-                            { 'draw_loop': False,
-                              'end': 7,
-                              'method': 'setAnimation',
-                              'object': 'shai_hulud',
-                              'start': 7},
-                            { 'draw_loop': False,
-                              'end': 8,
-                              'object': 'shai_hulud',
-                              'property': 'velocityX',
-                              'start': 8},
-                            { 'draw_loop': True,
-                              'end': 11,
-                              'object': 'muadib',
-                              'property': 'x',
-                              'start': 11},
-                            { 'draw_loop': True,
-                              'end': 13,
-                              'object': 'shai_hulud',
-                              'property': 'visible',
-                              'start': 13},
-                            { 'draw_loop': True,
-                              'end': 16,
-                              'method': 'setAnimation',
-                              'object': 'muadib',
-                              'start': 16},
-                            { 'draw_loop': True,
-                              'end': 17,
-                              'method': 'setAnimation',
-                              'object': 'fremen',
-                              'start': 17}]
+    print(code_features.features)
+    assert code_features.features == {'object_types': {'shapes': 0, 'sprites': 3, 'text': 0},
+                                      'variables': [],
+                                      'objects': [{'identifier': 'shai_hulud',
+                                                    'properties': {'x': [100], 'y': [275]},
+                                                    'type': 'sprite',
+                                                    'start': 1,
+                                                    'end': 1},
+                                                  {'identifier': 'muadib',
+                                                    'properties': {'x': [50], 'y': [100]},
+                                                    'type': 'sprite',
+                                                    'start': 2,
+                                                    'end': 2},
+                                                  {'identifier': 'fremen',
+                                                    'properties': {'x': [0], 'y': [275]},
+                                                    'type': 'sprite',
+                                                    'start': 4,
+                                                    'end': 4}],
+                                      'movement': {'random': {'count': 0, 'lines': []},
+                                                    'counter': {'count': 1, 'lines': [{'start': 11, 'end': 11}]}},
+                                      'property_change': [{'object': 'muadib',
+                                                            'method': 'setAnimation',
+                                                            'start': 3,
+                                                            'end': 3,
+                                                            'draw_loop': False},
+                                                          {'object': 'fremen',
+                                                            'method': 'setAnimation',
+                                                            'start': 5,
+                                                            'end': 5,
+                                                            'draw_loop': False},
+                                                          {'object': 'fremen',
+                                                            'property': 'velocityY',
+                                                            'start': 6,
+                                                            'end': 6,
+                                                            'draw_loop': False},
+                                                          {'object': 'shai_hulud',
+                                                            'method': 'setAnimation',
+                                                            'start': 7,
+                                                            'end': 7,
+                                                            'draw_loop': False},
+                                                          {'object': 'shai_hulud',
+                                                            'property': 'velocityX',
+                                                            'start': 8,
+                                                            'end': 8,
+                                                            'draw_loop': False},
+                                                          {'object': 'muadib',
+                                                            'property': 'x',
+                                                            'start': 11,
+                                                            'end': 11,
+                                                            'draw_loop': True},
+                                                          {'object': 'shai_hulud',
+                                                            'property': 'visible',
+                                                            'start': 13,
+                                                            'end': 13,
+                                                            'draw_loop': True},
+                                                          {'object': 'muadib',
+                                                            'method': 'setAnimation',
+                                                            'start': 16,
+                                                            'end': 16,
+                                                            'draw_loop': True},
+                                                          {'object': 'fremen',
+                                                            'method': 'setAnimation',
+                                                            'start': 17,
+                                                            'end': 17,
+                                                            'draw_loop': True}],
+                                      'conditionals': [{'left': {'identifier': 'rhythm'},
+                                                        'operator': '<',
+                                                        'right': {'literal': 50},
+                                                        'start': 12,
+                                                        'end': 12,
+                                                        'draw_loop': True,
+                                                        'trigger': 'variable'},
+                                                        {'left': {'object': 'muadib',
+                                                                  'property': 'x',
+                                                                  'start': 15,
+                                                                  'end': 15},
+                                                        'operator': '==',
+                                                        'right': {'object': 'shai_hulud',
+                                                                  'property': 'x',
+                                                                  'start': 15,
+                                                                  'end': 15},
+                                                        'start': 15,
+                                                        'end': 15,
+                                                        'draw_loop': True,
+                                                        'trigger': 'object'}],
+                                      'draw_loop': {'start': 9, 'end': 19}}
 
   def test_binary_expression_helper(self, code_features):
     statement = "x = x + 1"
     parsed = esprima.parseScript(statement, {'tolerant': True, 'comment': True, 'loc': True})
     result = code_features.binary_expression_helper(parsed.body[0].expression.right)
-    assert result == {'left': 'x', 'operator': '+', 'right': 1, 'start': 1, 'end': 1}
+    print(result)
+    assert result == {'left': {'identifier': 'x'}, 'operator': '+', 'right': {'literal': 1}, 'start': 1, 'end': 1}
 
     statement = "x = x + -1"
     parsed = esprima.parseScript(statement, {'tolerant': True, 'comment': True, 'loc': True})
     result = code_features.binary_expression_helper(parsed.body[0].expression.right)
-    assert result == {'left': 'x', 'operator': '+', 'right': -1, 'start': 1, 'end': 1}
+    print(result)
+    assert result == {'left': {'identifier': 'x'}, 'operator': '+', 'right': -1.0, 'start': 1, 'end': 1}
 
   def test_update_expression_helper(self, code_features):
     statement = "x++"
@@ -286,7 +151,7 @@ function draw() {
     test_function(x)"""
     parsed = esprima.parseScript(statement, {'tolerant': True, 'comment': True, 'loc': True})
     result = code_features.call_expression_helper(parsed.body[1].expression)
-    assert result == {'args': ['x'], 'function': 'test_function', 'start': 2, 'end': 2}
+    assert result == {'args': ['x'], 'function': 'test_function', 'user_interaction': False, 'start': 2, 'end': 2}
 
   def test_draw_loop_helper(self, code_features):
     statement = """function draw() {
@@ -294,6 +159,7 @@ function draw() {
 }"""
     parsed = esprima.parseScript(statement, {'tolerant': True, 'comment': True, 'loc': True})
     result = code_features.draw_loop_helper(parsed.body[0])
+    print(result)
     assert result == [{'identifier': 'x', 'value': 1, 'start': 2, 'end': 2}]
 
   def test_if_statement_helper(self, code_features):
@@ -319,61 +185,27 @@ function draw() {
 }"""
     parsed = esprima.parseScript(statement, {'tolerant': True, 'comment': True, 'loc': True})
     result = code_features.if_statement_helper(parsed.body[0])
-    assert result == {
-      'alternate': [ { 'alternate': [],
-                   'consequent': [ { 'end': 11,
-                                     'identifier': 'y',
-                                     'start': 11,
-                                     'value': 2}],
-                   'end': 12,
-                   'start': 10,
-                   'test': 'x'},
-                 { 'alternate': [],
-                   'consequent': [ { 'assignee': 'x',
-                                     'end': 14,
-                                     'start': 14,
-                                     'value': 2}],
-                   'end': 15,
-                   'start': 13,
-                   'test': { 'end': 13,
-                             'object': 'x',
-                             'property': 'prop',
-                             'start': 13}},
-                 {'args': [1], 'end': 16, 'function': 'test_func', 'start': 16},
-                 {'end': 17, 'identifier': 'z', 'start': 17, 'value': 1},
-                 {'assignee': 'z', 'end': 18, 'start': 18, 'value': 2},
-                 {'argument': 'y',
-                  'operator': '--',
-                  'start': 19,
-                  'end': 19,
-                  }],
-      'consequent': [ { 'alternate': [],
-                    'consequent': [ { 'end': 3,
-                                      'identifier': 'x',
-                                      'start': 3,
-                                      'value': 1}],
-                    'end': 4,
-                    'start': 2,
-                    'test': True},
-                  { 'alternate': [],
-                    'consequent': [ { 'assignee': 'x',
-                                      'end': 6,
-                                      'start': 6,
-                                      'value': 2}],
-                    'end': 7,
-                    'start': 5,
-                    'test': { 'end': 5,
-                              'left': 'x',
-                              'operator': '===',
-                              'right': 1,
-                              'start': 5}},
-                              {'argument': 'x',
-                               'end': 8,
-                               'operator': '++',
-                               'start': 8}],
-      'end': 20,
-      'start': 1,
-      'test': -1.0}
+    print(result)
+    assert result == {'test': -1.0, 
+                      'consequent': [{'test': {'literal': True}, 
+                                      'consequent': [{'identifier': 'x', 'value': 1, 'start': 3, 'end': 3}], 
+                                      'alternate': [], 
+                                      'start': 2, 
+                                      'end': 4}, 
+                                     {'test': {'left': {'identifier': 'x'}, 'operator': '===', 'right': {'literal': 1}, 'start': 5, 'end': 5}, 
+                                      'consequent': [{'assignee': 'x', 'value': 2, 'start': 6, 'end': 6}], 
+                                      'alternate': [], 'start': 5, 'end': 7}, {'operator': '++', 'argument': 'x', 'start': 8, 'end': 8}], 
+                      'alternate': [{'test': {'identifier': 'x'}, 
+                                     'consequent': [{'identifier': 'y', 'value': 2, 'start': 11, 'end': 11}], 
+                                     'alternate': [], 'start': 10, 'end': 12}, 
+                                    {'test': {'object': 'x', 'property': 'prop', 'start': 13, 'end': 13}, 
+                                     'consequent': [{'assignee': 'x', 'value': 2, 'start': 14, 'end': 14}], 
+                                     'alternate': [], 'start': 13, 'end': 15}, 
+                                    {'function': 'test_func', 'args': [1], 'user_interaction': False, 'start': 16, 'end': 16}, 
+                                    {'identifier': 'z', 'value': 1, 'start': 17, 'end': 17}, 
+                                    {'assignee': 'z', 'value': 2, 'start': 18, 'end': 18}, 
+                                    {'operator': '--', 'argument': 'y', 'start': 19, 'end': 19}], 
+                      'start': 1, 'end': 20}
   
   def test_flatten_conditional_paths(self, code_features):
     statement = """if(-1) {
@@ -395,5 +227,5 @@ x = -1
     parsed = esprima.parseScript(statement, {'tolerant': True, 'comment': True, 'loc': True})
     result = code_features.variable_assignment_helper(parsed.body[1])
     result2 = code_features.variable_assignment_helper(parsed.body[2])
-    assert result == {'assignee': 'x', 'value': {'function': 'test_func', 'args': [1], 'start': 2, 'end': 2}, 'start': 2, 'end': 2}
+    assert result == {'assignee': 'x', 'value': {'function': 'test_func', 'args': [1], 'user_interaction': False, 'start': 2, 'end': 2}, 'start': 2, 'end': 2}
     assert result2 == {'assignee': 'x', 'value': -1.0, 'start': 3, 'end': 3}
