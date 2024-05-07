@@ -9,7 +9,7 @@ from io import StringIO
 import requests
 import pytest
 
-from lib.assessment.label import Label, InvalidResponseError, RequestTooLargeError
+from lib.assessment.label import Label, InvalidResponseError, RequestTooLargeError, OpenaiServerError
 
 
 @pytest.fixture
@@ -543,13 +543,33 @@ class TestAiLabelStudentWork:
             status_code=400,
         )
 
-        parsed_rubric = list(csv.DictReader(rubric.splitlines()))
-
         with pytest.raises(RequestTooLargeError) as error:
             label.ai_label_student_work(
                 prompt, rubric, code, student_id, examples(rubric), num_responses, temperature, llm_model
             )
         assert context_length_message in str(error.value)
+
+    def test_should_raise_service_unavailable_when_openai_returns_500(
+            self, requests_mock, openai_gpt_response, label, prompt, rubric, code, student_id,
+            examples, num_responses, temperature, llm_model):
+
+        mock_gpt_response = openai_gpt_response(
+            rubric=rubric,
+            num_responses=num_responses
+        )
+
+        requests_mock.post(
+            'https://api.openai.com/v1/chat/completions',
+            json=mock_gpt_response,
+            headers={'Content-Type': 'application/json'},
+            status_code=500,
+        )
+
+        with pytest.raises(OpenaiServerError) as error:
+            label.ai_label_student_work(
+                prompt, rubric, code, student_id, examples(rubric), num_responses, temperature, llm_model
+            )
+        assert 'openai' in str(error.value).lower()
 
     def test_should_return_data_as_none_when_ai_result_is_empty(self, requests_mock, mocker, openai_gpt_response, label, prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model):
         mock_gpt_response = openai_gpt_response(
