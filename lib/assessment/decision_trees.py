@@ -24,6 +24,8 @@ class DecisionTrees:
         self.u3l18_modularity_assessment(features)
       case ['Position and Movement', 'csd3-2023-L18']:
         self.u3l18_position_assessment(features)
+      case ['Modularity - Multiple Sprites', 'csd3-2023-L21']:
+        self.u3l21_modularity_assessment(features)
       case ['Modularity - Multiple Sprites', 'csd3-2023-L24']:
         self.u3l24_modularity_assessment(features)
 
@@ -276,7 +278,51 @@ class DecisionTrees:
     # No Evidence: No elements placed using the coordinate system.
     else:
       self.assessment = "No Evidence"
-  
+
+  def u3l21_modularity_assessment(self, data):
+    sprites = data["object_types"]["sprites"]
+
+    # set of sprites that have their animation set outside the drawloop
+    animation_set = set([property["object"] for property in data["property_change"] if
+                                   any([obj["identifier"] == property["object"] and
+                                        obj["type"]=="sprite" for obj in data["objects"]])
+                                  and property["draw_loop"] == False
+                                  and "method" in property.keys()
+                                  and property["method"] == "setAnimation"
+                                  ])
+    
+    # set of sprites that have velocity set outside the drawloop
+    velocity_set = set([property["object"] for property in data["property_change"] if
+                                   any([obj["identifier"] == property["object"] and
+                                        obj["type"]=="sprite" for obj in data["objects"]])
+                                  and property["draw_loop"] == False
+                                  and "property" in property.keys()
+                                  and "velocity" in property["property"]
+                                  ])
+    
+    self.sprites_evidence(data, sprites)
+    self.animation_evidence(data)
+    self.velocity_evidence(data)
+
+    # Extensive Evidence: At least 3 sprites created and animations set properly. 
+    # The x velocity of the target and obstacle properly set outside the draw loop.
+    if sprites >= 3 and len(animation_set) >= 3 and len(velocity_set) >= 2:
+      self.assessment = "Extensive Evidence"
+
+    # Convincing Evidence: At least 2 sprites created and animations set properly. 
+    # The x velocity of the target or obstacle properly set outside the draw loop.
+    elif sprites >= 2 and len(animation_set) >= 2 and len(velocity_set) >= 1:
+      self.assessment = "Convincing Evidence"
+
+    # Limited Evidence: At least 2 sprites created and animations set. 
+    # The x velocity of the target or obstacle not set or set inside the draw loop.
+    elif sprites >= 2 and len(animation_set) >= 2:
+      self.assessment = "Limited Evidence"
+
+    # No Evidence: No sprites are used in the program.
+    else:
+      self.assessment = "No Evidence"
+
   def u3l24_modularity_assessment(self, data):
     sprites = data["object_types"]["sprites"]
 
