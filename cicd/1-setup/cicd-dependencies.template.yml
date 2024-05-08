@@ -105,6 +105,14 @@ Resources:
       Path: /service-role/
       PermissionsBoundary: !ImportValue IAM-DevPermissions
       Policies:
+        - PolicyName: PublicCodeBuildLogsAccess
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "*" # TODO: Scope to a specific log group
         - PolicyName: PublicCodeBuildSecretsAccess
           PolicyDocument:
             Statement:
