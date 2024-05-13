@@ -744,7 +744,7 @@ class TestLabelStudentWork:
                 remove_comments=False
             )
 
-        assert any(filter(lambda x: ('request timed out' in x.message) and x.levelno == logging.INFO, caplog.records))
+        assert any(filter(lambda x: ('request timed out' in x.message) and x.levelno == logging.WARNING, caplog.records))
 
     def test_should_open_cached_responses_when_asked_and_they_exist(self, mocker, label, prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model):
         filename = f'cached_responses/{student_id}.json'
