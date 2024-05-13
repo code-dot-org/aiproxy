@@ -7,13 +7,14 @@ import os
 import openai
 import json
 import logging
+import requests
 
 from lib.assessment.config import DEFAULT_MODEL
 
 # Our assessment code
 from lib.assessment import assess
 from lib.assessment.assess import KeyConceptError
-from lib.assessment.label import InvalidResponseError, RequestTooLargeError
+from lib.assessment.label import InvalidResponseError, RequestTooLargeError, OpenaiServerError
 
 assessment_routes = Blueprint('assessment_routes', __name__)
 
@@ -56,6 +57,10 @@ def post_assessment():
         return f'InvalidResponseError: {str(e)}', 400
     except KeyConceptError as e:
         return e, 400
+    except OpenaiServerError as e:
+        return e, 503
+    except requests.exceptions.ReadTimeout as e:
+        return f"OpenAI timeout: #{e}: ", 504
 
     if not isinstance(labels, dict) or not isinstance(labels.get("data"), list):
         return "response from AI or service not valid", 400
