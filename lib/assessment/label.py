@@ -9,7 +9,7 @@ import boto3
 from threading import Lock
 
 from typing import List, Dict, Any
-from lib.assessment.config import VALID_LABELS
+from lib.assessment.config import VALID_LABELS, OPENAI_API_TIMEOUT
 from lib.assessment.code_feature_extractor import CodeFeatures
 from lib.assessment.decision_trees import DecisionTrees
 
@@ -19,6 +19,9 @@ class InvalidResponseError(Exception):
     pass
 
 class RequestTooLargeError(Exception):
+    pass
+
+class OpenaiServerError(Exception):
     pass
 
 class Label:
@@ -187,15 +190,19 @@ class Label:
         }
 
         # Post to the AI service
-        response = requests.post(api_url, headers=headers, json=data, timeout=120)
+        response = requests.post(api_url, headers=headers, json=data, timeout=OPENAI_API_TIMEOUT)
 
-        if self._openai_context_length_exceeded(response):
+        if response.status_code == 500:
+            logging.warning(f"{student_id} Error calling the API: {response.status_code}")
+            logging.warning(f"{student_id} Response body: {response.text}")
+            raise OpenaiServerError(f"Error calling OpenAI API: {response.text}")
+        elif self._openai_context_length_exceeded(response):
             message = response.json().get('error', {}).get('message')
-            logging.error(f"{student_id} Request too large: {message}")
+            logging.warning(f"{student_id} Request too large: {message}")
             raise RequestTooLargeError(f"{student_id} {message}")
         elif response.status_code != 200:
             logging.error(f"{student_id} Error calling the API: {response.status_code}")
-            logging.info(f"{student_id} Response body: {response.text}")
+            logging.error(f"{student_id} Response body: {response.text}")
             return None
 
         info = response.json()
@@ -246,10 +253,9 @@ class Label:
         # Send data to LLM for assessment
         try:
             ai_result = self.ai_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model, response_type=response_type)
-        except requests.exceptions.ReadTimeout:
-            logging.error(f"{student_id} request timed out in {(time.time() - start_time):.0f} seconds.")
-            ai_result = None
-
+        except requests.exceptions.ReadTimeout as exception:
+            logging.warning(f"{student_id} request timed out in {(time.time() - start_time):.0f} seconds.")
+            raise exception
 
         # No assessment was possible
         if ai_result is None:
@@ -375,7 +381,7 @@ class Label:
                 raise e
             return None
         except RequestTooLargeError as e:
-            logging.info(f"{student_id} {choice_text} Request too large: {str(e)}")
+            logging.warning(f"{student_id} {choice_text} Request too large: {str(e)}")
             if reraise:
                 raise e
 
