@@ -52,13 +52,15 @@ class CodeFeatures:
   def __init__(self):
 
     # Dictionary for storing features parsed from code sample
-    self.features = {'object_types': {'shapes': 0, 'sprites': 0, 'text': 0},
-                     'variables': [],
-                     'objects': [],
+    self.features = {'conditionals': [],
+                     'draw_loop': {},
                      'movement': {'random': {'count': 0, 'lines': []}, 'counter': {'count':0, 'lines': []}},
+                     'objects': [],
+                     'object_types': {'shapes': 0, 'sprites': 0, 'text': 0},
                      'property_change': [],
-                     'conditionals': [],
-                     'draw_loop': {}}
+                     'user_functions': [],
+                     'function_calls': [],
+                     'variables': [],}
 
     # Store relevant parse tree nodes here during extraction. This will be useful
     # For returning metadata like line and column numbers or for exploring additional
@@ -91,11 +93,11 @@ class CodeFeatures:
   def call_expression_helper(self, expression):
     # Get function / method identifier
     if expression.callee.type == "MemberExpression":
-      function = {"object": expression.callee.object.name, "method": expression.callee.property.name, "start": expression.loc.start.line, "end": expression.loc.end.line}
+      called_func = {"object": expression.callee.object.name, "method": expression.callee.property.name, "start": expression.loc.start.line, "end": expression.loc.end.line}
     else:
-      function = expression.callee.name
+      called_func = expression.callee.name
     
-    if function in user_interaction_functions:
+    if called_func in user_interaction_functions:
       user_interaction = True
     else:
       user_interaction = False
@@ -113,13 +115,13 @@ class CodeFeatures:
     if expression.callee.type == "MemberExpression":
       args = arg_values
     else:
-      if function in function_args:
-        arg_names = function_args[function]
+      if called_func in function_args:
+        arg_names = function_args[called_func]
         for i, value in enumerate(arg_values):
           args[arg_names[i]] = [value]
       else:
         args = arg_values
-    return {"function": function, "args": args, 'user_interaction': user_interaction, "start": expression.loc.start.line, "end": expression.loc.end.line}
+    return {"function": called_func, "args": args, 'user_interaction': user_interaction, "start": expression.loc.start.line, "end": expression.loc.end.line}
       
   # Helper function to analyze all statements in the draw loop. Sends statements
   # to their respective helper functions for parsing based on statement type.
@@ -146,9 +148,39 @@ class CodeFeatures:
               draw_loop_body.append(declaration)
           case "IfStatement":
             draw_loop_body.append(self.if_statement_helper(statement))
+          case "FunctionDeclaration":
+            draw_loop_body.append(self.function_def_helper(statement))
           case _:
             logging.info(f"draw loop outlier statement: {statement}")
       return draw_loop_body
+
+  def function_def_helper(self, node):
+    if node.type == "FunctionDeclaration" and node.id.name != "draw":
+      start = node.loc.start.line
+      end = node.loc.end.line
+      function_body = []
+      for statement in node.body.body:
+        match statement.type:
+          case "ExpressionStatement":
+            match statement.expression.type:
+              case "CallExpression":
+                function_body.append(self.call_expression_helper(statement.expression))
+              case "AssignmentExpression":
+                function_body.append(self.variable_assignment_helper(statement))
+              case "UpdateExpression":
+                function_body.append(self.update_expression_helper(statement.expression))
+              case _:
+                logging.info(f"draw loop outlier expression: {statement.expression}")
+          case "VariableDeclaration":
+            for declaration in self.variable_declaration_helper(statement):
+              function_body.append(declaration)
+          case "IfStatement":
+            function_body.append(self.if_statement_helper(statement))
+          case "FunctionDeclaration":
+            function_body.append(self.function_def_helper(statement))
+          case _:
+            logging.info(f"draw loop outlier statement: {statement}")
+      return {"function": node.id.name, "body": function_body, "start": start, "end": end, "calls": 0}
 
   # Helper function to parse all statements in an if block
   def if_statement_helper(self, node):
@@ -187,6 +219,8 @@ class CodeFeatures:
               consequent.append(declaration)
           case "IfStatement":
             consequent.append(self.if_statement_helper(statement))
+          case "FunctionDeclaration":
+            consequent.append(self.function_def_helper(statement))
           case _:
             logging.info(f"conditional consequent outlier statement: {statement}")
       alternate = []
@@ -208,6 +242,8 @@ class CodeFeatures:
                 alternate.append(declaration)
             case "IfStatement":
               alternate.append(self.if_statement_helper(statement))
+            case "FunctionDeclaration":
+              alternate.append(self.function_def_helper(statement))
             case _:
               logging.info(f"conditional alternate outlier statement: {statement}")
       return {"test": test, "consequent": consequent, "alternate": alternate, "start": node.loc.start.line, "end": node.loc.end.line}
@@ -223,7 +259,7 @@ class CodeFeatures:
       for cond in nested_conditionals:
        statements.extend(self.flatten_conditional_paths(cond))
     statements = [statement for statement in statements if "test" not in statement]
-    return statements
+    return statements    
 
   # Helper function to parse member expressions (i.e., an object and its property).
   # Returns a dict containing the object and the property being operated on.
@@ -293,8 +329,7 @@ class CodeFeatures:
   # features dictionary.
 
   # Extract and store data about conditional test statements
-  def extract_conditional_tests(self, node):
-
+  def extract_conditionals(self, node):
     # If node is the draw loop, make sure that all conditionals within the draw loop are flagged
     draw_loop = self.draw_loop_helper(node)
     if draw_loop:
@@ -306,27 +341,50 @@ class CodeFeatures:
     conditional = self.if_statement_helper(node)
     if conditional:
       if 'start' in self.features['draw_loop'].keys() and conditional['start'] >= self.features['draw_loop']['start'] and conditional['end'] <= self.features['draw_loop']['end']:
-        conditional_test = {**conditional['test'], 'draw_loop': True}
+        conditional_info = {**conditional, 'draw_loop': True}
       else:
-        conditional_test = {**conditional['test'], 'draw_loop': False}
+        conditional_info = {**conditional, 'draw_loop': False}
       
       # If conditional test is a binary expression, check both sides for trigger
-      if 'left' in conditional_test:
-        if type(conditional_test['left']) == dict and 'identifier' in conditional_test["left"].keys() or type(conditional_test['right']) == dict and 'identifier' in conditional_test['right'].keys():
-          conditional_test = {**conditional_test, 'trigger': 'variable'}
-        elif type(conditional_test['left']) == dict and 'object' in conditional_test["left"].keys() or type(conditional_test['right']) == dict and 'object' in conditional_test['right'].keys():
-          conditional_test = {**conditional_test, 'trigger': 'object'}
-        elif type(conditional_test['left']) == dict and 'user_interaction' in conditional_test["left"].keys() or type(conditional_test['right']) == dict and 'user_interaction' in conditional_test['right'].keys():
-          conditional_test = {**conditional_test, 'trigger': 'user'}
-      elif 'user_interaction' in conditional_test:
-        conditional_test = {**conditional_test, 'trigger': 'user'}
-      elif 'object' in conditional_test:
-        conditional_test = {**conditional_test, 'trigger': 'object'}
-      elif 'identifier' in conditional_test:
-        conditional_test = {**conditional_test, 'trigger': 'variable'}
+      if 'left' in conditional_info["test"]:
+        if (type(conditional_info["test"]['left']) == dict and 'identifier' in conditional_info["test"]["left"].keys()) or (type(conditional_info["test"]['right']) == dict and 'identifier' in conditional_info["test"]['right'].keys()):
+          conditional_info = {**conditional_info, 'trigger': 'variable'}
+        elif (type(conditional_info["test"]['left']) == dict and 'object' in conditional_info["test"]["left"].keys()) or (type(conditional_info["test"]['right']) == dict and 'object' in conditional_info["test"]['right'].keys()):
+          conditional_info = {**conditional_info, 'trigger': 'object'}
+        elif (type(conditional_info["test"]['left']) == dict and 'user_interaction' in conditional_info["test"]["left"].keys()) or (type(conditional_info["test"]['right']) == dict and 'user_interaction' in conditional_info["test"]['right'].keys()):
+          conditional_info = {**conditional_info, 'trigger': 'user'}
+      elif 'user_interaction' in conditional_info:
+        conditional_info = {**conditional_info, 'trigger': 'user'}
+      elif 'object' in conditional_info:
+        conditional_info = {**conditional_info, 'trigger': 'object'}
+      elif 'identifier' in conditional_info:
+        conditional_info = {**conditional_info, 'trigger': 'variable'}
       else:
-        conditional_test = {**conditional_test, 'trigger': 'untracked'}
-      self.features['conditionals'].append(conditional_test)
+        conditional_info = {**conditional_info, 'trigger': 'untracked'}
+      self.features['conditionals'].append(conditional_info)
+      self.nodes.append(node)
+
+  # Extract and store information about user defined functions 
+  def extract_function_definitions(self, node):
+    func_def = self.function_def_helper(node)
+    if func_def:
+      if func_def['function'] in [call['function'] for call in self.features['function_calls']]:
+        func_def['calls'] += len([call for call in self.features['function_calls'] if call['function'] == func_def['function']])
+      if "start" in self.features["draw_loop"] and (func_def["start"] >= self.features["draw_loop"]["start"] or func_def["start"] <= self.features["draw_loop"]["end"]):
+        func_def['draw_loop'] = True
+      self.features['user_functions'].append(func_def)
+      self.nodes.append(node)
+
+  def extract_function_calls(self, node):
+    if node.type == "ExpressionStatement" and node.expression.type == "CallExpression":
+      call = self.call_expression_helper(node.expression)
+      self.features['function_calls'].append(call)
+      self.nodes.append(node)
+
+      if len(self.features['user_functions']) > 0 and call['function'] in [func['function'] for func in self.features['user_functions']]:
+        i = [index for (index, func) in enumerate(self.features['user_functions']) if func['function'] == call['function']][0]
+        self.features['user_functions'][i]['calls'] += 1
+        self.nodes.append(node)
 
   # Extract and store counter and random movement instances in features dictionary
   def extract_movement_types(self, node):
@@ -434,18 +492,22 @@ class CodeFeatures:
           property["draw_loop"] = True
         new_properties.append(property)
       self.features["property_change"] = new_properties
+      self.nodes.append(node)
     elif node.type == "ExpressionStatement" and node.expression.type == "CallExpression":
       node_info = self.call_expression_helper(node.expression)
       if type(node_info["function"]) is dict and all([k in node_info["function"].keys() for k in ["object", "method"]]) and node_info["function"]["method"] in sprite_functions:
         self.features["property_change"].append({**node_info["function"], "draw_loop":False})
+        self.nodes.append(node)
     elif node.type == "ExpressionStatement" and node.expression.type == "AssignmentExpression":
       node_info = self.variable_assignment_helper(node)
       if type(node_info["assignee"]) is dict and all([k in node_info["assignee"].keys() for k in ["object", "property"]]):
         self.features["property_change"].append({**node_info["assignee"], "draw_loop":False})
+        self.nodes.append(node)
     elif node.type == "ExpressionStatement" and node.expression.type == "UpdateExpression":
       node_info = self.update_expression_helper(node.expression)
       if type(node_info["argument"]) is dict and node_info["operator"] in ["++", "--", "~"] and all([k in node_info["argument"].keys() for k in ["object", "property"]]):
         self.features["property_change"].append({**node_info["argument"], "draw_loop":False})
+        self.nodes.append(node)
 
   # Function to extract features for learning goals. Contains delegate functions
   # to be used with the parser. Does not return any values, but should populate
@@ -473,6 +535,8 @@ class CodeFeatures:
       self.extract_object_and_variable_data(node)
       self.extract_movement_types(node)
       self.extract_property_assignment(node)
-      self.extract_conditional_tests(node)
+      self.extract_conditionals(node)
+      self.extract_function_definitions(node)
+      self.extract_function_calls(node)
 
     parse_code(program)

@@ -28,6 +28,10 @@ class DecisionTrees:
         self.u3l21_modularity_assessment(features)
       case ['Modularity - Multiple Sprites', 'csd3-2023-L24']:
         self.u3l24_modularity_assessment(features)
+      case ['Modularity - Use of Functions', 'csd3-2023-L28']:
+        self.u3l28_modularity_functions_assess(features)
+      # case ['Algorithms and Control - Backgrounds and Variables', 'csd3-2023-L28']:
+      #   self.u3l28_algorithms_backgrounds_assess(features)
 
   # Evidence generation functions
   def save_evidence_string(self, start, end, message):
@@ -104,6 +108,14 @@ class DecisionTrees:
   def object_triggered_conditional_evidence(self, data):
     for statement in data:
       self.save_evidence_string(statement['start'], statement['end'], "conditional triggered by object property value")
+
+  def function_definition_evidence(self, data):
+    for statement in data:
+      self.save_evidence_string(statement['start'], statement['end'], f"definition of {statement['function']} function")
+
+  def function_call_evidence(self, data):
+    for statement in data:
+      self.save_evidence_string(statement['start'], statement['end'], f"call to {statement['function']} function")
       
   # All decision tree functions should receive the code feature dictionary from the
   # CodeFeatureExtractor class when called.
@@ -365,5 +377,34 @@ class DecisionTrees:
 
     # No Evidence: Either the program only contains the “player” sprite provided by the starter code, 
     # or the sprites are not properly created.
+    else:
+      self.assessment = "No Evidence"
+
+  def u3l28_modularity_functions_assess(self, data):
+    user_functions = [func for func in data["user_functions"] if "draw_loop" not in func]
+    function_calls = [call for call in data["function_calls"] if call["function"] in [func["function"] for func in user_functions]]
+
+    call_count = [func['calls'] for func in data["user_functions"]]
+
+    multiple_calls = len([call for call in call_count if call > 1])
+    single_calls = len([call for call in call_count if call > 0])
+
+    self.function_definition_evidence(user_functions)
+    self.function_call_evidence(function_calls)
+
+    # Extensive Evidence: At least three functions are created outside the draw loop and used to organize your code into logical segments. 
+    # At least one of these functions is called multiple times in your program.
+    if len(user_functions) >= 3 and multiple_calls > 0:
+      self.assessment = "Extensive Evidence"
+
+    # Convincing Evidence: At least two functions are created outside the draw loop and used in your program to organize your code into logical segments.
+    elif len(user_functions) >= 2 and single_calls > 0:
+      self.assessment = "Convincing Evidence"
+      
+    # Limited Evidence: At least one function is created outside the draw loop and used in your program.,
+    elif len(user_functions) >= 1 and single_calls > 0:
+      self.assessment = "Limited Evidence"
+
+    # No Evidence: There are no functions created outside the draw loop and used in your program.
     else:
       self.assessment = "No Evidence"
