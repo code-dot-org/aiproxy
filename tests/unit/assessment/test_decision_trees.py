@@ -165,7 +165,6 @@ class TestDecisionTrees:
 
     decision_trees.assess(features, learning_goal, lesson)
     assert decision_trees.assessment == 'Limited Evidence'
-    print(decision_trees.evidence)
     assert decision_trees.evidence == ['Line 1: Code contains 3 sprites', 
                                        'Line 2: Code contains 3 sprites', 
                                        'Line 5: Code contains 3 sprites', 
@@ -382,8 +381,6 @@ class TestDecisionTrees:
                 'draw_loop': {'start': 15, 'end': 52}}
 
     decision_trees.assess(features, learning_goal, lesson)
-    print(decision_trees.assessment)
-    print(decision_trees.evidence)
     assert decision_trees.assessment == 'Extensive Evidence'
     assert decision_trees.evidence == ['Line 20: conditional triggered by user interaction', 
                                        'Line 17: conditional triggered by user interaction', 
@@ -437,7 +434,6 @@ class TestDecisionTrees:
     
     decision_trees.assess(features, learning_goal, lesson)
     assert decision_trees.assessment == 'Extensive Evidence'
-    print(decision_trees.evidence)
     assert decision_trees.evidence == ['Line 1: Code contains 3 sprites', 
                                        'Line 2: Code contains 3 sprites', 
                                        'Line 3: Code contains 3 sprites', 
@@ -696,7 +692,6 @@ class TestDecisionTrees:
                                       'draw_loop': True}]}
 
     decision_trees.assess(features, learning_goal, lesson)
-    print(decision_trees.evidence)
     assert decision_trees.assessment == 'Convincing Evidence'
     assert decision_trees.evidence == ['Line 1: Code contains 3 sprites', 
                                        'Line 2: Code contains 3 sprites', 
@@ -953,7 +948,6 @@ class TestDecisionTrees:
                                                       'end': 7}]}
 
     decision_trees.assess(features, learning_goal, lesson)
-    print(decision_trees.evidence)
     assert decision_trees.assessment == 'Limited Evidence'
     assert decision_trees.evidence == ['Lines 1-4: definition of arrakis function', 
                                        'Line 18: call to arrakis function']
@@ -992,7 +986,6 @@ class TestDecisionTrees:
     sprites = 3
     other_elements = 3
     decision_trees.sprites_and_other_elements_evidence(data, sprites, other_elements)
-    print(decision_trees.evidence)
     assert decision_trees.evidence == ['Line 1: Code contains 3 non-sprite elements', 
                                        'Line 2: Code contains 3 sprites', 
                                        'Line 3: Code contains 3 sprites', 
@@ -1007,7 +1000,6 @@ class TestDecisionTrees:
     random = 1
     counter = 2
     decision_trees.movement_types_evidence(data, random, counter)
-    print(decision_trees.evidence)
     assert decision_trees.evidence == ['Line 10: Code contains 1 instance of movement using the randomNumber() function', 
                                        'Line 10: Code contains 2 instances of movement using the counter pattern', 
                                        'Line 11: Code contains 2 instances of movement using the counter pattern']
