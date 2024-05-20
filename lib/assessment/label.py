@@ -137,6 +137,11 @@ class Label:
         if not bedrock_model.startswith("meta."):
             raise Exception(f"Error parsing llm_model: {llm_model} bedrock_model: {bedrock_model}")
 
+        if "llama3" in bedrock_model:
+            meta_prompt = self.compute_llama_3_prompt(prompt, rubric, student_code, examples=examples)
+        else:
+            meta_prompt = self.compute_meta_prompt(prompt, rubric, student_code, examples=examples)
+
         meta_prompt = self.compute_meta_prompt(prompt, rubric, student_code, examples=examples)
         body = json.dumps({
             "prompt": meta_prompt,
@@ -347,6 +352,16 @@ class Label:
         # but that format does not consistently lead to valid JSON output. The following format works more reliably:
         return f"[INST]{prompt}[/INST]\n\nRubric:\n{rubric}\n\nStudent Code:\n{student_code}\n\nEvaluation (JSON):\n"
 
+    def compute_llama_3_prompt(self, prompt, rubric, student_code, examples=[]):
+        # <|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+        # {{ system_prompt }}<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+        # {{ user_msg_1 }}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+        # {{ model_answer_1 }}<|eot_id|>
+        return f"<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{prompt}<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nRubric:\n{rubric}\n\nStudent Code:\n{student_code}<|eot_id|><|start_header_id|>assistant<|end_header_id|>"
+
     def compute_messages(self, prompt, rubric, student_code, examples=[]):
         messages = [
             {'role': 'system', 'content': f"{prompt}\n\nRubric:\n{rubric}"}
@@ -358,7 +373,11 @@ class Label:
         return messages
 
     def get_response_data_if_valid(self, choice, rubric, student_id, choice_index=None, reraise=False, response_type='tsv'):
-        response_text = choice['message']['content']
+        if 'message' in choice:
+            response_text = choice['message']['content']
+        else:
+            response_text = choice
+
         try:
             choice_text = f"Choice {choice_index}: " if choice_index is not None else ''
             if not response_text:
@@ -366,7 +385,10 @@ class Label:
             text = response_text.strip()
 
             if response_type == 'json':
-                response_data = self.parse_json_response(text, student_id, finish_reason=choice['finish_reason'])
+                if "finish_reason" in choice:
+                    response_data = self.parse_json_response(text, student_id, finish_reason=choice['finish_reason'])
+                else:
+                    response_data = self.parse_json_response(text, student_id, finish_reason=choice)
             elif response_type == 'tsv':
                 response_data = self.parse_non_json_response(text)
             else:
@@ -397,6 +419,19 @@ class Label:
                 raise RequestTooLargeError(f"{student_id}: no valid JSON data")
             raise InvalidResponseError(f"no valid JSON data:\n{response_text}")
         json_text = match.group(1)
+
+        # escape unescaped quotes inside of evidence code
+        if "`" in json_text:
+            split_text = json_text.split("`")
+            index = 1
+            while index < len(split_text):
+                split_text[index] = str(json.dumps(split_text[index]))[1:-1]
+                index += 2
+            json_text = "`".join(split_text)
+
+        # fix missing comma at end of line
+        json_text = re.sub(r" {2,}", "", json_text)
+        json_text = json_text.replace('"\n"', '",\n"')
 
         try:
             data = json.loads(json_text)
