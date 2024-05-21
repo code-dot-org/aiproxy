@@ -134,15 +134,16 @@ class Report:
                     file.write(f'  <a href="{link_base_url}/{student_id}.js">{student_id}.js</a>\n')
                     file.write('  <table border="1">\n')
                     file.write('    <tr><th>Criteria</th><th>Observations</th><th>Evidence</th><th>Actual Label (human)</th><th>Predicted Label (AI)</th><th>Reason</th></tr>\n')
-                    for label in labels:
-                        criteria = label['Key Concept']
-                        observations = label['Observations']
-                        evidence = label.get('Evidence', '')
-                        actual = actual_labels[student_id][criteria]
-                        predicted = label['Label']
-                        reason = label['Reason']
-                        cell_color = self._compute_predicted_cell_color(predicted, actual, is_pass_fail)
-                        file.write(f'    <tr><td>{criteria}</td><td>{observations}</td><td>{evidence}</td><td>{actual}</td><td style="background-color: {cell_color};">{predicted}</td><td>{reason}</td></tr>\n')
+                    if labels:
+                        for label in labels:
+                            criteria = label['Key Concept']
+                            observations = label['Observations']
+                            evidence = label.get('Evidence', '')
+                            actual = actual_labels[student_id][criteria]
+                            predicted = label['Label']
+                            reason = label['Reason']
+                            cell_color = self._compute_predicted_cell_color(predicted, actual, is_pass_fail)
+                            file.write(f'    <tr><td>{criteria}</td><td>{observations}</td><td>{evidence}</td><td>{actual}</td><td style="background-color: {cell_color};">{predicted}</td><td>{reason}</td></tr>\n')
                     file.write('  </table>\n')
 
             file.write('</body>\n')

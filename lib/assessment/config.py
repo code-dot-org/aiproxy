@@ -8,6 +8,7 @@ SUPPORTED_MODELS = [
     'bedrock.meta.llama2-13b-chat-v1',
     'bedrock.meta.llama2-70b-chat-v1',
     'bedrock.meta.llama3-70b-instruct-v1:0',
+    'bedrock.mistral.mixtral-8x7b-instruct-v0:1',
     'gpt-3.5-turbo-0125',
     'gpt-4-0314',
     'gpt-4-32k-0314',

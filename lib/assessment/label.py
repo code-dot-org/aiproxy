@@ -92,6 +92,8 @@ class Label:
             return self.bedrock_meta_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
         elif llm_model.startswith("bedrock.anthropic"):
             return self.bedrock_anthropic_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
+        elif llm_model.startswith("bedrock.mistral"):
+            return self.bedrock_mistral_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
         else:
             raise Exception("Unknown model: {}".format(llm_model))
 
@@ -142,7 +144,6 @@ class Label:
         else:
             meta_prompt = self.compute_meta_prompt(prompt, rubric, student_code, examples=examples)
 
-        meta_prompt = self.compute_meta_prompt(prompt, rubric, student_code, examples=examples)
         body = json.dumps({
             "prompt": meta_prompt,
             "max_gen_len": 1536,
@@ -155,6 +156,40 @@ class Label:
         response_body = json.loads(response.get('body').read())
         generation = response_body.get('generation')
 
+        data = self.get_response_data_if_valid(generation, rubric, student_id, response_type='json')
+
+        return {
+            'metadata': {
+                'agent': 'meta',
+                'request': body,
+            },
+            'data': data,
+        }
+    
+    def bedrock_mistral_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model=""):
+        bedrock = self.get_bedrock_client(student_id)
+
+        # strip 'bedrock.' from the model name
+        bedrock_model = llm_model[8:]
+
+        # raise if the model name does not start with 'meta'
+        if not bedrock_model.startswith("mistral."):
+            raise Exception(f"Error parsing llm_model: {llm_model} bedrock_model: {bedrock_model}")
+
+        
+        mistral_prompt = self.compute_mistral_prompt(prompt, rubric, student_code, examples=examples)
+
+        body = json.dumps({
+            "prompt": mistral_prompt,
+            "max_tokens": 1536,
+            "temperature": temperature,
+        })
+        accept = 'application/json'
+        content_type = 'application/json'
+        response = bedrock.invoke_model(body=body, modelId=bedrock_model, accept=accept, contentType=content_type)
+
+        response_body = json.loads(response.get('body').read())
+        generation = response_body["outputs"][0]["text"]
         data = self.get_response_data_if_valid(generation, rubric, student_id, response_type='json')
 
         return {
@@ -362,6 +397,9 @@ class Label:
         # {{ model_answer_1 }}<|eot_id|>
         return f"<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{prompt}<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nRubric:\n{rubric}\n\nStudent Code:\n{student_code}<|eot_id|><|start_header_id|>assistant<|end_header_id|>"
 
+    def compute_mistral_prompt(self, prompt, rubric, student_code, examples=[]):
+        return f"[INST] {prompt}\n\nRubric:\n{rubric}\n\nStudent Code:\n{student_code} [/INST]"
+
     def compute_messages(self, prompt, rubric, student_code, examples=[]):
         messages = [
             {'role': 'system', 'content': f"{prompt}\n\nRubric:\n{rubric}"}
@@ -373,7 +411,7 @@ class Label:
         return messages
 
     def get_response_data_if_valid(self, choice, rubric, student_id, choice_index=None, reraise=False, response_type='tsv'):
-        if 'message' in choice:
+        if type(choice) == dict and 'message' in choice:
             response_text = choice['message']['content']
         else:
             response_text = choice
@@ -382,10 +420,11 @@ class Label:
             choice_text = f"Choice {choice_index}: " if choice_index is not None else ''
             if not response_text:
                 raise InvalidResponseError("empty response")
+
             text = response_text.strip()
 
             if response_type == 'json':
-                if "finish_reason" in choice:
+                if type(choice) == dict and "finish_reason" in choice:
                     response_data = self.parse_json_response(text, student_id, finish_reason=choice['finish_reason'])
                 else:
                     response_data = self.parse_json_response(text, student_id, finish_reason=choice)
@@ -420,7 +459,7 @@ class Label:
             raise InvalidResponseError(f"no valid JSON data:\n{response_text}")
         json_text = match.group(1)
 
-        # escape unescaped quotes inside of evidence code
+        # escape unescaped quotes inside of evidence code (Llama 3)
         if "`" in json_text:
             split_text = json_text.split("`")
             index = 1
@@ -429,9 +468,12 @@ class Label:
                 index += 2
             json_text = "`".join(split_text)
 
-        # fix missing comma at end of line
+        # fix missing comma at end of line (Llama 3)
         json_text = re.sub(r" {2,}", "", json_text)
         json_text = json_text.replace('"\n"', '",\n"')
+
+        # fix escaped underscores (Mistral)
+        json_text = json_text.replace("\_", "_")
 
         try:
             data = json.loads(json_text)

@@ -207,10 +207,11 @@ def compute_accuracy(actual_labels, predicted_labels, is_pass_fail):
     label_names = VALID_LABELS
 
     for student_id, label in predicted_labels.items():
-        for row in label:
-            criteria = row['Key Concept']
-            actual_by_criteria[criteria].append(actual_labels[student_id][criteria])
-            predicted_by_criteria[criteria].append(row['Label'])
+        if label:
+            for row in label:
+                criteria = row['Key Concept']
+                actual_by_criteria[criteria].append(actual_labels[student_id][criteria])
+                predicted_by_criteria[criteria].append(row['Label'])
 
     accuracy_by_criteria = {}
 
