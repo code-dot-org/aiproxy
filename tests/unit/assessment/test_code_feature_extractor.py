@@ -2,9 +2,6 @@ import pytest
 from lib.assessment.code_feature_extractor import CodeFeatures
 import esprima
 
-import pprint
-pp = pprint.PrettyPrinter(indent=2)
-
 @pytest.fixture
 def code_features():
     """ Creates a Label() instance for any test that has a 'label' parameter.
@@ -48,7 +45,6 @@ function draw() {
 """
 
     code_features.extract_features(code)
-    print(code_features.features)
     assert code_features.features == {'conditionals': [{'test': {'left': {'identifier': 'planet'},
                                                                   'operator': '===',
                                                                   'right': {'literal': 'arrakis'},
@@ -295,13 +291,11 @@ function draw() {
     statement = "x = x + 1"
     parsed = esprima.parseScript(statement, {'tolerant': True, 'comment': True, 'loc': True})
     result = code_features.binary_expression_helper(parsed.body[0].expression.right)
-    print(result)
     assert result == {'left': {'identifier': 'x'}, 'operator': '+', 'right': {'literal': 1}, 'start': 1, 'end': 1}
 
     statement = "x = x + -1"
     parsed = esprima.parseScript(statement, {'tolerant': True, 'comment': True, 'loc': True})
     result = code_features.binary_expression_helper(parsed.body[0].expression.right)
-    print(result)
     assert result == {'left': {'identifier': 'x'}, 'operator': '+', 'right': -1.0, 'start': 1, 'end': 1}
 
   def test_update_expression_helper(self, code_features):
@@ -328,7 +322,6 @@ function draw() {
 }"""
     parsed = esprima.parseScript(statement, {'tolerant': True, 'comment': True, 'loc': True})
     result = code_features.draw_loop_helper(parsed.body[0])
-    print(result)
     assert result == [{'identifier': 'x', 'value': 1, 'start': 2, 'end': 2}]
 
   def test_if_statement_helper(self, code_features):
@@ -354,7 +347,6 @@ function draw() {
 }"""
     parsed = esprima.parseScript(statement, {'tolerant': True, 'comment': True, 'loc': True})
     result = code_features.if_statement_helper(parsed.body[0])
-    print(result)
     assert result == {'test': -1.0, 
                       'consequent': [{'test': {'literal': True}, 
                                       'consequent': [{'identifier': 'x', 'value': 1, 'start': 3, 'end': 3}], 
