@@ -6,6 +6,7 @@ import time
 import requests
 import logging
 import boto3
+import botocore
 from threading import Lock
 
 from typing import List, Dict, Any
@@ -98,7 +99,7 @@ class Label:
             raise Exception("Unknown model: {}".format(llm_model))
 
     def bedrock_anthropic_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model=""):
-        bedrock = boto3.client(service_name='bedrock-runtime')
+        bedrock = self.get_bedrock_client(student_id)
 
         # strip 'bedrock.' from the model name
         bedrock_model = llm_model[8:]
@@ -106,18 +107,33 @@ class Label:
             raise Exception(f"Error parsing llm_model: {llm_model} bedrock_model: {bedrock_model}")
 
         anthropic_prompt = self.compute_anthropic_prompt(prompt, rubric, student_code, examples=examples)
-        body = json.dumps({
-            "prompt": anthropic_prompt,
-            "max_tokens_to_sample": 4000,
-            "temperature": temperature,
-            # "top_p": 0.9,
-        })
+
+        if "claude-3" in bedrock_model:
+            body = json.dumps({"anthropic_version": "bedrock-2023-05-31",
+                               "max_tokens": 4000,
+                               "messages": [{"role": "user",
+                                             "content": [{"type": "text",
+                                                          "text": anthropic_prompt}
+                                                        ]
+                                            }]
+                              })
+        else:
+            body = json.dumps({
+                "prompt": anthropic_prompt,
+                "max_tokens_to_sample": 4000,
+                "temperature": temperature,
+                # "top_p": 0.9,
+            })
         accept = 'application/json'
         content_type = 'application/json'
         response = bedrock.invoke_model(body=body, modelId=bedrock_model, accept=accept, contentType=content_type)
 
         response_body = json.loads(response.get('body').read())
-        generation = response_body.get('completion')
+        
+        if "claude-3" in bedrock_model:
+            generation = response_body.get('content')
+        else:
+            generation = response_body.get('completion')
 
         data = self.get_response_data_if_valid(generation, rubric, student_id, response_type='json')
 
@@ -207,9 +223,14 @@ class Label:
         if cls._bedrock_client is None:
             with cls._bedrock_lock:
                 if cls._bedrock_client is None:
+                    config = botocore.config.Config(
+                        read_timeout=10000,
+                        connect_timeout=10000,
+                        retries={"max_attempts": 2}
+)
                     # print the student_id so we can debug if we see multiple clients being created
                     logging.info(f"creating bedrock client. student_id: {student_id}")
-                    cls._bedrock_client = boto3.client(service_name='bedrock-runtime')
+                    cls._bedrock_client = boto3.client(service_name='bedrock-runtime', config=config)
         return cls._bedrock_client
 
     def openai_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model="", response_type='tsv'):
@@ -413,6 +434,8 @@ class Label:
     def get_response_data_if_valid(self, choice, rubric, student_id, choice_index=None, reraise=False, response_type='tsv'):
         if type(choice) == dict and 'message' in choice:
             response_text = choice['message']['content']
+        elif type(choice) == list:
+            response_text = choice[0]["text"]
         else:
             response_text = choice
 
@@ -459,6 +482,10 @@ class Label:
             raise InvalidResponseError(f"no valid JSON data:\n{response_text}")
         json_text = match.group(1)
 
+        # fix quotes on stretch feature key concept
+        json_text = json_text.replace(r'\"Stretch\"', '“Stretch”')
+        json_text = json_text.replace('"Stretch"', '“Stretch”')
+
         # escape unescaped quotes inside of evidence code (Llama 3)
         if "`" in json_text:
             split_text = json_text.split("`")
@@ -471,6 +498,7 @@ class Label:
         # fix missing comma at end of line (Llama 3)
         json_text = re.sub(r" {2,}", "", json_text)
         json_text = json_text.replace('"\n"', '",\n"')
+        json_text = json_text.replace('\n', '')
 
         # fix escaped underscores (Mistral)
         json_text = json_text.replace("\_", "_")

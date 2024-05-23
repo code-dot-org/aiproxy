@@ -5,6 +5,8 @@ PASSING_LABELS = VALID_LABELS[:2]
 # do not include gpt-4, so that we always know what version of the model we are using.
 SUPPORTED_MODELS = [
     'bedrock.anthropic.claude-v2',
+    'bedrock.anthropic.claude-3-sonnet-20240229-v1:0',
+    'bedrock.anthropic.claude-3-opus-20240229-v1:0',
     'bedrock.meta.llama2-13b-chat-v1',
     'bedrock.meta.llama2-70b-chat-v1',
     'bedrock.meta.llama3-70b-instruct-v1:0',
