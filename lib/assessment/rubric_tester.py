@@ -560,7 +560,7 @@ def eval_dataset(prompt, rubric, api_key='', llm_model=DEFAULT_MODEL, num_respon
         label_names=label_names,
     )
 
-    html_content = output_file.get_value()
+    html_content = output_file.getvalue()
     output_file.close()
     return html_content
     # logging.info(f"lesson {lesson} finished in {int(time.time() - main_start_time)} seconds")
