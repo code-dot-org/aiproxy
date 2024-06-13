@@ -13,6 +13,7 @@ from lib.assessment.config import DEFAULT_MODEL
 
 # Our assessment code
 from lib.assessment import assess
+from lib.assessment.rubric_tester import eval_dataset
 from lib.assessment.assess import KeyConceptError
 from lib.assessment.label import InvalidResponseError, RequestTooLargeError, OpenaiServerError
 
@@ -66,6 +67,47 @@ def post_assessment():
         return "response from AI or service not valid", 400
 
     return labels
+
+# Submit a rubric assessment
+@assessment_routes.route('/assessment/report', methods=['POST'])
+def post_assessment_report():
+    openai.api_key = os.getenv('OPENAI_API_KEY')
+
+    if request.values.get("prompt", None) == None:
+        return "`prompt` is required", 400
+
+    if request.values.get("rubric", None) == None:
+        return "`rubric` is required", 400
+
+    try:
+        html = eval_dataset(
+            request.values.get("prompt", ""),
+            request.values.get("rubric", ""),
+            api_key=request.values.get("api-key", openai.api_key),
+            llm_model=request.values.get("model", DEFAULT_MODEL),
+            num_responses=int(request.values.get("num-responses", "1")),
+            temperature=float(request.values.get("temperature", "0.2")),
+            remove_comments=(request.values.get("remove-comments", "0") != "0"),
+            response_type=request.values.get("response-type", "json"),
+            lesson=(request.values.get("lesson", None))
+        )
+    except ValueError:
+        return "One of the arguments is not parseable as a number", 400
+    except RequestTooLargeError as e:
+        return str(e), 413
+    except InvalidResponseError as e:
+        return f'InvalidResponseError: {str(e)}', 400
+    except KeyConceptError as e:
+        return e, 400
+    except OpenaiServerError as e:
+        return e, 503
+    except requests.exceptions.ReadTimeout as e:
+        return f"OpenAI timeout: #{e}: ", 504
+
+    if not isinstance(html, str):
+        return "response from AI agent not valid", 400
+
+    return html
 
 # Submit a test rubric assessment
 @assessment_routes.route('/test/assessment', methods=['GET','POST'])
