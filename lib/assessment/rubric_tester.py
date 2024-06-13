@@ -16,6 +16,7 @@ import logging
 import pprint
 import boto3
 import subprocess
+import StringIO
 
 from sklearn.metrics import accuracy_score, confusion_matrix
 from collections import defaultdict
@@ -271,6 +272,38 @@ def read_and_label_student_work(prompt, rubric, student_file, examples, options,
 
     return student_id, labels
 
+def read_and_label_sample(prompt, rubric, student_file, llm_model, num_responses, temperature, remove_comments, response_type, lesson):
+    student_id = os.path.splitext(os.path.basename(student_file))[0]
+    with open(student_file, 'r') as f:
+        student_code = f.read()
+    label = Label()
+    try:
+        labels = label.label_student_work(
+            prompt,
+            rubric,
+            student_code,
+            student_id,
+            use_cached=False,
+            write_cached=False,
+            num_responses=num_responses,
+            temperature=temperature,
+            llm_model=llm_model,
+            remove_comments=remove_comments,
+            response_type=response_type,
+            lesson=lesson,
+        )
+    except InvalidResponseError as e:
+        # these error details have already been logged
+        labels = None
+    except RequestTooLargeError as e:
+        # these error details have already been logged
+        labels = None
+    except Exception as e:
+        logging.error(f"Error in labeling student {student_id}: {e}")
+        labels = None
+
+    return student_id, labels
+
 
 def main():
     log_level = os.getenv('LOG_LEVEL', 'INFO')
@@ -363,22 +396,23 @@ def main():
                 }
             }
             report = Report()
-            report.generate_html_output(
-                output_file,
-                prompt,
-                rubric,
-                accuracy=overall_accuracy_percent,
-                predicted_labels=predicted_labels,
-                actual_labels=actual_labels,
-                is_pass_fail=is_pass_fail,
-                accuracy_by_criteria=accuracy_by_criteria_percent,
-                errors=errors,
-                input_params=input_params,
-                confusion_by_criteria=confusion_by_criteria,
-                overall_confusion=overall_confusion,
-                label_names=label_names,
-                prefix=experiment_lesson_prefix
-            )
+            with open(output_file, 'w+') as file:
+                report.generate_html_output(
+                    file,
+                    prompt,
+                    rubric,
+                    accuracy=overall_accuracy_percent,
+                    predicted_labels=predicted_labels,
+                    actual_labels=actual_labels,
+                    is_pass_fail=is_pass_fail,
+                    accuracy_by_criteria=accuracy_by_criteria_percent,
+                    errors=errors,
+                    input_params=input_params,
+                    confusion_by_criteria=confusion_by_criteria,
+                    overall_confusion=overall_confusion,
+                    label_names=label_names,
+                    prefix=experiment_lesson_prefix
+                )
             logging.info(f"lesson {lesson} finished in {int(time.time() - main_start_time)} seconds")
 
             if options.accuracy and accuracy_thresholds is not None and not is_pass_fail:
@@ -427,6 +461,134 @@ def check_aws_access():
     except subprocess.CalledProcessError as e:
         print(f"AWS access not configured: {e} {e.stderr}Please see README.md and make sure you ran `gem install aws-google` and `bin/aws_access`")
         exit(1)
+
+def eval_dataset(prompt, rubric, api_key='', llm_model=DEFAULT_MODEL, num_responses=1, temperature=0.2, remove_comments=False, response_type='tsv', lesson=None):
+    logging.info(f"Evaluating lesson {lesson} for dataset {DEFAULT_DATASET_NAME}")
+    dataset_lesson_prefix = os.path.join(datasets_dir, DEFAULT_DATASET_NAME, lesson)
+
+    # download dataset files
+    # if not os.path.exists(dataset_lesson_prefix) or options.download:
+    #     check_aws_access()
+    #     try:
+    #         s3 = boto3.resource("s3")
+    #         get_s3_folder(s3, dataset_lesson_prefix)
+    #     except Exception as e:
+    #         print(f"Could not download dataset {options.dataset_name} lesson {lesson}")
+    #         logging.error(e)
+
+    # download experiment files
+    # if not os.path.exists(experiment_lesson_prefix) or options.download:
+    #     check_aws_access()
+    #     try:
+    #         s3 = boto3.resource("s3")
+    #         get_s3_folder(s3, experiment_lesson_prefix)
+    #     except Exception as e:
+    #         print(f"Could not download experiment {options.experiment_name} lesson {lesson}")
+    #         logging.error(e)
+
+    # read in lesson files, validate them
+    # params = get_params(experiment_lesson_prefix)
+    # response_type = params.get('response-type', 'tsv')
+    # prompt, standard_rubric = read_inputs(prompt_file, standard_rubric_file, experiment_lesson_prefix)
+    student_files = get_student_files(100, dataset_lesson_prefix)
+    if os.path.exists(os.path.join(dataset_lesson_prefix, actual_labels_file)):
+        actual_labels = get_actual_labels(actual_labels_file, dataset_lesson_prefix)
+    examples = []
+
+    validate_rubrics(actual_labels, rubric)
+    validate_students(student_files, actual_labels)
+
+    # set up output and cache directories
+    # os.makedirs(os.path.join(experiment_lesson_prefix, output_dir_name), exist_ok=True)
+    # os.makedirs(os.path.join(experiment_lesson_prefix, cache_dir_name), exist_ok=True)
+    # if not options.use_cached:
+    #     for file in glob.glob(f'{os.path.join(experiment_lesson_prefix, cache_dir_name)}/*'):
+    #         os.remove(file)
+
+    # call label function to either call openAI or read from cache
+    with concurrent.futures.ThreadPoolExecutor(max_workers=7) as executor:
+        predicted_labels = list(executor.map(lambda student_file: read_and_label_sample(prompt, rubric, student_file, llm_model, num_responses, temperature, remove_comments, response_type, lesson), student_files))
+
+    errors = [student_id for student_id, labels in predicted_labels if not labels]
+    # predicted_labels contains metadata and data (labels), we care about the data key
+    predicted_labels = {student_id: labels['data'] for student_id, labels in predicted_labels if labels}
+
+    # for is_pass_fail in [True, False]:
+    # output_filename = 'report-pass-fail.html' if is_pass_fail else 'report-exact-match.html'
+    # output_file = os.path.join(experiment_lesson_prefix, output_dir_name, output_filename)
+
+    # calculate accuracy and generate report
+    accuracy_by_criteria, overall_accuracy, confusion_by_criteria, overall_confusion, label_names = compute_accuracy(actual_labels, predicted_labels, False)
+    overall_accuracy_percent = overall_accuracy * 100
+    accuracy_by_criteria_percent = {k:v*100 for k,v in accuracy_by_criteria.items()}
+    input_params = {
+        "dataset_name": DEFAULT_DATASET_NAME,
+        "experiment_name": "levelbuilder ui",
+        "lesson_name": lesson,
+        "model_params": {
+            "model": llm_model,
+            "num_responses": num_responses,
+            "temperature": temperature,
+            "remove_comments": remove_comments,
+            "response_type": response_type,
+        }
+    }
+    report = Report()
+    output_file = StringIO.StringIO()
+    report.generate_html_output(
+        output_file,
+        prompt,
+        rubric,
+        accuracy=overall_accuracy_percent,
+        predicted_labels=predicted_labels,
+        actual_labels=actual_labels,
+        is_pass_fail=False,
+        accuracy_by_criteria=accuracy_by_criteria_percent,
+        errors=errors,
+        input_params=input_params,
+        confusion_by_criteria=confusion_by_criteria,
+        overall_confusion=overall_confusion,
+        label_names=label_names,
+    )
+
+    html_content = output_file.get_value()
+    output_file.close()
+    return html_content
+    # logging.info(f"lesson {lesson} finished in {int(time.time() - main_start_time)} seconds")
+
+    # if options.accuracy and accuracy_thresholds is not None and not is_pass_fail:
+    #     if overall_accuracy < accuracy_thresholds[lesson]['overall']:
+    #         accuracy_pass = False
+    #         accuracy_failures[lesson] = {}
+    #         accuracy_failures[lesson]['overall'] = {}
+    #         accuracy_failures[lesson]['overall']['accuracy_score'] = overall_accuracy
+    #         accuracy_failures[lesson]['overall']['threshold'] = accuracy_thresholds[lesson]['overall']
+    #     for key_concept in accuracy_by_criteria:
+    #         if accuracy_by_criteria[key_concept] < accuracy_thresholds[lesson]['key_concepts'][key_concept]:
+    #             accuracy_pass = False
+    #             if lesson not in accuracy_failures.keys(): accuracy_failures[lesson] = {}
+    #             if 'key_concepts' not in accuracy_failures[lesson].keys(): accuracy_failures[lesson]['key_concepts'] = {}
+    #             if key_concept not in accuracy_failures[lesson]['key_concepts'].keys() : accuracy_failures[lesson]['key_concepts'][key_concept] = {}
+    #             accuracy_failures[lesson]['key_concepts'][key_concept]['accuracy_score'] = accuracy_by_criteria[key_concept]
+    #             accuracy_failures[lesson]['key_concepts'][key_concept]['threshold'] = accuracy_thresholds[lesson]['key_concepts'][key_concept]
+
+    # if not is_pass_fail:
+    #     os.system(f"open {output_file}")
+
+    # if options.generate_confidence:
+    #     if is_pass_fail:
+    #         confidence_pass_fail = get_pass_fail_confidence(accuracy_by_criteria)
+    #         with open(os.path.join(experiment_lesson_prefix, 'confidence.json'), 'w') as f:
+    #             json.dump(confidence_pass_fail, f, indent=2)
+    #             f.write('\n')
+    #             logging.info(f"writing {os.path.join(experiment_lesson_prefix, 'confidence.json')}")
+        # else:
+        #     confidence_exact_match = get_exact_match_confidence(confusion_by_criteria)
+        #     with open(os.path.join(experiment_lesson_prefix, 'confidence-exact.json'), 'w') as f:
+        #         json.dump(confidence_exact_match, f, indent=2)
+        #         f.write('\n')
+        #         logging.info(f"writing {os.path.join(experiment_lesson_prefix, 'confidence-exact.json')}")
+
 
 def init():
     if __name__ == '__main__':
