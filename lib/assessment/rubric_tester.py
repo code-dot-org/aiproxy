@@ -16,7 +16,6 @@ import logging
 import pprint
 import boto3
 import subprocess
-import StringIO
 
 from sklearn.metrics import accuracy_score, confusion_matrix
 from collections import defaultdict
@@ -504,7 +503,6 @@ def eval_dataset(prompt, rubric, api_key='', llm_model=DEFAULT_MODEL, num_respon
     student_files = get_student_files(100, dataset_lesson_prefix)
     if os.path.exists(os.path.join(dataset_lesson_prefix, actual_labels_file)):
         actual_labels = get_actual_labels(actual_labels_file, dataset_lesson_prefix)
-    examples = []
 
     validate_rubrics(actual_labels, rubric)
     validate_students(student_files, actual_labels)
@@ -545,7 +543,7 @@ def eval_dataset(prompt, rubric, api_key='', llm_model=DEFAULT_MODEL, num_respon
         }
     }
     report = Report()
-    output_file = StringIO.StringIO()
+    output_file = io.StringIO()
     report.generate_html_output(
         output_file,
         prompt,
