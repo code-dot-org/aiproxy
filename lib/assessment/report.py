@@ -83,70 +83,70 @@ class Report:
         confusion_table += '</table>'
         return confusion_table
 
-    def generate_html_output(self, output_file, prompt, rubric, accuracy=None, predicted_labels=None, actual_labels=None, is_pass_fail=False, accuracy_by_criteria=None, errors=[], input_params={}, confusion_by_criteria=None, overall_confusion=None, label_names=None, prefix='sample_code'):
+    def generate_html_output(self, file, prompt, rubric, accuracy=None, predicted_labels=None, actual_labels=None, is_pass_fail=False, accuracy_by_criteria=None, errors=[], input_params={}, confusion_by_criteria=None, overall_confusion=None, label_names=None, prefix='sample_code'):
         link_base_url = f'file://{os.getcwd()}/{prefix}'
         title_suffix = 'pass-fail' if is_pass_fail else 'exact-match'
         doc_title = f"{input_params['lesson_name']}-{title_suffix}"
 
-        with open(output_file, 'w+') as file:
-            file.write('<!DOCTYPE html>\n')
-            file.write('<html lang="en">\n')
-            file.write('<head>\n')
-            file.write('  <meta charset="UTF-8">\n')
-            file.write('  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n')
-            file.write(f'  <title>{doc_title}</title>\n')
-            file.write('</head>\n')
-            file.write('<body style="-webkit-print-color-adjust: exact;">\n')
-            file.write('  <h2>Prompt:</h2>\n')
-            file.write(f'  <pre>{prompt}</pre>\n')
-            file.write('  <h2>Rubric:</h2>\n')
-            file.write(self._rubric_to_html_table(rubric) + '\n')
+        # with open(output_file, 'w+') as file:
+        file.write('<!DOCTYPE html>\n')
+        file.write('<html lang="en">\n')
+        file.write('<head>\n')
+        file.write('  <meta charset="UTF-8">\n')
+        file.write('  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n')
+        file.write(f'  <title>{doc_title}</title>\n')
+        file.write('</head>\n')
+        file.write('<body style="-webkit-print-color-adjust: exact;">\n')
+        file.write('  <h2>Prompt:</h2>\n')
+        file.write(f'  <pre>{prompt}</pre>\n')
+        file.write('  <h2>Rubric:</h2>\n')
+        file.write(self._rubric_to_html_table(rubric) + '\n')
 
-            file.write('  <h2>Input Params:</h2>\n')
-            file.write(f'  <pre>{json.dumps(input_params, indent=2)}</pre>\n')
+        file.write('  <h2>Input Params:</h2>\n')
+        file.write(f'  <pre>{json.dumps(input_params, indent=2)}</pre>\n')
 
-            if len(errors) > 0:
-                file.write(f'  <h2 style="color: red">Errors: {len(errors)}</h2>\n')
-                file.write(f'  <p style="color: red">{", ".join(errors)} failed to load</p>\n')
+        if len(errors) > 0:
+            file.write(f'  <h2 style="color: red">Errors: {len(errors)}</h2>\n')
+            file.write(f'  <p style="color: red">{", ".join(errors)} failed to load</p>\n')
 
-            accuracy = 'N/A' if accuracy is None or math.isnan(accuracy) else f'{int(accuracy)}%'
-            report_type = 'Pass/Fail' if is_pass_fail else 'Exact Match'
-            file.write(f'  <h2>Overall Accuracy ({report_type}): {accuracy}</h2>\n')
-            
-            if accuracy_by_criteria is not None:
-                file.write('  <h2>Accuracy by Key Concept:</h2>\n')
-                file.write(self._generate_accuracy_table(accuracy_by_criteria) + '\n')
+        accuracy = 'N/A' if accuracy is None or math.isnan(accuracy) else f'{int(accuracy)}%'
+        report_type = 'Pass/Fail' if is_pass_fail else 'Exact Match'
+        file.write(f'  <h2>Overall Accuracy ({report_type}): {accuracy}</h2>\n')
+        
+        if accuracy_by_criteria is not None:
+            file.write('  <h2>Accuracy by Key Concept:</h2>\n')
+            file.write(self._generate_accuracy_table(accuracy_by_criteria) + '\n')
 
-            if overall_confusion is not None and label_names is not None:
-                file.write('  <h2>Overall Confusion:</h2>\n')
-                file.write(self._generate_confusion_table(overall_confusion, label_names) + '\n')
+        if overall_confusion is not None and label_names is not None:
+            file.write('  <h2>Overall Confusion:</h2>\n')
+            file.write(self._generate_confusion_table(overall_confusion, label_names) + '\n')
 
-            if confusion_by_criteria is not None and label_names is not None:
-                file.write('  <h2>Confusion by Key Concept:</h2>\n')
-                for criteria in confusion_by_criteria:
-                    file.write(f'  <h3>Confusion for {criteria}:</h3>\n')
-                    file.write(self._generate_confusion_table(confusion_by_criteria[criteria], label_names) + '\n\n')
+        if confusion_by_criteria is not None and label_names is not None:
+            file.write('  <h2>Confusion by Key Concept:</h2>\n')
+            for criteria in confusion_by_criteria:
+                file.write(f'  <h3>Confusion for {criteria}:</h3>\n')
+                file.write(self._generate_confusion_table(confusion_by_criteria[criteria], label_names) + '\n\n')
 
-            if predicted_labels is not None:
-                file.write('  <h2>Labels by student:</h2>\n')
-                for student_id, labels in predicted_labels.items():
-                    file.write(f'  <h3>Student: {student_id}</h3>\n')
-                    file.write(f'  <a href="{link_base_url}/{student_id}.js">{student_id}.js</a>\n')
-                    file.write('  <table border="1">\n')
-                    file.write('    <tr><th>Criteria</th><th>Observations</th><th>Evidence</th><th>Actual Label (human)</th><th>Predicted Label (AI)</th><th>Reason</th></tr>\n')
-                    for label in labels:
-                        criteria = label['Key Concept']
-                        observations = label['Observations']
-                        evidence = label.get('Evidence', '')
-                        actual = actual_labels[student_id][criteria]
-                        predicted = label['Label']
-                        reason = label['Reason']
-                        cell_color = self._compute_predicted_cell_color(predicted, actual, is_pass_fail)
-                        file.write(f'    <tr><td>{criteria}</td><td>{observations}</td><td>{evidence}</td><td>{actual}</td><td style="background-color: {cell_color};">{predicted}</td><td>{reason}</td></tr>\n')
-                    file.write('  </table>\n')
+        if predicted_labels is not None:
+            file.write('  <h2>Labels by student:</h2>\n')
+            for student_id, labels in predicted_labels.items():
+                file.write(f'  <h3>Student: {student_id}</h3>\n')
+                file.write(f'  <a href="{link_base_url}/{student_id}.js">{student_id}.js</a>\n')
+                file.write('  <table border="1">\n')
+                file.write('    <tr><th>Criteria</th><th>Observations</th><th>Evidence</th><th>Actual Label (human)</th><th>Predicted Label (AI)</th><th>Reason</th></tr>\n')
+                for label in labels:
+                    criteria = label['Key Concept']
+                    observations = label['Observations']
+                    evidence = label.get('Evidence', '')
+                    actual = actual_labels[student_id][criteria]
+                    predicted = label['Label']
+                    reason = label['Reason']
+                    cell_color = self._compute_predicted_cell_color(predicted, actual, is_pass_fail)
+                    file.write(f'    <tr><td>{criteria}</td><td>{observations}</td><td>{evidence}</td><td>{actual}</td><td style="background-color: {cell_color};">{predicted}</td><td>{reason}</td></tr>\n')
+                file.write('  </table>\n')
 
-            file.write('</body>\n')
-            file.write('</html>\n')
+        file.write('</body>\n')
+        file.write('</html>\n')
 
     @staticmethod
     def accurate_pass_fail(actual_label, predicted_label):
