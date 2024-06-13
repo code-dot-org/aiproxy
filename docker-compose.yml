@@ -5,3 +5,5 @@ services:
     env_file: "config.txt"
     ports:
       - "80:80"
+    volumes:
+      - ./datasets:/app/datasets:ro
