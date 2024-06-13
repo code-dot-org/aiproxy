@@ -463,6 +463,17 @@ def check_aws_access():
         exit(1)
 
 def eval_dataset(prompt, rubric, api_key='', llm_model=DEFAULT_MODEL, num_responses=1, temperature=0.2, remove_comments=False, response_type='tsv', lesson=None):
+    OPENAI_API_KEY = api_key
+
+  # Set the key
+    if OPENAI_API_KEY:
+        os.environ['OPENAI_API_KEY'] = OPENAI_API_KEY
+    elif not 'OPENAI_API_KEY' in os.environ:
+        logging.error("Must set OPENAI_API_KEY!")
+        return ''
+    else:
+        logging.info("Using set OPENAI_API_KEY")
+    
     logging.info(f"Evaluating lesson {lesson} for dataset {DEFAULT_DATASET_NAME}")
     dataset_lesson_prefix = os.path.join(datasets_dir, DEFAULT_DATASET_NAME, lesson)
 
