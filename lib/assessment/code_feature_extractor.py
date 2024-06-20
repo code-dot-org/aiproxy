@@ -353,11 +353,11 @@ class CodeFeatures:
           conditional_info = {**conditional_info, 'trigger': 'object'}
         elif (type(conditional_info["test"]['left']) == dict and 'user_interaction' in conditional_info["test"]["left"].keys()) or (type(conditional_info["test"]['right']) == dict and 'user_interaction' in conditional_info["test"]['right'].keys()):
           conditional_info = {**conditional_info, 'trigger': 'user'}
-      elif 'user_interaction' in conditional_info:
+      elif 'user_interaction' in conditional_info["test"]:
         conditional_info = {**conditional_info, 'trigger': 'user'}
-      elif 'object' in conditional_info:
+      elif 'object' in conditional_info["test"]:
         conditional_info = {**conditional_info, 'trigger': 'object'}
-      elif 'identifier' in conditional_info:
+      elif 'identifier' in conditional_info["test"]:
         conditional_info = {**conditional_info, 'trigger': 'variable'}
       else:
         conditional_info = {**conditional_info, 'trigger': 'untracked'}
@@ -370,7 +370,7 @@ class CodeFeatures:
     if func_def:
       if func_def['function'] in [call['function'] for call in self.features['function_calls']]:
         func_def['calls'] += len([call for call in self.features['function_calls'] if call['function'] == func_def['function']])
-      if "start" in self.features["draw_loop"] and (func_def["start"] >= self.features["draw_loop"]["start"] or func_def["start"] <= self.features["draw_loop"]["end"]):
+      if "start" in self.features["draw_loop"] and (func_def["start"] >= self.features["draw_loop"]["start"] and func_def["start"] <= self.features["draw_loop"]["end"]):
         func_def['draw_loop'] = True
       self.features['user_functions'].append(func_def)
       self.nodes.append(node)

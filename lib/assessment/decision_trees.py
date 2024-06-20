@@ -30,8 +30,6 @@ class DecisionTrees:
         self.u3l24_modularity_assessment(features)
       case ['Modularity - Use of Functions', 'csd3-2023-L28']:
         self.u3l28_modularity_functions_assess(features)
-      # case ['Algorithms and Control - Backgrounds and Variables', 'csd3-2023-L28']:
-      #   self.u3l28_algorithms_backgrounds_assess(features)
 
   # Evidence generation functions
   def save_evidence_string(self, start, end, message):
@@ -226,6 +224,7 @@ class DecisionTrees:
     # 1 that responds to user input and 1 that is triggered by a variable or sprite property.
     elif len(conditionals_in_draw_loop) >= 2 and user_triggered_conditionals and (variable_triggered_conditionals or object_triggered_conditionals):
       self.assessment = "Convincing Evidence"
+
     # Limited Evidence: Your program either has conditionals that all respond to user input 
     # (or all using sprite properties/variables) or only has 1 conditional inside the draw loop.
     elif len(conditionals_in_draw_loop) >= 1 and (user_triggered_conditionals or variable_triggered_conditionals or object_triggered_conditionals):
