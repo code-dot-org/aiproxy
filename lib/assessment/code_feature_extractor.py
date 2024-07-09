@@ -31,7 +31,7 @@ shape_functions = ['circle',
 sprite_functions = ['setAnimation']
 
 # List of object properties that are used for movement
-obj_movement_props = ['x', 'y', 'veocityX', 'velocityY', 'rotation']
+obj_movement_props = ['x', 'y', 'velocityX', 'velocityY', 'rotation']
 
 # List of functions that allow user interaction
 user_interaction_functions = ['keyDown', 
