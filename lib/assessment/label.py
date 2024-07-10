@@ -115,9 +115,8 @@ class Label:
         response = bedrock.invoke_model(body=body, modelId=bedrock_model, accept=accept, contentType=content_type)
 
         response_body = json.loads(response.get('body').read())
-        generation = response_body.get('completion')
 
-        data = self.get_response_data_if_valid(generation, rubric, student_id, response_type='json')
+        data = self.get_response_data_if_valid(response_body, rubric, student_id, response_type='json')
 
         return {
             'metadata': {
@@ -358,15 +357,22 @@ class Label:
         return messages
 
     def get_response_data_if_valid(self, choice, rubric, student_id, choice_index=None, reraise=False, response_type='tsv'):
-        response_text = choice['message']['content']
+        response_text = None
+        finish_reason = None
+        if 'message' in choice.keys(): # OpenAI response
+            response_text = choice['message']['content']
+            finish_reason = choice['finish_reason']
+        elif 'completion' in choice.keys(): # Claude response
+            response_text = choice['completion']
+            finish_reason = choice['stop_reason']
         try:
             choice_text = f"Choice {choice_index}: " if choice_index is not None else ''
             if not response_text:
-                raise InvalidResponseError("empty response")
+                raise InvalidResponseError(f"empty or invalid response:\n{choice}")
             text = response_text.strip()
 
             if response_type == 'json':
-                response_data = self.parse_json_response(text, student_id, finish_reason=choice['finish_reason'])
+                response_data = self.parse_json_response(text, student_id, finish_reason=finish_reason)
             elif response_type == 'tsv':
                 response_data = self.parse_non_json_response(text)
             else:
