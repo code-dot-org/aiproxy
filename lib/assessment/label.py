@@ -399,7 +399,7 @@ class Label:
         # capture all data from the first '[' to the last ']', inclusive
         match = re.search(r'(\[.*\])', response_text,re.DOTALL)
         if not match:
-            if finish_reason == 'length':
+            if finish_reason == 'length' or finish_reason == 'max_tokens':
                 raise RequestTooLargeError(f"{student_id}: no valid JSON data")
             raise InvalidResponseError(f"no valid JSON data:\n{response_text}")
         json_text = match.group(1)
