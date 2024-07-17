@@ -19,6 +19,5 @@ SUPPORTED_MODELS = [
 DEFAULT_MODEL = 'gpt-3.5-turbo-0125'
 LESSONS = ['csd3-2023-L11','csd3-2023-L14','csd3-2023-L18','csd3-2023-L21','csd3-2023-L24','csd3-2023-L28']
 DEFAULT_DATASET_NAME = 'contractor-grades-batch-1-fall-2023'
-DEFAULT_EXPERIMENT_NAME = 'ai-rubrics-pilot-gpt-3.5-turbo'
 
 OPENAI_API_TIMEOUT = 150

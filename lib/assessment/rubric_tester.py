@@ -16,11 +16,12 @@ import logging
 import pprint
 import boto3
 import subprocess
+import datetime
 
 from sklearn.metrics import accuracy_score, confusion_matrix
 from collections import defaultdict
 
-from lib.assessment.config import SUPPORTED_MODELS, DEFAULT_MODEL, VALID_LABELS, PASSING_LABELS, LESSONS, DEFAULT_DATASET_NAME, DEFAULT_EXPERIMENT_NAME
+from lib.assessment.config import SUPPORTED_MODELS, DEFAULT_MODEL, VALID_LABELS, PASSING_LABELS, LESSONS, DEFAULT_DATASET_NAME
 from lib.assessment.label import Label, InvalidResponseError, RequestTooLargeError
 from lib.assessment.report import Report
 from lib.assessment.confidence import get_pass_fail_confidence, get_exact_match_confidence
@@ -49,8 +50,8 @@ def command_line_options():
                         help=f"Comma-separated list of lesson names to run. Supported lessons {','.join(LESSONS)}. Defaults to all lessons.")
     parser.add_argument('--dataset-name', type=str, default=DEFAULT_DATASET_NAME,
                         help=f"Name of dataset directory in S3 to load from. Default: {DEFAULT_DATASET_NAME}.")
-    parser.add_argument('-e', '--experiment-name', type=str, default=DEFAULT_EXPERIMENT_NAME,
-                        help=f"Name of experiment directory in S3 to load from. Default: {DEFAULT_EXPERIMENT_NAME}.")
+    parser.add_argument('-e', '--experiment-name', type=str, default=None,
+                        help=f"Name of experiment branch in Github to load from. Default: current release.")
     parser.add_argument('-c', '--use-cached', action='store_true',
                         help='Use cached responses from the API.')
     parser.add_argument('-l', '--llm-model', type=str, default=None,
@@ -180,6 +181,14 @@ def get_s3_folder(s3, path_from_s3_root):
             continue
         bucket.download_file(obj.key, target)
 
+# Retrieve params from private github repository and store in experiments. Requires ssh key
+def get_params_github(branch=None):
+  git_repo = "git@github.com:code-dot-org/aitt_release_data.git"
+  if branch:
+    subprocess.run(["git", "clone", git_repo, "-b", branch, f"./{branch}"], capture_output=True, cwd='./experiments')
+  else:
+    subprocess.run(["git", "clone", git_repo, "./current_release"], capture_output=True, cwd='./experiments')
+
 def validate_rubrics(actual_labels, standard_rubric):
     actual_concepts = sorted(list(list(actual_labels.values())[0].keys())[1:])
     standard_rubric_filelike = io.StringIO(standard_rubric)  # convert string to file-like object
@@ -290,6 +299,7 @@ def main():
     for lesson in options.lesson_names:
         logging.info(f"Evaluating lesson {lesson} for dataset {options.dataset_name} and experiment {options.experiment_name}...")
         experiment_lesson_prefix = os.path.join(experiments_dir, options.experiment_name, lesson)
+        current_experiment_dir = os.path.join(experiments_dir, options.experiment_name)
         dataset_lesson_prefix = os.path.join(datasets_dir, options.dataset_name, lesson)
 
         # download dataset files
@@ -303,13 +313,11 @@ def main():
                 logging.error(e)
 
         # download experiment files
-        if not os.path.exists(experiment_lesson_prefix) or options.download:
-            check_aws_access()
+        if not os.path.exists(current_experiment_dir) or options.download:
             try:
-                s3 = boto3.resource("s3")
-                get_s3_folder(s3, experiment_lesson_prefix)
+                get_params_github(options.experiment_name)
             except Exception as e:
-                print(f"Could not download experiment {options.experiment_name} lesson {lesson}")
+                print(f"Could not download experiment {options.experiment_name}")
                 logging.error(e)
 
         # read in lesson files, validate them
