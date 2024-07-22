@@ -57,36 +57,36 @@ This will run a webserver accessible at <http://localhost>.
 
 Rubric Tester is a tool used to measure the accuracy of our ai evaluation system against labels provided by human annotators.
 
-Datasets for rubric tester are stored in S3:
+Config for rubric tester is stored in S3:
 
 ```
 s3://cdo-ai/teaching_assistant/datasets/
+s3://cdo-ai/teaching_assistant/experiments/
+s3://cdo-ai/teaching_assistant/releases/
 ```
 
-Within the datasets directory, there are named subdirectories each containing student code samples (`*.js`) with labels provided by human graders (`actual_labels.csv`):
+Within each of these directories, there are named config directories each containing one subdirectory for each lesson:
 
 ```
 datasets/contractor-grades-batch-1-fall-2023/csd3-2023-L11/
 datasets/contractor-grades-batch-1-fall-2023/csd3-2023-L14/
 datasets/contractor-grades-batch-1-fall-2023/...
+...
+experiments/ai-rubrics-pilot-baseline/csd3-2023-L11/
+...
+releases/2024-02-01-ai-rubrics-pilot-baseline/csd3-2023-L11/
+...
 ```
 
-Configuration files are stored in a private Github repository:
+The mental model for each of these directories is:
 
-```
-https://github.com/code-dot-org/aitt_release_data
-```
-
-The main branch of this repository contains the configuration files for the current release of AI Teaching Assistant. Experiments and new releases should be created as separate branches.
-
-The repo contains a directory for each lesson that uses the AI Teaching Assistant. Each directory contains the following files:
-
-- `params.json`: model parameters including model name, num_responses, temperature
-- `system_prompt.txt`
-- `standard_rubric.csv`
-- `examples/` (optional)
-- `confidence.json`: indicates low/medium/high confidence for each learning goal in each lesson.
-- `confidence-exact.json`: indicates low/medium/high confidence for each level of each learning goal in the lesson.
+- `datasets/`: student code samples (`*.js`) with labels provided by human graders (`actual_labels.csv`)
+- `experiments/`: configuration for ai evaluation in development
+  - `params.json`: model parameters including model name, num_responses, temperature
+  - `system_prompt.txt`
+  - `standard_rubric.csv`
+  - `examples/` (optional)
+- `releases/`: configuration for ai evaluation in production. similar to `experiments/`, but each directory will also contain `confidence.json` which indicates low/medium/high confidence for each learning goal in each lesson.
 
 When you run rubric tester, the datasets and experiments you use will be copied locally, after which you can easily take a closer look at the contents of these files by running `find datasets experiments` from the repo root.
 
@@ -119,6 +119,12 @@ ensure aws access for accessing aws bedrock models:
 - from this repo's root, run:
   - `gem install aws-google`
 
+Clone the aitt_release_data repo (https://github.com/code-dot-org/aitt_release_data). (Note: `rubric_tester` will look for this in the folder you cloned aiproxy into and will attempt to clone it in that location if it cannot locate it).
+Your directory structure should look like this:
+github directory
+└ aiproxy
+└ aitt_release_data
+
 ### run
 
 Activate the virtual environment:
@@ -140,7 +146,7 @@ See rubric tester options with:
 
 ### example usage
 
-When running rubric tester locally, you will pick a dataset to measure accuracy against, an experiment to define the ai config, and other optional config parameters. with no params, an experiment using gpt-3.5-turbo is used to evaluate all 6 ai-enabled lessons in CSD Unit 3, measuring accuracy against the default dataset which contains about 20 labeled student projects per lesson.
+When running rubric tester locally, you will pick a dataset to measure accuracy against and other optional config parameters. with no params, an experiment using gpt-3.5-turbo is used to evaluate all 6 ai-enabled lessons in CSD Unit 3, measuring accuracy against the default dataset which contains about 20 labeled student projects per lesson.
 
 GPT 3.5 Turbo is the default because a complete test run with that model costs only $0.20 whereas a complete test run with GPT 4 (classic) costs about $12.00.
 
@@ -148,7 +154,7 @@ A recommended first run is to use default experiment and dataset, limited to 1 l
 
 ```
 (.venv) Dave-MBP:~/src/aiproxy (rt-recover-from-bad-llm-responses)$ python ./lib/assessment/rubric_tester.py --lesson-names csd3-2023-L11
-2024-02-13 20:15:30,127: INFO: Evaluating lesson csd3-2023-L11 for dataset contractor-grades-batch-1-fall-2023 and experiment ai-rubrics-pilot-gpt-3.5-turbo...
+2024-02-13 20:15:30,127: INFO: Evaluating lesson csd3-2023-L11 for dataset contractor-grades-batch-1-fall-2023...
 ```
 
 When you do this, you'll likely notice a mix of successes and errors on the command line:
@@ -179,7 +185,7 @@ After enough reruns, you'll have a complete accuracy measurement for the lesson.
 experiments run against GPT 4, GPT 4 Turbo and other pricey models should include report html and cached response data. this allows you to quickly view reports for these datasets either by looking directly at the `output/report*html` files or by regenerating the report against cached data via a command like:
 
 ```commandline
-python ./lib/assessment/rubric_tester.py --experiment-name ai-rubrics-pilot-baseline-gpt-4-turbo --use-cached
+python ./lib/assessment/rubric_tester.py --use-cached
 ```
 
 #### smaller test runs
@@ -191,13 +197,9 @@ while you are experimenting with expensive models in rubric tester, the easiest 
 - use the `--lesson-names` flag to run only one lesson
 - use the `-s` param, e.g. `-s 3` to run against only 3 code samples in each lesson
 
-### creating a new experiment or release
+### updating parameter files
 
-To create a new experiment or release, make a new branch in the https://github.com/code-dot-org/aitt_release_data repository. Use the branch name for the `experiment-name` option when running rubric tester.
-
-### updating experiment or release branches
-
-To push updates to an experiment or release branch, run the `push_experiment_updates.py` script with the name of the branch.
+If you need to update or experiment with any of the configuration or prompt files stored in `aitt_release_data`, you can do so in that repository. See the README for more information. Because `rubric_tester` accesses the configurations from the local repository, you can create new experiments by creating a new branch in that repository, and you can access existing experiments by checking out a the appropriate branch from that repo.
 
 ### regenerating example LLM responses
 
