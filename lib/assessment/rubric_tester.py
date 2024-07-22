@@ -33,7 +33,6 @@ actual_labels_file_old = 'expected_grades.csv'
 actual_labels_file = 'actual_labels.csv'
 output_dir_name = 'output'
 datasets_dir = 'datasets'
-experiments_dir = 'experiments'
 cache_dir_name = 'cached_responses'
 accuracy_threshold_file = 'accuracy_thresholds.json'
 accuracy_threshold_dir = 'tests/data'
@@ -50,8 +49,6 @@ def command_line_options():
                         help=f"Comma-separated list of lesson names to run. Supported lessons {','.join(LESSONS)}. Defaults to all lessons.")
     parser.add_argument('--dataset-name', type=str, default=DEFAULT_DATASET_NAME,
                         help=f"Name of dataset directory in S3 to load from. Default: {DEFAULT_DATASET_NAME}.")
-    parser.add_argument('-e', '--experiment-name', type=str, default=None,
-                        help=f"Name of experiment branch in Github to load from. Default: current release.")
     parser.add_argument('-c', '--use-cached', action='store_true',
                         help='Use cached responses from the API.')
     parser.add_argument('-l', '--llm-model', type=str, default=None,
@@ -181,13 +178,10 @@ def get_s3_folder(s3, path_from_s3_root):
             continue
         bucket.download_file(obj.key, target)
 
-# Retrieve params from private github repository and store in experiments. Requires ssh key
-def get_params_github(branch=None):
-  git_repo = "git@github.com:code-dot-org/aitt_release_data.git"
-  if branch:
-    subprocess.run(["git", "clone", git_repo, "-b", branch, f"./{branch}"], capture_output=True, cwd='./experiments')
-  else:
-    subprocess.run(["git", "clone", git_repo, "./current_release"], capture_output=True, cwd='./experiments')
+# Clone params from private github repository. Requires ssh key.
+def get_params_github():
+    git_repo = "git@github.com:code-dot-org/aitt_release_data.git"
+    subprocess.run(["git", "clone", git_repo], capture_output=True, cwd='~')
 
 def validate_rubrics(actual_labels, standard_rubric):
     actual_concepts = sorted(list(list(actual_labels.values())[0].keys())[1:])
@@ -285,6 +279,7 @@ def main():
     log_level = os.getenv('LOG_LEVEL', 'INFO')
     logging.basicConfig(format='%(asctime)s: %(levelname)s: %(message)s', level=log_level)
 
+    params_directory = "../aitt_release_data/"
     command_line = " ".join(os.sys.argv)
     options = command_line_options()
     main_start_time = time.time()
@@ -297,9 +292,9 @@ def main():
         accuracy_thresholds = get_accuracy_thresholds()
 
     for lesson in options.lesson_names:
-        logging.info(f"Evaluating lesson {lesson} for dataset {options.dataset_name} and experiment {options.experiment_name}...")
-        experiment_lesson_prefix = os.path.join(experiments_dir, options.experiment_name, lesson)
-        current_experiment_dir = os.path.join(experiments_dir, options.experiment_name)
+        logging.info(f"Evaluating lesson {lesson} for dataset {options.dataset_name}...")
+        params_lesson_prefix = os.path.join(params_directory, lesson)
+        
         dataset_lesson_prefix = os.path.join(datasets_dir, options.dataset_name, lesson)
 
         # download dataset files
@@ -312,39 +307,39 @@ def main():
                 print(f"Could not download dataset {options.dataset_name} lesson {lesson}")
                 logging.error(e)
 
-        # download experiment files
-        if not os.path.exists(current_experiment_dir) or options.download:
+        # Clone parameter files from github if the repo does not already exist
+        if not os.path.exists(params_directory):
             try:
-                get_params_github(options.experiment_name)
+                get_params_github()
             except Exception as e:
-                print(f"Could not download experiment {options.experiment_name}")
+                print(f"Could not clone aitt_release_data repository. Please clone manually with git@github.com:code-dot-org/aitt_release_data.git")
                 logging.error(e)
 
         # read in lesson files, validate them
-        params = get_params(experiment_lesson_prefix)
+        params = get_params(params_lesson_prefix)
         response_type = params.get('response-type', 'tsv')
-        prompt, standard_rubric = read_inputs(prompt_file, standard_rubric_file, experiment_lesson_prefix)
+        prompt, standard_rubric = read_inputs(prompt_file, standard_rubric_file, params_lesson_prefix)
         student_files = get_student_files(options.max_num_students, dataset_lesson_prefix, student_ids=options.student_ids)
         if os.path.exists(os.path.join(dataset_lesson_prefix, actual_labels_file_old)):
             actual_labels = get_actual_labels(actual_labels_file_old, dataset_lesson_prefix)
         else:
             actual_labels = get_actual_labels(actual_labels_file, dataset_lesson_prefix)
-        examples = get_examples(experiment_lesson_prefix, response_type)
+        examples = get_examples(params_lesson_prefix, response_type)
 
         validate_rubrics(actual_labels, standard_rubric)
         validate_students(student_files, actual_labels)
         rubric = standard_rubric
 
         # set up output and cache directories
-        os.makedirs(os.path.join(experiment_lesson_prefix, output_dir_name), exist_ok=True)
-        os.makedirs(os.path.join(experiment_lesson_prefix, cache_dir_name), exist_ok=True)
+        os.makedirs(os.path.join(params_lesson_prefix, output_dir_name), exist_ok=True)
+        os.makedirs(os.path.join(params_lesson_prefix, cache_dir_name), exist_ok=True)
         if not options.use_cached:
-            for file in glob.glob(f'{os.path.join(experiment_lesson_prefix, cache_dir_name)}/*'):
+            for file in glob.glob(f'{os.path.join(params_lesson_prefix, cache_dir_name)}/*'):
                 os.remove(file)
 
         # call label function to either call openAI or read from cache
         with concurrent.futures.ThreadPoolExecutor(max_workers=options.workers) as executor:
-            predicted_labels = list(executor.map(lambda student_file: read_and_label_student_work(prompt, rubric, student_file, examples, options, params, experiment_lesson_prefix, response_type), student_files))
+            predicted_labels = list(executor.map(lambda student_file: read_and_label_student_work(prompt, rubric, student_file, examples, options, params, params_lesson_prefix, response_type), student_files))
 
         errors = [student_id for student_id, labels in predicted_labels if not labels]
         # predicted_labels contains metadata and data (labels), we care about the data key
@@ -352,7 +347,7 @@ def main():
 
         for is_pass_fail in [True, False]:
             output_filename = 'report-pass-fail.html' if is_pass_fail else 'report-exact-match.html'
-            output_file = os.path.join(experiment_lesson_prefix, output_dir_name, output_filename)
+            output_file = os.path.join(params_lesson_prefix, output_dir_name, output_filename)
 
             # calculate accuracy and generate report
             accuracy_by_criteria, overall_accuracy, confusion_by_criteria, overall_confusion, label_names = compute_accuracy(actual_labels, predicted_labels, is_pass_fail)
@@ -360,7 +355,6 @@ def main():
             accuracy_by_criteria_percent = {k:v*100 for k,v in accuracy_by_criteria.items()}
             input_params = {
                 "dataset_name": options.dataset_name,
-                "experiment_name": options.experiment_name,
                 "lesson_name": lesson,
                 "model_params": {
                     "model": options.llm_model or params['model'],
@@ -385,7 +379,7 @@ def main():
                 confusion_by_criteria=confusion_by_criteria,
                 overall_confusion=overall_confusion,
                 label_names=label_names,
-                prefix=experiment_lesson_prefix
+                prefix=params_lesson_prefix
             )
             logging.info(f"lesson {lesson} finished in {int(time.time() - main_start_time)} seconds")
 
@@ -411,16 +405,16 @@ def main():
             if options.generate_confidence:
                 if is_pass_fail:
                     confidence_pass_fail = get_pass_fail_confidence(accuracy_by_criteria)
-                    with open(os.path.join(experiment_lesson_prefix, 'confidence.json'), 'w') as f:
+                    with open(os.path.join(params_lesson_prefix, 'confidence.json'), 'w') as f:
                         json.dump(confidence_pass_fail, f, indent=2)
                         f.write('\n')
-                        logging.info(f"writing {os.path.join(experiment_lesson_prefix, 'confidence.json')}")
+                        logging.info(f"writing {os.path.join(params_lesson_prefix, 'confidence.json')}")
                 else:
                     confidence_exact_match = get_exact_match_confidence(confusion_by_criteria)
-                    with open(os.path.join(experiment_lesson_prefix, 'confidence-exact.json'), 'w') as f:
+                    with open(os.path.join(params_lesson_prefix, 'confidence-exact.json'), 'w') as f:
                         json.dump(confidence_exact_match, f, indent=2)
                         f.write('\n')
-                        logging.info(f"writing {os.path.join(experiment_lesson_prefix, 'confidence-exact.json')}")
+                        logging.info(f"writing {os.path.join(params_lesson_prefix, 'confidence-exact.json')}")
 
     if not accuracy_pass and len(accuracy_failures.keys()) > 0:
         logging.error(f"The following thresholds were not met:\n{pp.pformat(accuracy_failures)}")
