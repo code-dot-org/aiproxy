@@ -16,7 +16,6 @@ import logging
 import pprint
 import boto3
 import subprocess
-import datetime
 
 from sklearn.metrics import accuracy_score, confusion_matrix
 from collections import defaultdict
