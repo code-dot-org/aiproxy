@@ -119,8 +119,9 @@ ensure aws access for accessing aws bedrock models:
 - from this repo's root, run:
   - `gem install aws-google`
 
-Clone the aitt_release_data repo (https://github.com/code-dot-org/aitt_release_data). (Note: `rubric_tester` will look for this in the folder you cloned aiproxy into and will attempt to clone it in that location if it cannot locate it).
-Your directory structure should look like this:
+When you first run `rubric_tester`, it will look for the `aitt_release_data` in the folder you cloned aiproxy into and will attempt to clone it in that location if it cannot locate it. This data is necessary for local testing. For more information see https://github.com/code-dot-org/aitt_release_data
+
+After this is complete, your directory structure will look like this:
 github directory
 └ aiproxy
 └ aitt_release_data
