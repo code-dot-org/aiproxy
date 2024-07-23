@@ -180,7 +180,7 @@ def get_s3_folder(s3, path_from_s3_root):
 # Clone params from private github repository. Requires ssh key.
 def get_params_github():
     git_repo = "git@github.com:code-dot-org/aitt_release_data.git"
-    subprocess.run(["git", "clone", git_repo], capture_output=True, cwd='~')
+    subprocess.run(["git", "clone", git_repo], capture_output=True, cwd=os.path.expanduser('~'))
 
 def validate_rubrics(actual_labels, standard_rubric):
     actual_concepts = sorted(list(list(actual_labels.values())[0].keys())[1:])
@@ -290,8 +290,32 @@ def main():
     if options.accuracy:
         accuracy_thresholds = get_accuracy_thresholds()
 
+    # Clone parameter files from github if the repo does not already exist
+    if not os.path.exists(params_directory):
+        try:
+            get_params_github()
+        except Exception as e:
+            print(f"Could not clone aitt_release_data repository. Please clone manually with git@github.com:code-dot-org/aitt_release_data.git")
+            logging.error(e)
+            raise(e)
+
+    # Get branch name and ensure changes are not being made to the main aitt_release_data branch
+    branches = subprocess.run(["git", "branch"], capture_output=True, cwd=f"{os.path.expanduser('~')}/aitt_release_data").stdout.decode("utf-8")
+    branch = [branch for branch in branches.split("\n") if "*" in branch][0].replace("* ", "")
+    if "main" in branch:
+        all_branches = subprocess.run(["git", "branch", "-r"], capture_output=True, cwd=f"{os.path.expanduser('~')}/aitt_release_data").stdout.decode("utf-8")
+        all_branches = [branch for branch in all_branches.split("\n") if "HEAD" not in branch and "main" not in branch]
+        all_branches = "\n".join(all_branches)
+        user_branch = input(f"Create a new branch or select one from the following list:\n{all_branches}Branch name: ")
+        if user_branch in all_branches:
+            output = subprocess.run(["git", "checkout", user_branch], capture_output=True, cwd=f"{os.path.expanduser('~')}/aitt_release_data").stdout.decode("utf-8")
+            logging.info(f"Switched to {user_branch}")
+        else:
+            output = subprocess.run(["git", "checkout", "-b", user_branch], capture_output=True, cwd=f"{os.path.expanduser('~')}/aitt_release_data").stdout.decode("utf-8")
+            logging.info(f"Created and switched to {user_branch}")
+
     for lesson in options.lesson_names:
-        logging.info(f"Evaluating lesson {lesson} for dataset {options.dataset_name}...")
+        logging.info(f"Evaluating lesson {lesson} for dataset {options.dataset_name} and experiment {branch}...")
         params_lesson_prefix = os.path.join(params_directory, lesson)
         
         dataset_lesson_prefix = os.path.join(datasets_dir, options.dataset_name, lesson)
@@ -305,20 +329,6 @@ def main():
             except Exception as e:
                 print(f"Could not download dataset {options.dataset_name} lesson {lesson}")
                 logging.error(e)
-
-        # Clone parameter files from github if the repo does not already exist
-        if not os.path.exists(params_directory):
-            try:
-                get_params_github()
-            except Exception as e:
-                print(f"Could not clone aitt_release_data repository. Please clone manually with git@github.com:code-dot-org/aitt_release_data.git")
-                logging.error(e)
-
-        # Get branch name and ensure changes are not being made to the main aitt_release_data branch
-        branches = subprocess.run(["git", "branch"], capture_output=True, cwd=f"{os.path.expanduser('~')}/aitt_release_data").stdout.decode("utf-8")
-        branch = [branch for branch in branches.split("\n") if "*" in branch][0].replace("* ", "")
-        if "main" in branch:
-            raise Exception("Don't run experiments in the main aitt_release_data branch. Checkout a new branch and try again.")
 
         # read in lesson files, validate them
         params = get_params(params_lesson_prefix)
