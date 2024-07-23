@@ -314,6 +314,11 @@ def main():
                 print(f"Could not clone aitt_release_data repository. Please clone manually with git@github.com:code-dot-org/aitt_release_data.git")
                 logging.error(e)
 
+        # Ensure changes are not being made to the main aitt_release_data branch
+        branch = subprocess.run(["git", "branch"], capture_output=True, cwd=f"{os.path.expanduser('~')}/aitt_release_data")
+        if b"* main" in branch.stdout:
+            raise Exception("Don't run experiments in the main aitt_release_data branch. Checkout a new branch and try again.")
+
         # read in lesson files, validate them
         params = get_params(params_lesson_prefix)
         response_type = params.get('response-type', 'tsv')
