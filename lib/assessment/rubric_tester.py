@@ -314,9 +314,10 @@ def main():
                 print(f"Could not clone aitt_release_data repository. Please clone manually with git@github.com:code-dot-org/aitt_release_data.git")
                 logging.error(e)
 
-        # Ensure changes are not being made to the main aitt_release_data branch
-        branch = subprocess.run(["git", "branch"], capture_output=True, cwd=f"{os.path.expanduser('~')}/aitt_release_data")
-        if b"* main" in branch.stdout:
+        # Get branch name and ensure changes are not being made to the main aitt_release_data branch
+        branches = subprocess.run(["git", "branch"], capture_output=True, cwd=f"{os.path.expanduser('~')}/aitt_release_data").stdout.decode("utf-8")
+        branch = [branch for branch in branches.split("\n") if "*" in branch][0].replace("* ", "")
+        if "main" in branch:
             raise Exception("Don't run experiments in the main aitt_release_data branch. Checkout a new branch and try again.")
 
         # read in lesson files, validate them
@@ -359,6 +360,7 @@ def main():
             accuracy_by_criteria_percent = {k:v*100 for k,v in accuracy_by_criteria.items()}
             input_params = {
                 "dataset_name": options.dataset_name,
+                "experiment_name": branch,
                 "lesson_name": lesson,
                 "model_params": {
                     "model": options.llm_model or params['model'],
