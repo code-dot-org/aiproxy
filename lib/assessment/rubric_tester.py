@@ -307,11 +307,12 @@ def main():
         all_branches = [branch for branch in all_branches.split("\n") if "HEAD" not in branch and "main" not in branch]
         all_branches = "\n".join(all_branches)
         user_branch = input(f"Create a new branch or select one from the following list:\n{all_branches}Branch name: ")
+        branch = user_branch
         if user_branch in all_branches:
-            output = subprocess.run(["git", "checkout", user_branch], capture_output=True, cwd=f"{os.path.expanduser('~')}/aitt_release_data").stdout.decode("utf-8")
+            subprocess.run(["git", "checkout", user_branch], capture_output=True, cwd=f"{os.path.expanduser('~')}/aitt_release_data").stdout.decode("utf-8")
             logging.info(f"Switched to {user_branch}")
         else:
-            output = subprocess.run(["git", "checkout", "-b", user_branch], capture_output=True, cwd=f"{os.path.expanduser('~')}/aitt_release_data").stdout.decode("utf-8")
+            subprocess.run(["git", "checkout", "-b", user_branch], capture_output=True, cwd=f"{os.path.expanduser('~')}/aitt_release_data").stdout.decode("utf-8")
             logging.info(f"Created and switched to {user_branch}")
 
     for lesson in options.lesson_names:
