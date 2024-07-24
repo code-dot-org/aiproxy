@@ -24,6 +24,9 @@ class RequestTooLargeError(Exception):
 class OpenaiServerError(Exception):
     pass
 
+class BedrockServerError(Exception):
+    pass
+
 class Label:
     _bedrock_client = None
     _bedrock_lock = Lock()
@@ -104,20 +107,38 @@ class Label:
             raise Exception(f"Error parsing llm_model: {llm_model} bedrock_model: {bedrock_model}")
 
         anthropic_prompt = self.compute_anthropic_prompt(prompt, rubric, student_code, examples=examples)
-        body = json.dumps({
-            "prompt": anthropic_prompt,
-            "max_tokens_to_sample": 4000,
-            "temperature": temperature,
-            # "top_p": 0.9,
-        })
+        if "claude-3" in bedrock_model:
+            body = json.dumps({"anthropic_version": "bedrock-2023-05-31",
+                               "max_tokens": 4000,
+                               "messages": [{"role": "user",
+                                             "content": [{"type": "text",
+                                                          "text": anthropic_prompt}
+                                                        ]
+                                            }]
+                              })
+        else:
+            body = json.dumps({
+                "prompt": anthropic_prompt,
+                "max_tokens_to_sample": 4000,
+                "temperature": temperature,
+                # "top_p": 0.9,
+            })
         accept = 'application/json'
         content_type = 'application/json'
         response = bedrock.invoke_model(body=body, modelId=bedrock_model, accept=accept, contentType=content_type)
 
-        response_body = json.loads(response.get('body').read())
-        generation = response_body.get('completion')
+        if response['ResponseMetadata']['HTTPStatusCode'] == 500:
+            logging.warning(f"{student_id} Error calling the API: {response['ResponseMetadata']['HTTPStatusCode']}")
+            logging.warning(f"{student_id} Response body: {response['body']}")
+            raise BedrockServerError(f"Error calling Bedrock Anthropic API: {response['body']}")
+        elif response['ResponseMetadata']['HTTPStatusCode'] != 200:
+            logging.error(f"{student_id} Error calling the API: {response['ResponseMetadata']['HTTPStatusCode']}")
+            logging.error(f"{student_id} Response body: {response['body']}")
+            return None
 
-        data = self.get_response_data_if_valid(generation, rubric, student_id, response_type='json')
+        response_body = json.loads(response.get('body').read())
+
+        data = self.get_response_data_if_valid(response_body, rubric, student_id, response_type='json')
 
         return {
             'metadata': {
@@ -358,7 +379,18 @@ class Label:
         return messages
 
     def get_response_data_if_valid(self, choice, rubric, student_id, choice_index=None, reraise=False, response_type='tsv'):
-        response_text = choice['message']['content']
+        response_text = None
+        finish_reason = None
+        if 'message' in choice.keys(): # OpenAI response
+            response_text = choice['message']['content']
+            finish_reason = choice['finish_reason']
+        elif 'completion' in choice.keys(): # Claude 2 response
+            response_text = choice['completion']
+            finish_reason = choice['stop_reason']
+        elif 'content' in choice.keys(): # Claude 3 response
+            response_text = choice['content'][0]['text']
+            finish_reason = choice['stop_reason']
+
         try:
             choice_text = f"Choice {choice_index}: " if choice_index is not None else ''
             if not response_text:
@@ -366,7 +398,7 @@ class Label:
             text = response_text.strip()
 
             if response_type == 'json':
-                response_data = self.parse_json_response(text, student_id, finish_reason=choice['finish_reason'])
+                response_data = self.parse_json_response(text, student_id, finish_reason=finish_reason)
             elif response_type == 'tsv':
                 response_data = self.parse_non_json_response(text)
             else:
@@ -393,7 +425,7 @@ class Label:
         # capture all data from the first '[' to the last ']', inclusive
         match = re.search(r'(\[.*\])', response_text,re.DOTALL)
         if not match:
-            if finish_reason == 'length':
+            if finish_reason == 'length' or finish_reason == 'max_tokens':
                 raise RequestTooLargeError(f"{student_id}: no valid JSON data")
             raise InvalidResponseError(f"no valid JSON data:\n{response_text}")
         json_text = match.group(1)
@@ -401,7 +433,7 @@ class Label:
         try:
             data = json.loads(json_text)
         except json.JSONDecodeError as e:
-            if finish_reason == 'length':
+            if finish_reason == 'length' or finish_reason == 'max_tokens':
                 raise RequestTooLargeError(f"{student_id}: JSON decoding error")
             raise InvalidResponseError(f"JSON decoding error: {e}\n{json_text}")
 
