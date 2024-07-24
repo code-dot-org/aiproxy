@@ -20,7 +20,7 @@ import subprocess
 from sklearn.metrics import accuracy_score, confusion_matrix
 from collections import defaultdict
 
-from lib.assessment.config import SUPPORTED_MODELS, DEFAULT_MODEL, VALID_LABELS, PASSING_LABELS, LESSONS, DEFAULT_DATASET_NAME, DEFAULT_EXPERIMENT_NAME
+from lib.assessment.config import SUPPORTED_MODELS, DEFAULT_MODEL, VALID_LABELS, PASSING_LABELS, LESSONS, DEFAULT_DATASET_NAME
 from lib.assessment.label import Label, InvalidResponseError, RequestTooLargeError
 from lib.assessment.report import Report
 from lib.assessment.confidence import get_pass_fail_confidence, get_exact_match_confidence
@@ -32,7 +32,6 @@ actual_labels_file_old = 'expected_grades.csv'
 actual_labels_file = 'actual_labels.csv'
 output_dir_name = 'output'
 datasets_dir = 'datasets'
-experiments_dir = 'experiments'
 cache_dir_name = 'cached_responses'
 accuracy_threshold_file = 'accuracy_thresholds.json'
 accuracy_threshold_dir = 'tests/data'
@@ -49,8 +48,6 @@ def command_line_options():
                         help=f"Comma-separated list of lesson names to run. Supported lessons {','.join(LESSONS)}. Defaults to all lessons.")
     parser.add_argument('--dataset-name', type=str, default=DEFAULT_DATASET_NAME,
                         help=f"Name of dataset directory in S3 to load from. Default: {DEFAULT_DATASET_NAME}.")
-    parser.add_argument('-e', '--experiment-name', type=str, default=DEFAULT_EXPERIMENT_NAME,
-                        help=f"Name of experiment directory in S3 to load from. Default: {DEFAULT_EXPERIMENT_NAME}.")
     parser.add_argument('-c', '--use-cached', action='store_true',
                         help='Use cached responses from the API.')
     parser.add_argument('-l', '--llm-model', type=str, default=None,
@@ -180,6 +177,11 @@ def get_s3_folder(s3, path_from_s3_root):
             continue
         bucket.download_file(obj.key, target)
 
+# Clone params from private github repository. Requires ssh key.
+def get_params_github():
+    git_repo = "git@github.com:code-dot-org/aitt_release_data.git"
+    subprocess.run(["git", "clone", git_repo], capture_output=True, cwd=os.path.expanduser('~'))
+
 def validate_rubrics(actual_labels, standard_rubric):
     actual_concepts = sorted(list(list(actual_labels.values())[0].keys())[1:])
     standard_rubric_filelike = io.StringIO(standard_rubric)  # convert string to file-like object
@@ -276,6 +278,7 @@ def main():
     log_level = os.getenv('LOG_LEVEL', 'INFO')
     logging.basicConfig(format='%(asctime)s: %(levelname)s: %(message)s', level=log_level)
 
+    params_directory = os.path.join(os.path.expanduser('~'), "aitt_release_data/")
     command_line = " ".join(os.sys.argv)
     options = command_line_options()
     main_start_time = time.time()
@@ -287,9 +290,35 @@ def main():
     if options.accuracy:
         accuracy_thresholds = get_accuracy_thresholds()
 
+    # Clone parameter files from github if the repo does not already exist
+    if not os.path.exists(params_directory):
+        try:
+            get_params_github()
+        except Exception as e:
+            print(f"Could not clone aitt_release_data repository. Please clone manually with git@github.com:code-dot-org/aitt_release_data.git")
+            logging.error(e)
+            raise(e)
+
+    # Get branch name and ensure changes are not being made to the main aitt_release_data branch
+    branches = subprocess.run(["git", "branch"], capture_output=True, cwd=f"{os.path.expanduser('~')}/aitt_release_data").stdout.decode("utf-8")
+    branch = [branch for branch in branches.split("\n") if "*" in branch][0].replace("* ", "")
+    if "main" in branch:
+        all_branches = subprocess.run(["git", "branch", "-r"], capture_output=True, cwd=f"{os.path.expanduser('~')}/aitt_release_data").stdout.decode("utf-8")
+        all_branches = [branch for branch in all_branches.split("\n") if "HEAD" not in branch and "main" not in branch]
+        all_branches = "\n".join(all_branches)
+        user_branch = input(f"Create a new branch or select one from the following list:\n{all_branches}Branch name: ")
+        branch = user_branch
+        if user_branch in all_branches:
+            subprocess.run(["git", "checkout", user_branch], capture_output=True, cwd=f"{os.path.expanduser('~')}/aitt_release_data").stdout.decode("utf-8")
+            logging.info(f"Switched to {user_branch}")
+        else:
+            subprocess.run(["git", "checkout", "-b", user_branch], capture_output=True, cwd=f"{os.path.expanduser('~')}/aitt_release_data").stdout.decode("utf-8")
+            logging.info(f"Created and switched to {user_branch}")
+
     for lesson in options.lesson_names:
-        logging.info(f"Evaluating lesson {lesson} for dataset {options.dataset_name} and experiment {options.experiment_name}...")
-        experiment_lesson_prefix = os.path.join(experiments_dir, options.experiment_name, lesson)
+        logging.info(f"Evaluating lesson {lesson} for dataset {options.dataset_name} and experiment {branch}...")
+        params_lesson_prefix = os.path.join(params_directory, lesson)
+        
         dataset_lesson_prefix = os.path.join(datasets_dir, options.dataset_name, lesson)
 
         # download dataset files
@@ -302,41 +331,31 @@ def main():
                 print(f"Could not download dataset {options.dataset_name} lesson {lesson}")
                 logging.error(e)
 
-        # download experiment files
-        if not os.path.exists(experiment_lesson_prefix) or options.download:
-            check_aws_access()
-            try:
-                s3 = boto3.resource("s3")
-                get_s3_folder(s3, experiment_lesson_prefix)
-            except Exception as e:
-                print(f"Could not download experiment {options.experiment_name} lesson {lesson}")
-                logging.error(e)
-
         # read in lesson files, validate them
-        params = get_params(experiment_lesson_prefix)
+        params = get_params(params_lesson_prefix)
         response_type = params.get('response-type', 'tsv')
-        prompt, standard_rubric = read_inputs(prompt_file, standard_rubric_file, experiment_lesson_prefix)
+        prompt, standard_rubric = read_inputs(prompt_file, standard_rubric_file, params_lesson_prefix)
         student_files = get_student_files(options.max_num_students, dataset_lesson_prefix, student_ids=options.student_ids)
         if os.path.exists(os.path.join(dataset_lesson_prefix, actual_labels_file_old)):
             actual_labels = get_actual_labels(actual_labels_file_old, dataset_lesson_prefix)
         else:
             actual_labels = get_actual_labels(actual_labels_file, dataset_lesson_prefix)
-        examples = get_examples(experiment_lesson_prefix, response_type)
+        examples = get_examples(params_lesson_prefix, response_type)
 
         validate_rubrics(actual_labels, standard_rubric)
         validate_students(student_files, actual_labels)
         rubric = standard_rubric
 
         # set up output and cache directories
-        os.makedirs(os.path.join(experiment_lesson_prefix, output_dir_name), exist_ok=True)
-        os.makedirs(os.path.join(experiment_lesson_prefix, cache_dir_name), exist_ok=True)
+        os.makedirs(os.path.join(params_lesson_prefix, output_dir_name), exist_ok=True)
+        os.makedirs(os.path.join(params_lesson_prefix, cache_dir_name), exist_ok=True)
         if not options.use_cached:
-            for file in glob.glob(f'{os.path.join(experiment_lesson_prefix, cache_dir_name)}/*'):
+            for file in glob.glob(f'{os.path.join(params_lesson_prefix, cache_dir_name)}/*'):
                 os.remove(file)
 
         # call label function to either call openAI or read from cache
         with concurrent.futures.ThreadPoolExecutor(max_workers=options.workers) as executor:
-            predicted_labels = list(executor.map(lambda student_file: read_and_label_student_work(prompt, rubric, student_file, examples, options, params, experiment_lesson_prefix, response_type), student_files))
+            predicted_labels = list(executor.map(lambda student_file: read_and_label_student_work(prompt, rubric, student_file, examples, options, params, params_lesson_prefix, response_type), student_files))
 
         errors = [student_id for student_id, labels in predicted_labels if not labels]
         # predicted_labels contains metadata and data (labels), we care about the data key
@@ -344,7 +363,7 @@ def main():
 
         for is_pass_fail in [True, False]:
             output_filename = 'report-pass-fail.html' if is_pass_fail else 'report-exact-match.html'
-            output_file = os.path.join(experiment_lesson_prefix, output_dir_name, output_filename)
+            output_file = os.path.join(params_lesson_prefix, output_dir_name, output_filename)
 
             # calculate accuracy and generate report
             accuracy_by_criteria, overall_accuracy, confusion_by_criteria, overall_confusion, label_names = compute_accuracy(actual_labels, predicted_labels, is_pass_fail)
@@ -352,7 +371,7 @@ def main():
             accuracy_by_criteria_percent = {k:v*100 for k,v in accuracy_by_criteria.items()}
             input_params = {
                 "dataset_name": options.dataset_name,
-                "experiment_name": options.experiment_name,
+                "experiment_name": branch,
                 "lesson_name": lesson,
                 "model_params": {
                     "model": options.llm_model or params['model'],
@@ -377,7 +396,7 @@ def main():
                 confusion_by_criteria=confusion_by_criteria,
                 overall_confusion=overall_confusion,
                 label_names=label_names,
-                prefix=experiment_lesson_prefix
+                prefix=params_lesson_prefix
             )
             logging.info(f"lesson {lesson} finished in {int(time.time() - main_start_time)} seconds")
 
@@ -403,16 +422,16 @@ def main():
             if options.generate_confidence:
                 if is_pass_fail:
                     confidence_pass_fail = get_pass_fail_confidence(accuracy_by_criteria)
-                    with open(os.path.join(experiment_lesson_prefix, 'confidence.json'), 'w') as f:
+                    with open(os.path.join(params_lesson_prefix, 'confidence.json'), 'w') as f:
                         json.dump(confidence_pass_fail, f, indent=2)
                         f.write('\n')
-                        logging.info(f"writing {os.path.join(experiment_lesson_prefix, 'confidence.json')}")
+                        logging.info(f"writing {os.path.join(params_lesson_prefix, 'confidence.json')}")
                 else:
                     confidence_exact_match = get_exact_match_confidence(confusion_by_criteria)
-                    with open(os.path.join(experiment_lesson_prefix, 'confidence-exact.json'), 'w') as f:
+                    with open(os.path.join(params_lesson_prefix, 'confidence-exact.json'), 'w') as f:
                         json.dump(confidence_exact_match, f, indent=2)
                         f.write('\n')
-                        logging.info(f"writing {os.path.join(experiment_lesson_prefix, 'confidence-exact.json')}")
+                        logging.info(f"writing {os.path.join(params_lesson_prefix, 'confidence-exact.json')}")
 
     if not accuracy_pass and len(accuracy_failures.keys()) > 0:
         logging.error(f"The following thresholds were not met:\n{pp.pformat(accuracy_failures)}")
