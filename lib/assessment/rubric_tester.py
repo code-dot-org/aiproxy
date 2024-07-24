@@ -278,7 +278,7 @@ def main():
     log_level = os.getenv('LOG_LEVEL', 'INFO')
     logging.basicConfig(format='%(asctime)s: %(levelname)s: %(message)s', level=log_level)
 
-    params_directory = "../aitt_release_data/"
+    params_directory = os.path.join(os.path.expanduser('~'), "aitt_release_data/")
     command_line = " ".join(os.sys.argv)
     options = command_line_options()
     main_start_time = time.time()
