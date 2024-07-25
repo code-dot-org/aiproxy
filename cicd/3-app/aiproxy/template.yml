@@ -212,6 +212,7 @@ Resources:
         - FARGATE
       NetworkMode: awsvpc
       ExecutionRoleArn: !ImportValue AiProxyECSTaskExecutionRoleArn
+      TaskRoleArn: !ImportValue AiProxyECSTaskRoleArn
       Cpu: 256
       Memory: 512
       ContainerDefinitions:
