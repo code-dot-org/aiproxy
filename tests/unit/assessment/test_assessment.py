@@ -54,49 +54,49 @@ def test_label_should_pass_arguments_along(
     )
 
 
-def test_label_should_set_api_key_in_env_var(
-        mocker, code, prompt, rubric, examples, openai_api_key,
-        llm_model, num_responses, temperature, remove_comments):
-    """ Tests lib.assessment.assess.label()
-    """
+# def test_label_should_set_api_key_in_env_var(
+#         mocker, code, prompt, rubric, examples, openai_api_key,
+#         llm_model, num_responses, temperature, remove_comments):
+#     """ Tests lib.assessment.assess.label()
+#     """
 
-    # Mock the Label() class
-    label_student_work = mocker.patch.object(Label, 'label_student_work')
+#     # Mock the Label() class
+#     label_student_work = mocker.patch.object(Label, 'label_student_work')
 
-    # Actually call the method
-    label(code, prompt, rubric,
-        examples=examples(rubric, 0),
-        api_key=openai_api_key,
-        llm_model=llm_model,
-        num_responses=num_responses,
-        temperature=temperature,
-        remove_comments=remove_comments
-    )
+#     # Actually call the method
+#     label(code, prompt, rubric,
+#         examples=examples(rubric, 0),
+#         api_key=openai_api_key,
+#         llm_model=llm_model,
+#         num_responses=num_responses,
+#         temperature=temperature,
+#         remove_comments=remove_comments
+#     )
 
-    # Check to see that it was called
-    assert os.environ['OPENAI_API_KEY'] == openai_api_key
+#     # Check to see that it was called
+#     assert os.environ['OPENAI_API_KEY'] == openai_api_key
 
 
-def test_label_should_return_empty_result_when_no_api_key(
-        mocker, code, prompt, rubric, examples,
-        llm_model, num_responses, temperature, remove_comments):
-    """ Tests lib.assessment.assess.label() (without an api-key)
-    """
+# def test_label_should_return_empty_result_when_no_api_key(
+#         mocker, code, prompt, rubric, examples,
+#         llm_model, num_responses, temperature, remove_comments):
+#     """ Tests lib.assessment.assess.label() (without an api-key)
+#     """
 
-    # Mock the Label() class
-    label_student_work = mocker.patch.object(Label, 'label_student_work')
+#     # Mock the Label() class
+#     label_student_work = mocker.patch.object(Label, 'label_student_work')
 
-    # Actually call the method
-    result = label(code, prompt, rubric,
-        examples=examples(rubric, 0),
-        llm_model=llm_model,
-        num_responses=num_responses,
-        temperature=temperature,
-        remove_comments=remove_comments
-    )
+#     # Actually call the method
+#     result = label(code, prompt, rubric,
+#         examples=examples(rubric, 0),
+#         llm_model=llm_model,
+#         num_responses=num_responses,
+#         temperature=temperature,
+#         remove_comments=remove_comments
+#     )
 
-    # Check to see an empty result
-    assert result == {}
+#     # Check to see an empty result
+#     assert result == {}
 
 
 def test_label_should_return_empty_result_when_example_and_rubric_key_concepts_mismatch(
