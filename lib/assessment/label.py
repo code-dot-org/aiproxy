@@ -13,6 +13,8 @@ from lib.assessment.config import VALID_LABELS, OPENAI_API_TIMEOUT
 from lib.assessment.code_feature_extractor import CodeFeatures
 from lib.assessment.decision_trees import DecisionTrees
 
+boto3.set_stream_logger('botocore', level='DEBUG')
+
 from io import StringIO
 
 class InvalidResponseError(Exception):
