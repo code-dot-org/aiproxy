@@ -141,6 +141,31 @@ Resources:
               - sts:AssumeRole
       ManagedPolicyArns:
         - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
+  
+  ECSTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: ECSTaskBedrockPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                Resource:
+                  - arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-v2
+                  - arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0
+                  - arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-5-sonnet-20240620-v1:0
 
   ECSServiceAutoScalingRole:
     Type: AWS::IAM::Role
@@ -197,6 +222,10 @@ Outputs:
     Description: AiProxy ECS Task Execution Role ARN
     Value: !GetAtt ECSTaskExecutionRole.Arn
     Export: {Name: AiProxyECSTaskExecutionRoleArn}
+  ECSTaskRoleArn:
+    Description: AiProxy ECS Task Role ARN
+    Value: !GetAtt ECSTaskRole.Arn
+    Export: {Name: AiProxyECSTaskRoleArn}
   ECSAutoscaleRoleArn:
     Description: AiProxy ECS Autoscale Role ARN
     Value: !GetAtt ECSServiceAutoScalingRole.Arn
