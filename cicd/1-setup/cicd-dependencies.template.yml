@@ -162,9 +162,6 @@ Resources:
               - Effect: Allow
                 Action:
                   - bedrock:InvokeModel
-                Principal:
-                  Service:
-                    - ecs-tasks.amazonaws.com
                 Resource:
                   - arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-v2
                   - arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0
