@@ -93,7 +93,7 @@ def test_assessment():
             remove_comments=(request.values.get("remove-comments", "0") != "0"),
             num_responses=int(request.values.get("num-responses", "1")),
             temperature=float(request.values.get("temperature", "0.2")),
-            response_type='json'
+            response_type='json',
         )
     except ValueError:
         return "One of the arguments is not parseable as a number", 400
