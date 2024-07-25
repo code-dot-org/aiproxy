@@ -16,14 +16,14 @@ class KeyConceptError(Exception):
 def label(code, prompt, rubric, examples=[], api_key='', llm_model=DEFAULT_MODEL, num_responses=1, temperature=0.2, remove_comments=False, response_type='tsv', code_feature_extractor=None, lesson=None):
   OPENAI_API_KEY = api_key
 
-  # Set the key
-  if OPENAI_API_KEY:
-    os.environ['OPENAI_API_KEY'] = OPENAI_API_KEY
-  elif not 'OPENAI_API_KEY' in os.environ:
-    logging.error("Must set OPENAI_API_KEY!")
-    return {}
-  else:
-    logging.info("Using set OPENAI_API_KEY")
+  # # Set the key
+  # if OPENAI_API_KEY:
+  #   os.environ['OPENAI_API_KEY'] = OPENAI_API_KEY
+  # elif not 'OPENAI_API_KEY' in os.environ:
+  #   logging.error("Must set OPENAI_API_KEY!")
+  #   return {}
+  # else:
+  #   logging.info("Using set OPENAI_API_KEY")
 
   # Validate example key concepts against rubric.
   for i, ex in enumerate(examples):
