@@ -5,7 +5,3 @@ services:
     env_file: "config.txt"
     ports:
       - "80:80"
-    volumes:
-      - $HOME/.aws:/root/.aws
-    environment:
-      - AWS_PROFILE=local-bedrock-testing
