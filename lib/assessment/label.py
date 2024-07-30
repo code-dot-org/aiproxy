@@ -406,8 +406,9 @@ class Label:
             else:
                 raise ValueError(f"Invalid response type: {response_type}")
 
-            for i in range(len(response_data)):
-                response_data[i]["Key Concept"] = response_data[i]["Key Concept"].replace("\"", "“", 1).replace("\"", "”", 1)
+            if type(response_data) == 'list' and "Key Concept" in response_data[0]:
+                for i in range(len(response_data)):
+                    response_data[i]["Key Concept"] = response_data[i]["Key Concept"].replace("\"", "“", 1).replace("\"", "”", 1)
 
             self._sanitize_server_response(response_data)
             self._validate_server_response(response_data, rubric)
