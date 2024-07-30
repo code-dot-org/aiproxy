@@ -13,7 +13,7 @@ from lib.assessment.config import VALID_LABELS, OPENAI_API_TIMEOUT
 from lib.assessment.code_feature_extractor import CodeFeatures
 from lib.assessment.decision_trees import DecisionTrees
 
-boto3.set_stream_logger('botocore', level='DEBUG')
+boto3.set_stream_logger('botocore', level='INFO')
 
 from io import StringIO
 
@@ -406,6 +406,9 @@ class Label:
             else:
                 raise ValueError(f"Invalid response type: {response_type}")
 
+            for i in range(len(response_data)):
+                response_data[i]["Key Concept"] = response_data[i]["Key Concept"].replace("\"", "“", 1).replace("\"", "”", 1)
+
             self._sanitize_server_response(response_data)
             self._validate_server_response(response_data, rubric)
             return [row for row in response_data]
@@ -507,6 +510,7 @@ class Label:
                 raise InvalidResponseError(f'incorrect column names. unexpected: {unexpected_columns} missing: {missing_columns}')
 
         key_concepts_from_response = list(set(row["Key Concept"] for row in response_data))
+
         if sorted(rubric_key_concepts) != sorted(key_concepts_from_response):
             unexpected_concepts = set(key_concepts_from_response) - set(rubric_key_concepts)
             unexpected_concepts = None if len(unexpected_concepts) == 0 else unexpected_concepts
