@@ -366,7 +366,6 @@ def main():
             output_file = os.path.join(params_lesson_prefix, output_dir_name, output_filename)
 
             # calculate accuracy and generate report
-            logging.info(predicted_labels)
             accuracy_by_criteria, overall_accuracy, confusion_by_criteria, overall_confusion, label_names = compute_accuracy(actual_labels, predicted_labels, is_pass_fail)
             overall_accuracy_percent = overall_accuracy * 100
             accuracy_by_criteria_percent = {k:v*100 for k,v in accuracy_by_criteria.items()}
