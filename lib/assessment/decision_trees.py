@@ -134,11 +134,11 @@ class DecisionTrees:
     elif shapes >= 1 and sprites >= 2 and text >= 1:
       self.assessment = "Convincing Evidence"
 
-    # Limited Evidence: A cumulative of at least a total of 3 elements
-    elif total_elements >= 3:
+    # Limited Evidence: A cumulative total of at least 2 elements (one of which is text) are placed on the screen using the coordinate system (e.g., 1 sprite and 1 line of text or 1 shape and 1 line of text).
+    elif total_elements >= 2 and text >= 1:
       self.assessment =  "Limited Evidence"
 
-    # No Evidence: No elements placed using the coordinate system.
+    # No Evidence: Consists solely of sprites or shapes with no inclusion of text, or it lacks any elements (shapes, sprites, or text) positioned on the screen using the coordinate system
     else:
       self.assessment =  "No Evidence"
 
@@ -255,7 +255,7 @@ class DecisionTrees:
       self.assessment = "Convincing Evidence"
 
     # Limited Evidence: At least 2 sprites
-    elif sprites >= 1:
+    elif sprites >= 1 and len(sprites_updated_in_draw) == 0:
       self.assessment = "Limited Evidence"
 
     # No Evidence: No sprites
