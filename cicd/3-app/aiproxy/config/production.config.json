@@ -1,7 +1,8 @@
 {
     "Parameters": {
         "BaseDomainName": "code.org",
-        "BaseDomainNameHostedZonedID": "Z2LCOI49SCXUGU"
+        "BaseDomainNameHostedZonedID": "Z2LCOI49SCXUGU",
+        "AiProxyApiKeyArnSuffix": "production/cdo/aiproxy_api_key-IMnhZ4"
     },
     "Tags": {
         "EnvType": "production"
