@@ -17,9 +17,6 @@ Parameters:
   AppImageUri:
     Type: String
     Description: URI of the Docker image in ECR.
-  AiProxyApiKeyArnSuffix:
-    Type: String
-    Description: Suffix (path/name-uniqueid) for the secret name in Secrets Manager.
 
 # Conditions:
 #   IsDevCondition: !Equals [!Ref BaseDomainName, "dev-code.org"]
