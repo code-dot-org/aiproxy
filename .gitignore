@@ -1,9 +1,19 @@
 config.txt
 __pycache__
 
-# Ignore local Ruby config necessary for our custom AWS auth solution
-.ruby-version
+# pyenv config
+.python-version
+
+# Mac OS files
+.DS_Store
 
 # Local editor settings
 .vscode
 .idea
+.venv/
+
+# Ignore rubric testing files
+datasets/
+experiments/
+lesson_data/
+releases/

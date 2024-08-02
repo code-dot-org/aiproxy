@@ -1,0 +1,11 @@
+background("black");
+var animalhead_duck1 = createSprite(352, 200);
+var animalhead_frog_1 = createSprite(46, 200);
+animalhead_duck1.setAnimation("animalhead_duck1");
+animalhead_frog_1.setAnimation("animalhead_frog_1");
+animalhead_frog_1.scale = 0.4;
+animalhead_duck1.scale = 0.4;
+drawSprites();
+textSize(20);
+fill("white");
+text("Fortnite", 175, 200);

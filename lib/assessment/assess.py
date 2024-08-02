@@ -7,22 +7,13 @@ import json
 import logging
 
 # Import our support classes
-from lib.assessment.config import SUPPORTED_MODELS, VALID_GRADES
-from lib.assessment.grade import Grade
-from lib.assessment.report import Report
-from lib.assessment.rubric_tester import (
-    read_inputs,
-    get_expected_grades,
-    get_examples,
-    get_passing_grades,
-    get_student_files,
-    validate_rubrics,
-    validate_students,
-    grade_student_work,
-    compute_accuracy
-)
+from lib.assessment.config import SUPPORTED_MODELS, DEFAULT_MODEL, VALID_LABELS
+from lib.assessment.label import Label
 
-def grade(code, prompt, rubric, examples=[], api_key='', llm_model='gpt-4', num_responses=1, temperature=0.2, remove_comments=False):
+class KeyConceptError(Exception):
+  pass
+
+def label(code, prompt, rubric, examples=[], api_key='', llm_model=DEFAULT_MODEL, num_responses=1, temperature=0.2, remove_comments=False, response_type='tsv', code_feature_extractor=None, lesson=None):
   OPENAI_API_KEY = api_key
 
   # Set the key
@@ -34,8 +25,16 @@ def grade(code, prompt, rubric, examples=[], api_key='', llm_model='gpt-4', num_
   else:
     logging.info("Using set OPENAI_API_KEY")
 
-  grade = Grade()
-  return grade.grade_student_work(
+  # Validate example key concepts against rubric.
+  for i, ex in enumerate(examples):
+    rubric_key_concepts = list(set(row['Key Concept'] for row in csv.DictReader(rubric.splitlines())))
+    example_key_concepts = get_example_key_concepts(ex[1], response_type)
+    if rubric_key_concepts != example_key_concepts:
+      logging.error(f"Mismatch between rubric and example key concepts for example {i}: Rubric: {rubric_key_concepts} | Example: {example_key_concepts}")
+      raise KeyConceptError(f"Mismatch between rubric and example key concepts for example {i}: Rubric: {rubric_key_concepts} | Example: {example_key_concepts}")
+
+  label = Label()
+  return label.label_student_work(
       prompt, rubric, code, "student",
       examples=examples,
       use_cached=False,
@@ -43,5 +42,17 @@ def grade(code, prompt, rubric, examples=[], api_key='', llm_model='gpt-4', num_
       num_responses=num_responses,
       temperature=temperature,
       llm_model=llm_model,
-      remove_comments=remove_comments
+      remove_comments=remove_comments,
+      response_type=response_type,
+      code_feature_extractor=code_feature_extractor,
+      lesson=lesson,
   )
+
+def get_example_key_concepts(example_response, response_type):
+    if response_type == 'tsv':
+        return list(set(row['Key Concept'] for row in csv.DictReader(example_response.splitlines(), delimiter="\t")))
+    elif response_type == 'json':
+        response_data = json.loads(example_response)
+        return list(set([item["Key Concept"] for item in response_data]))
+    else:
+        raise f"invalid response type {response_type}"

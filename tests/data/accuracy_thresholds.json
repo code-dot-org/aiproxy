@@ -1,0 +1,35 @@
+{
+    "U3-2022-L17": {
+        "overall": 0.7,
+        "key_concepts": {
+            "Algorithms and Control - Conditionals": 0.7,
+            "Algorithms and Control - User Input": 0.7,
+            "Modularity - Multiple Sprites": 0.7,
+            "Position and Movement": 0.7
+        }
+    },
+    "U3-2022-L20": {
+        "overall": 0.7,
+        "key_concepts": {
+            "Algorithms and Control Structures": 0.7,
+            "Program Development 2": 0.7,
+            "Variables": 0.7
+        }
+    },
+    "New-U3-2022-L10": {
+        "overall": 0.7,
+        "key_concepts": {
+            "Modularity - Sprites and Sprite Properties": 0.7,
+            "Position - Elements and the Coordinate System": 0.7,
+            "Program Development - Program Sequence": 0.7
+        }
+    },
+    "New-U3-2022-L13": {
+        "overall": 0.7,
+        "key_concepts": {
+            "Modularity - Sprites and Sprite Properties": 0.7,
+            "Optional \u201cStretch\u201d Feature - Variables": 0.7,
+            "Position and Movement": 0.7
+        }
+    }
+}

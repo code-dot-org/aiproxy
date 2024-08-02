@@ -11,27 +11,25 @@ require 'json'
 uri = URI('http://localhost:80')
 uri.path = '/assessment'
 
-code = File.read('tests/data/u3l13_01.js')
-prompt = File.read('tests/data/u3l13.txt')
-rubric = File.read('tests/data/u3l13.csv')
-example_code = File.read('tests/data/example.js')
-example_rubric = File.read('tests/data/example.tsv')
-examples = [[example_code, example_rubric]]
+params = JSON.parse(File.read('tests/data/cfe_params.json'))
+code = File.read('tests/data/cfe_code.js')
+prompt = File.read('tests/data/cfe_prompt.txt')
+rubric = File.read('tests/data/cfe_rubric.csv')
 
 form_data = [
-  ['model', 'gpt-4-0613'],
+  ['model', params['model']],
   ['code', code],
   ['prompt', prompt],
   ['rubric', rubric],
-  ['examples', examples.to_json],
-  ['remove-comments', '1'],
-  ['num-responses', '3'],
-  ['num-passing-labels', '2'],
-  ['temperature', '0.2'],
+  ['remove-comments', params['remove-comments']],
+  ['num-responses', params['num-responses']],
+  ['num-passing-labels', params['num-passing-grades']],
+  ['temperature', params['temperature']],
+  ['code-feature-extractor', params['code-feature-extractor'].join(",")]
 ]
-
 request = Net::HTTP::Post.new(uri)
 request.set_form form_data, 'multipart/form-data'
+puts request.inspect
 response = Net::HTTP.start(uri.hostname, uri.port) do |http|
   http.request(request)
 end
