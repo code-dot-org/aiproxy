@@ -78,7 +78,7 @@ def post_assessment():
     return labels
 
 # Submit a test rubric assessment
-@assessment_routes.route('/test/assessment', methods=['GET','POST'])
+@assessment_routes.route('/test/assessment', methods=['GET'])
 def test_assessment():
     openai.api_key = os.getenv('OPENAI_API_KEY')
     
@@ -114,7 +114,7 @@ def test_assessment():
     return labels
 
 # Submit a test rubric assessment for a blank project
-@assessment_routes.route('/test/assessment/blank', methods=['GET','POST'])
+@assessment_routes.route('/test/assessment/blank', methods=['GET'])
 def test_assessment_blank():
     openai.api_key = os.getenv('OPENAI_API_KEY')
 
@@ -148,7 +148,7 @@ def test_assessment_blank():
     return labels
 
 # Submit a test rubric assessment with examples
-@assessment_routes.route('/test/assessment/examples', methods=['GET', 'POST'])
+@assessment_routes.route('/test/assessment/examples', methods=['GET'])
 def test_assessment_examples():
     openai.api_key = os.getenv('OPENAI_API_KEY')
 
@@ -192,7 +192,7 @@ def test_assessment_examples():
     return labels
 
 # Test assessment with code feature extractor
-@assessment_routes.route('/test/assessment/cfe', methods=['GET', 'POST'])
+@assessment_routes.route('/test/assessment/cfe', methods=['GET'])
 def test_assessment_cfe():
     openai.api_key = os.getenv('OPENAI_API_KEY')
 
