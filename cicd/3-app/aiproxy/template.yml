@@ -224,8 +224,8 @@ Resources:
           PortMappings:
             - ContainerPort: 80
           Secrets:
-            - Name: API_KEY
-              ValueFrom: !Ref ApiKey
+            - Name: AIPROXY_API_KEY
+              ValueFrom: !Ref AiProxyApiKey
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -233,14 +233,14 @@ Resources:
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: ecs
 
-  ApiKey:
+  AiProxyApiKey:
     Type: 'AWS::SecretsManager::Secret'
     Properties:
-      Name: !Sub "CfnStack/${AWS::StackName}/api_key"
+      Name: !Sub "CfnStack/${AWS::StackName}/aiproxy_api_key"
       Description: 'API key for AiProxy service'
       GenerateSecretString:
-        SecretStringTemplate: '{"API_KEY":""}'
-        GenerateStringKey: 'API_KEY'
+        SecretStringTemplate: '{"AIPROXY_API_KEY":""}'
+        GenerateStringKey: 'AIPROXY_API_KEY'
         PasswordLength: 32
         ExcludeCharacters: '"@/\\'
 
