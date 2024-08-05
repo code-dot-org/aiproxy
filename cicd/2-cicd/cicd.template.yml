@@ -103,7 +103,9 @@ Resources:
           - Sid: Allow use of the key
             Effect: Allow
             Principal:
-              AWS: !ImportValue AiProxyCodeBuildRoleArn
+              AWS:
+                - !GetAtt CodePipelineServiceRole.Arn
+                - !GetAtt CodeBuildServiceRole.Arn
             Action:
               - 'kms:DescribeKey'
               - 'kms:Encrypt'
@@ -217,7 +219,7 @@ Resources:
               OutputArtifacts:
                 - Name: sourceCode
               Configuration:
-                ConnectionArn: !Sub arn:aws:codestar-connections:us-east-1:${AWS::AccountId}:connection/${CodeStarConnectionResourceId}
+                ConnectionArn: !Sub arn:aws:codestar-connections:${AWS::Region}:${AWS::AccountId}:connection/${CodeStarConnectionResourceId}
                 FullRepositoryId: !Sub ${GitHubOwner}/${GitHubRepo}
                 BranchName: !Ref GitHubBranch
 
@@ -371,6 +373,51 @@ Resources:
             Principal:
               Service: codebuild.amazonaws.com
             Action: [sts:AssumeRole]
+      Policies:
+        - PolicyName: CloudWatchLogsPolicy
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource:
+                  # These CodeBuild log stream names are generated the same as the CodeBuild project names
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${AWS::StackName}-app-build:log-stream:*"
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${AWS::StackName}-integration-test:log-stream:*"
+        - PolicyName: S3Policy
+          PolicyDocument:              
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetBucketAcl
+                  - s3:GetBucketLocation
+                Resource:
+                  - !Sub ['arn:aws:s3:::${bucketname}', bucketname: !ImportValue AiProxyCodeBuildArtifactBucket]
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:PutObjectAcl
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                Resource:
+                  - !Sub ['arn:aws:s3:::${bucketname}/*', bucketname: !ImportValue AiProxyCodeBuildArtifactBucket]
+        - PolicyName: SecretsPolicy
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "secretsmanager:GetSecretValue"
+                Resource:
+                  - !Sub arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:cicd/*
+
+
+# User: arn:aws:sts::475661607190:assumed-role/aiproxy-iam-refactor-cicd-CodeBuildServiceRole-acpZXNrsWUoW/AWSCodeBuild-c7744336-b0fa-4640-8472-c38851ab273a
+# is not authorized to perform:
+# logs:CreateLogStream on resource:
+# arn:aws:logs:us-east-1:475661607190:log-group:/aws/codebuild/aiproxy-iam-refactor-cicd-app-build:log-stream:c7744336-b0fa-4640-8472-c38851ab273a
+# because no identity-based policy allows the logs:CreateLogStream action
   
   PublicCodeBuildServiceRole:
     Type: AWS::IAM::Role
@@ -395,6 +442,51 @@ Resources:
             Principal:
               Service: codepipeline.amazonaws.com
             Action: [sts:AssumeRole]
+      Policies:
+        - PolicyName: CodeStarConnectionPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: codestar-connections:UseConnection
+                Resource: !Sub arn:aws:codestar-connections:${AWS::Region}:${AWS::AccountId}:connection/*
+        - PolicyName: ArtifactBucketPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetBucketAcl
+                  - s3:GetBucketLocation
+                Resource:
+                  - !Sub ['arn:aws:s3:::${bucketname}', bucketname: !ImportValue AiProxyCodeBuildArtifactBucket]
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:PutObjectAcl
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                Resource:
+                  - !Sub ['arn:aws:s3:::${bucketname}/*', bucketname: !ImportValue AiProxyCodeBuildArtifactBucket]
+        - PolicyName: CodeBuildExecutionPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codebuild:*
+                Resource:
+                  - !GetAtt AppBuildProject.Arn
+                  - !GetAtt IntegrationTestBuildProject.Arn
+              - Effect: Allow
+                Action:
+                  - codebuild:CreateReportGroup
+                  - codebuild:CreateReport
+                  - codebuild:UpdateReport
+                  - codebuild:BatchPutTestCases
+                  - codebuild:BatchPutCodeCoverage
+                Resource:
+                  - !Sub arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:report-group/${AWS::StackName}-${GitHubBranch}-pr-build
 
   # Grant the AiProxy CodeBuild Role additional permissions for resources in
   # this template. This allows us to avoid granting permission to * resources.
@@ -419,7 +511,7 @@ Resources:
               - codebuild:BatchPutTestCases
               - codebuild:BatchPutCodeCoverage
             Resource:
-              - !Sub arn:aws:codebuild:us-east-1:165336972514:report-group/${AWS::StackName}-${GitHubBranch}-pr-build
+              - !Sub arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:report-group/${AWS::StackName}-${GitHubBranch}-pr-build
       Roles:
         - !ImportValue AiProxyCodeBuildRoleName
 
