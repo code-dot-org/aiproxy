@@ -233,10 +233,10 @@ Resources:
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: ecs
 
-  AiProxyApiKey:
+  TempAiProxyApiKey:
     Type: 'AWS::SecretsManager::Secret'
     Properties:
-      Name: !Sub "CfnStack/${AWS::StackName}/aiproxy_api_key"
+      Name: !Sub "aiproxy/${AWS::StackName}/aiproxy_api_key"
       Description: 'API key for AiProxy service'
       GenerateSecretString:
         SecretStringTemplate: '{"AIPROXY_API_KEY":""}'
