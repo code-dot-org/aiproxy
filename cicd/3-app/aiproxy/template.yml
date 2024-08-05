@@ -225,7 +225,7 @@ Resources:
             - ContainerPort: 80
           Secrets:
             - Name: AIPROXY_API_KEY
-              ValueFrom: !Ref AiProxyApiKey
+              ValueFrom: !Ref TempAiProxyApiKey
           LogConfiguration:
             LogDriver: awslogs
             Options:
