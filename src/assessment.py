@@ -78,7 +78,7 @@ def post_assessment():
     return labels
 
 # Submit a test rubric assessment
-@assessment_routes.route('/test/assessment', methods=['GET'])
+@assessment_routes.route('/test/assessment', methods=['GET', 'POST'])
 def test_assessment():
     openai.api_key = os.getenv('OPENAI_API_KEY')
     
@@ -114,7 +114,7 @@ def test_assessment():
     return labels
 
 # Submit a test rubric assessment for a blank project
-@assessment_routes.route('/test/assessment/blank', methods=['GET'])
+@assessment_routes.route('/test/assessment/blank', methods=['GET', 'POST'])
 def test_assessment_blank():
     openai.api_key = os.getenv('OPENAI_API_KEY')
 
