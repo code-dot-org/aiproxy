@@ -141,6 +141,15 @@ Resources:
               - sts:AssumeRole
       ManagedPolicyArns:
         - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
+      Policies:
+        - PolicyName: 'SecretsManagerReadPolicy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: 'Allow'
+                Action:
+                  - 'secretsmanager:GetSecretValue'
+                Resource: !Sub arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:aiproxy/*
   
   ECSTaskRole:
     Type: AWS::IAM::Role
@@ -157,14 +166,6 @@ Resources:
       Policies:
         # TODO: This is too broad, it gives access to all aiproxy environments' api keys
         # Fix this be creating the policy in the aiproxy stack (blocked by cicd role permissions)
-        - PolicyName: 'SecretsManagerReadPolicy'
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: 'Allow'
-                Action:
-                  - 'secretsmanager:GetSecretValue'
-                Resource: !Sub arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:aiproxy/*
         - PolicyName: ECSTaskBedrockPolicy
           PolicyDocument:
             Version: "2012-10-17"
