@@ -17,7 +17,7 @@ def get_openai_models():
     return openai.Model.list().data
 
 # Submit a test prompt
-@openai_routes.route('/test/openai', methods=['GET','POST'])
+@openai_routes.route('/test/openai', methods=['GET'])
 def test_openai():
     openai.api_key = os.getenv('OPENAI_API_KEY')
 

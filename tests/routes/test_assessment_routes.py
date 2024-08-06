@@ -18,7 +18,7 @@ class TestPostAssessment:
           "remove-comments": "1",
           "num-responses": "1",
           "temperature": "0.2",
-        }, json={}, headers={"Content-type": "application/json", "Authorization": "test_key"})
+        }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
         assert response.status_code == 400
 
     def test_should_return_400_when_no_prompt(self, client, randomstring):
@@ -32,7 +32,7 @@ class TestPostAssessment:
           "remove-comments": "1",
           "num-responses": "1",
           "temperature": "0.2",
-        }, json={}, headers={"Content-type": "application/json", "Authorization": "test_key"})
+        }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
         assert response.status_code == 400
 
     def test_should_return_400_when_no_rubric(self, client, randomstring):
@@ -46,7 +46,7 @@ class TestPostAssessment:
           "remove-comments": "1",
           "num-responses": "1",
           "temperature": "0.2",
-        }, json={}, headers={"Content-type": "application/json", "Authorization": "test_key"})
+        }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
         assert response.status_code == 400
 
     def test_should_return_413_on_request_too_large_error(self, mocker, client, randomstring):
@@ -62,7 +62,7 @@ class TestPostAssessment:
           "remove-comments": "1",
           "num-responses": "1",
           "temperature": "0.2",
-        }, json={}, headers={"Content-type": "application/json", "Authorization": "test_key"})
+        }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
         assert response.status_code == 413
 
     def test_should_return_400_when_passing_not_a_number_to_num_responses(self, client, randomstring):
@@ -77,7 +77,7 @@ class TestPostAssessment:
           "remove-comments": "1",
           "num-responses": "x",
           "temperature": "0.2",
-        }, json={}, headers={"Content-type": "application/json", "Authorization": "test_key"})
+        }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
         assert response.status_code == 400
 
     def test_should_return_400_when_passing_not_a_number_to_temperature(self, client, randomstring):
@@ -92,7 +92,7 @@ class TestPostAssessment:
           "remove-comments": "1",
           "num-responses": "2",
           "temperature": "x",
-        }, json={}, headers={"Content-type": "application/json", "Authorization": "test_key"})
+        }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
         assert response.status_code == 400
 
     def test_should_return_400_when_the_label_function_does_not_return_data(self, mocker, client, randomstring):
@@ -110,7 +110,7 @@ class TestPostAssessment:
           "remove-comments": "1",
           "num-responses": "2",
           "temperature": "0.2",
-        }, json={}, headers={"Content-type": "application/json", "Authorization": "test_key"})
+        }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
 
         assert response.status_code == 400
 
@@ -132,7 +132,7 @@ class TestPostAssessment:
           "remove-comments": "1",
           "num-responses": "2",
           "temperature": "x",
-        }, json={}, headers={"Content-type": "application/json", "Authorization": "test_key"})
+        }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
 
         assert response.status_code == 400
 
@@ -153,7 +153,7 @@ class TestPostAssessment:
         }
 
         os.environ['AIPROXY_API_KEY'] = 'test_key'
-        response = client.post('/assessment', query_string=data, json={}, headers={"Content-type": "application/json", "Authorization": "test_key"})
+        response = client.post('/assessment', query_string=data, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
 
         label_mock.assert_called_with(
             code=data["code"],
@@ -196,7 +196,7 @@ class TestPostAssessment:
         }
 
         os.environ['AIPROXY_API_KEY'] = 'test_key'
-        response = client.post('/assessment', query_string=data, json={}, headers={"Content-type": "application/json", "Authorization": "test_key"})
+        response = client.post('/assessment', query_string=data, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
 
         print(response.data)
 
@@ -222,7 +222,7 @@ class TestPostTestAssessment:
           "remove-comments": "1",
           "num-responses": "1",
           "temperature": "0.2",
-        }, json={}, headers={"Content-type": "application/json", "Authorization": "test_key"})
+        }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
         assert response.status_code == 400
 
     def test_should_return_400_when_passing_not_a_number_to_num_responses(self, mocker, client, randomstring):
@@ -238,7 +238,7 @@ class TestPostTestAssessment:
           "remove-comments": "1",
           "num-responses": "x",
           "temperature": "0.2",
-        }, json={}, headers={"Content-type": "application/json", "Authorization": "test_key"})
+        }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
         assert response.status_code == 400
 
     def test_should_return_400_when_passing_not_a_number_to_temperature(self, mocker, client, randomstring):
@@ -254,7 +254,7 @@ class TestPostTestAssessment:
           "remove-comments": "1",
           "num-responses": "2",
           "temperature": "x",
-        }, json={}, headers={"Content-type": "application/json", "Authorization": "test_key"})
+        }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
         assert response.status_code == 400
 
     def test_should_return_400_when_the_label_function_does_not_return_data(self, mocker, client, randomstring):
@@ -272,7 +272,7 @@ class TestPostTestAssessment:
           "remove-comments": "1",
           "num-responses": "2",
           "temperature": "0.2",
-        }, json={}, headers={"Content-type": "application/json", "Authorization": "test_key"})
+        }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
 
         assert response.status_code == 400
 
@@ -294,7 +294,7 @@ class TestPostTestAssessment:
           "remove-comments": "1",
           "num-responses": "2",
           "temperature": "x",
-        }, json={}, headers={"Content-type": "application/json", "Authorization": "test_key"})
+        }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
 
         assert response.status_code == 400
 
@@ -324,7 +324,7 @@ class TestPostTestAssessment:
           "temperature": "0.2",
         }
         os.environ['AIPROXY_API_KEY'] = 'test_key'
-        response = client.post('/test/assessment', query_string=data, json={}, headers={"Content-type": "application/json", "Authorization": "test_key"})
+        response = client.post('/test/assessment', query_string=data, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
 
         assert response.status_code == 200
         assert response.json == label_mock.return_value
@@ -347,7 +347,7 @@ class TestPostBlankAssessment:
           "remove-comments": "1",
           "num-responses": "1",
           "temperature": "0.2",
-        }, json={}, headers={"Content-type": "application/json", "Authorization": "test_key"})
+        }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
         assert response.status_code == 400
 
     def test_should_return_400_when_passing_not_a_number_to_num_responses(self, mocker, client, randomstring):
@@ -362,7 +362,7 @@ class TestPostBlankAssessment:
           "remove-comments": "1",
           "num-responses": "x",
           "temperature": "0.2",
-        }, json={}, headers={"Content-type": "application/json", "Authorization": "test_key"})
+        }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
         assert response.status_code == 400
 
     def test_should_return_400_when_passing_not_a_number_to_temperature(self, mocker, client, randomstring):
@@ -377,7 +377,7 @@ class TestPostBlankAssessment:
           "remove-comments": "1",
           "num-responses": "2",
           "temperature": "x",
-        }, json={}, headers={"Content-type": "application/json", "Authorization": "test_key"})
+        }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
         assert response.status_code == 400
 
     def test_should_return_400_when_the_label_function_does_not_return_data(self, mocker, client, randomstring):
@@ -394,7 +394,7 @@ class TestPostBlankAssessment:
           "remove-comments": "1",
           "num-responses": "2",
           "temperature": "0.2",
-        }, json={}, headers={"Content-type": "application/json", "Authorization": "test_key"})
+        }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
 
         assert response.status_code == 400
 
@@ -415,7 +415,7 @@ class TestPostBlankAssessment:
           "remove-comments": "1",
           "num-responses": "2",
           "temperature": "x",
-        }, json={}, headers={"Content-type": "application/json", "Authorization": "test_key"})
+        }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
 
         assert response.status_code == 400
 
@@ -434,7 +434,7 @@ class TestPostBlankAssessment:
           "temperature": "0.2",
         }
         os.environ['AIPROXY_API_KEY'] = 'test_key'
-        response = client.post('/test/assessment/blank', query_string=data, json={}, headers={"Content-type": "application/json", "Authorization": "test_key"})
+        response = client.post('/test/assessment/blank', query_string=data, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
         print(response.data)
         label_mock.assert_called_with(
             code='',
@@ -472,7 +472,6 @@ class TestPostBlankAssessment:
           "temperature": "0.2"
         }
         os.environ['AIPROXY_API_KEY'] = 'test_key'
-        response = client.post('/test/assessment/blank', query_string=data, json={}, headers={"Content-type": "application/json", "Authorization": "test_key"})
-
+        response = client.post('/test/assessment/blank', query_string=data, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
         assert response.status_code == 200
         assert response.json == label_mock.return_value

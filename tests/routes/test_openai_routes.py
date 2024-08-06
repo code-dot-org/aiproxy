@@ -44,7 +44,7 @@ class TestPostOpenAi:
             ]
         )
 
-        response = client.post('/test/openai', json={}, headers={"Content-type": "application/json", "Authorization": "test_key"})
+        response = client.get('/test/openai')
         assert openai.api_key == openai_api_key
 
     def test_should_use_the_api_key_in_the_environment_var(self, mocker, client, randomstring):
@@ -59,7 +59,7 @@ class TestPostOpenAi:
             ]
         )
 
-        response = client.post('/test/openai', json={}, headers={"Content-type": "application/json", "Authorization": "test_key"})
+        response = client.get('/test/openai')
         create_mock.assert_called_with(model=ANY, api_key=openai_api_key, messages=ANY)
 
     def test_should_return_400_on_openai_error(self, mocker, client, randomstring):
@@ -70,5 +70,5 @@ class TestPostOpenAi:
         create_mock = mocker.patch('openai.ChatCompletion.create')
         create_mock.side_effect = openai.error.InvalidRequestError('', '')
 
-        response = client.post('/test/openai', json={}, headers={"Content-type": "application/json", "Authorization": "test_key"})
+        response = client.get('/test/openai')
         assert response.status_code == 400
