@@ -25,13 +25,6 @@ def create_app(test_config=None):
         DATABASE=os.path.join(app.instance_path, 'flaskr.sqlite'),
     )
 
-    @app.before_request
-    def require_aiproxy_api_key():
-        if request.method == "POST":
-            aiproxy_api_key = request.headers.get('Authorization')
-            if aiproxy_api_key != os.getenv('AIPROXY_API_KEY'):
-                return jsonify({"error": "Unauthorized"}), 401
-
     if test_config is None:
         # load the instance config, if it exists, when not testing
         app.config.from_pyfile('config.py', silent=True)
@@ -59,5 +52,13 @@ def create_app(test_config=None):
     app.register_blueprint(test_routes)
     app.register_blueprint(openai_routes)
     app.register_blueprint(assessment_routes)
+
+    @app.before_request
+    def require_aiproxy_api_key():
+        if request.method == "POST":
+            aiproxy_api_key = request.headers.get('Authorization')
+            if aiproxy_api_key != os.getenv('AIPROXY_API_KEY'):
+                logging.info(aiproxy_api_key, os.getenv('AIPROXY_API_KEY'))
+                return jsonify({"error": "Unauthorized"}), 401
 
     return app
