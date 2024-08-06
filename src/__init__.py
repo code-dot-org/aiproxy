@@ -27,7 +27,7 @@ def create_app(test_config=None):
 
     @app.before_request
     def require_aiproxy_api_key():
-        if request.method == "POST" and request.json:
+        if request.method == "POST":
             api_key = request.headers.get('Authorization')
             if api_key != os.getenv('AIPROXY_API_KEY'):
                 return jsonify({"error": "Unauthorized"}), 401
