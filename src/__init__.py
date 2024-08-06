@@ -9,8 +9,9 @@ from src.test import test_routes
 from src.openai import openai_routes
 from src.assessment import assessment_routes
 
+
 # Flask
-from flask import Flask
+from flask import Flask, jsonify, request
 
 # OpenAI library
 import openai
@@ -23,6 +24,13 @@ def create_app(test_config=None):
         SECRET_KEY='dev',
         DATABASE=os.path.join(app.instance_path, 'flaskr.sqlite'),
     )
+
+    @app.before_request
+    def require_aiproxy_api_key():
+        if request.method == "POST" and request.json:
+            api_key = request.headers.get('Authorization')
+            if api_key != os.getenv('AIPROXY_API_KEY'):
+                return jsonify({"error": "Unauthorized"}), 401
 
     if test_config is None:
         # load the instance config, if it exists, when not testing

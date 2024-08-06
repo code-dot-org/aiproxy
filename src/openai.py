@@ -3,13 +3,12 @@
 # Right now, we can query the list of models available. (/openai/models)
 # The '/test/openai' route will query the given chat model with a small prompt.
 
-from flask import Blueprint, request
+from flask import Blueprint, request, jsonify
 
 import os
 import openai
 
 openai_routes = Blueprint('openai_routes', __name__)
-
 
 # Just report the models from OpenAI
 @openai_routes.route('/openai/models')

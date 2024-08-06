@@ -1,7 +1,7 @@
 # These routes (/assessment) issue AI driven rubric assessments.
 # The /test/assessment will issue a hard-coded AI assessment of a rubric.
 
-from flask import Blueprint, request
+from flask import Blueprint, request, jsonify
 
 import os
 import openai
@@ -16,20 +16,14 @@ from lib.assessment import assess
 from lib.assessment.assess import KeyConceptError
 from lib.assessment.label import InvalidResponseError, RequestTooLargeError, OpenaiServerError, BedrockServerError
 
-from src.security import api_key_check
 
 assessment_routes = Blueprint('assessment_routes', __name__)
-
 
 
 # Submit a rubric assessment
 @assessment_routes.route('/assessment', methods=['POST'])
 def post_assessment():
     openai.api_key = os.getenv('OPENAI_API_KEY')
-
-    # key_check = api_key_check(request)
-    # if key_check is not True:
-    #     return key_check
     
     if request.values.get("code", None) == None:
         return "`code` is required", 400
