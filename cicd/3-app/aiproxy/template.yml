@@ -239,10 +239,8 @@ Resources:
       Name: !Sub "aiproxy/${AWS::StackName}/aiproxy_api_key"
       Description: 'API key for AiProxy service'
       GenerateSecretString:
-        SecretStringTemplate: '{"AIPROXY_API_KEY":""}'
-        GenerateStringKey: 'AIPROXY_API_KEY'
         PasswordLength: 32
-        ExcludeCharacters: '"@/\\'
+        ExcludePunctuation: true
 
   # ------------------
   #  Logging & Alerts
