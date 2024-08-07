@@ -29,6 +29,7 @@ def recursive_upload(dir = None, parent_dirs=None):
   files = os.listdir(full_path)
   if '.git' in files:
     files.remove('.git')
+  if 'README.md' in files:
     files.remove('README.md')
   for f in files:
     f_path = os.path.join(full_path, f)
