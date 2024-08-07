@@ -137,8 +137,11 @@ class Label:
             logging.error(f"{student_id} Error calling the API: {response['ResponseMetadata']['HTTPStatusCode']}")
             logging.error(f"{student_id} Response body: {response['body']}")
             return None
-
+        
         response_body = json.loads(response.get('body').read())
+
+        if '\\"Stretch\\"' in response_body["content"][0]["text"]:
+            response_body["content"][0]["text"] = response_body["content"][0]["text"].replace('\\"Stretch\\"', "“Stretch”")   
 
         data = self.get_response_data_if_valid(response_body, rubric, student_id, response_type='json')
 
@@ -405,10 +408,6 @@ class Label:
                 response_data = self.parse_non_json_response(text)
             else:
                 raise ValueError(f"Invalid response type: {response_type}")
-
-            if type(response_data) == 'list' and "Key Concept" in response_data[0]:
-                for i in range(len(response_data)):
-                    response_data[i]["Key Concept"] = response_data[i]["Key Concept"].replace("\"", "“", 1).replace("\"", "”", 1)
 
             self._sanitize_server_response(response_data)
             self._validate_server_response(response_data, rubric)
