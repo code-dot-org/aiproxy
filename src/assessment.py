@@ -24,7 +24,6 @@ assessment_routes = Blueprint('assessment_routes', __name__)
 @assessment_routes.route('/assessment', methods=['POST'])
 def post_assessment():
     openai.api_key = os.getenv('OPENAI_API_KEY')
-    
     if request.values.get("code", None) == None:
         return "`code` is required", 400
 
