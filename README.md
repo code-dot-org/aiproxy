@@ -33,6 +33,11 @@ to `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`. The `DEBUG` setting is th
 most permissive and shows all logging text. The `CRITICAL` prevents most logging
 from happening. Most logging happens at `INFO`, which is the default setting.
 
+To enable Honeybadger reporting for events in the application, provide the
+`HONEYBADGER_API_KEY` within the configuration or as an environment variable. When
+enabled, the application will notify on Exceptions raised and any `error` or `critical`
+logs.
+
 ## Local Development
 
 - Install docker
@@ -253,6 +258,23 @@ To run the test suite against the container, invoke the `./bin/test.sh` script. 
 build and run the container against the Python tests.
 
 For information about testing the service, see the [Testing documentation](TESTING.md).
+
+## Secrets
+
+Secrets for this project follow the naming convention `${EnvironmentType}/${DNSRecord}/honeybadger_api_key`. Our security model controls access to secrets based on the prefix, and will deny read access to any secret not prefixed with `development/`, so we tell our application's Cloudformation template whether we are in a development, test, or production environment type via [config files](cicd/3-app/aiproxy/config).
+
+* In production: `production/aiproxy.code.org/honeybadger_api_key`
+* In test: `test/aiproxy-test.code.org/honeybadger_api_key`
+* In an "adhoc" development environment: `development/aiproxy-dev-mybranch.code.org/honeybadger_api_key`
+* A prod-like environment, not based on `main`: `production/aiproxy-otherbranch.code.org/honeybadger_api_key`
+
+Read more about environments and environment types in [cicd/README.md](cicd/README.md).
+
+### Creating new secrets
+
+To create a new secret, define it in "[cicd/3-app/aiproxy/template.yml](cicd/3-app/aiproxy/template.yml) in the "Secrets" section. This will create an empty secret once deployed.
+
+Once created, you can set the value of this secret (via the AWS Console, as an Admin). Finally, deploy your code that uses the new secret, loading it via the `GetSecretValue` function from the AWS SDK.
 
 ## CICD
 

@@ -5,6 +5,9 @@ Description: Provision an instance of the AI Proxy service.
 # Dependencies: This template has dependencies, look for !ImportValue in the Resources section.
 
 Parameters:
+  EnvironmentType:
+    Type: String
+    Description: Environment type (e.g. 'development', 'staging', 'test', 'prod').
   BaseDomainName:
     Type: String
     Description: Base domain name (e.g. 'code.org' in 'aiproxy.code.org').
@@ -17,9 +20,6 @@ Parameters:
   AppImageUri:
     Type: String
     Description: URI of the Docker image in ECR.
-
-# Conditions:
-#   IsDevCondition: !Equals [!Ref BaseDomainName, "dev-code.org"]
 
 Resources:
 
@@ -222,12 +222,29 @@ Resources:
           Essential: true
           PortMappings:
             - ContainerPort: 80
+          Environment:
+            # The most unique identifier for the environment is the DNS record.
+            - Name: ENVIRONMENT
+              Value: !Ref DNSRecord
+            - Name: ENVIRONMENT_TYPE
+              Value: !Ref EnvironmentType
           LogConfiguration:
             LogDriver: awslogs
             Options:
               awslogs-group: !Ref LogGroup
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: ecs
+
+  # ------------------
+  #      Secrets
+  # ------------------
+
+  HoneybadgerApiKeySecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub "${EnvironmentType}/${DNSRecord}/honeybadger_api_key"
+      Description: Honeybadger API key for this service
+
 
   # ------------------
   #  Logging & Alerts
