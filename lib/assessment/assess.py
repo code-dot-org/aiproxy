@@ -24,7 +24,7 @@ def label(code, prompt, rubric, examples=[], api_key='', llm_model=DEFAULT_MODEL
       logging.error("Must set OPENAI_API_KEY!")
       return {}
     else:
-      logging.info("Using set OPENAI_API_KEY")
+      logging.info("Using OPENAI_API_KEY from OS environment")
 
   # Validate example key concepts against rubric.
   for i, ex in enumerate(examples):

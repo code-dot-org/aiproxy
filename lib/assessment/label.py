@@ -111,7 +111,6 @@ class Label:
         anthropic_prompt = self.compute_anthropic_prompt(prompt, rubric, student_code, examples=examples)
         if "claude-3" in bedrock_model:
             body = json.dumps({"anthropic_version": "bedrock-2023-05-31",
-                               "max_tokens": 4000,
                                "messages": [{"role": "user",
                                              "content": [{"type": "text",
                                                           "text": anthropic_prompt}
@@ -128,13 +127,15 @@ class Label:
         accept = 'application/json'
         content_type = 'application/json'
         response = bedrock.invoke_model(body=body, modelId=bedrock_model, accept=accept, contentType=content_type)
+        
+        status = response['ResponseMetadata']['HTTPStatusCode']
 
-        if response['ResponseMetadata']['HTTPStatusCode'] == 500:
-            logging.warning(f"{student_id} Error calling the API: {response['ResponseMetadata']['HTTPStatusCode']}")
+        if status == 500:
+            logging.warning(f"{student_id} Error calling the API: {status}")
             logging.warning(f"{student_id} Response body: {response['body']}")
             raise BedrockServerError(f"Error calling Bedrock Anthropic API: {response['body']}")
-        elif response['ResponseMetadata']['HTTPStatusCode'] != 200:
-            logging.error(f"{student_id} Error calling the API: {response['ResponseMetadata']['HTTPStatusCode']}")
+        elif status != 200:
+            logging.error(f"{student_id} Error calling the API: {status}")
             logging.error(f"{student_id} Response body: {response['body']}")
             return None
         

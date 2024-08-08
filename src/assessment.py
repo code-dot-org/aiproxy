@@ -34,6 +34,7 @@ def post_assessment():
         return "`rubric` is required", 400
 
     examples = json.loads(request.values.get("examples", "[]"))
+    llm_model = request.values.get("model", DEFAULT_MODEL)
 
     try:
         labels = assess.label(
@@ -42,7 +43,7 @@ def post_assessment():
             rubric=request.values.get("rubric", ""),
             examples=examples,
             api_key=request.values.get("api-key", openai.api_key),
-            llm_model=request.values.get("model", DEFAULT_MODEL),
+            llm_model=llm_model,
             remove_comments=(request.values.get("remove-comments", "0") != "0"),
             num_responses=int(request.values.get("num-responses", "1")),
             temperature=float(request.values.get("temperature", "0.2")),
@@ -59,11 +60,14 @@ def post_assessment():
     except KeyConceptError as e:
         return e, 400
     except OpenaiServerError as e:
-        return e, 503
+        return f"OpenAI server error: #{e}: ", 503
     except BedrockServerError as e:
-        return e, 503
+        return f"Bedrock server error: #{e}: ", 503
     except requests.exceptions.ReadTimeout as e:
-        return f"LLM timeout: #{e}: ", 504
+        if 'gpt' in llm_model:
+            return f"OpenAI timeout: #{e}: ", 504
+        elif 'bedrock' in llm_model:
+            return f"Bedrock timeout: #{e}: ", 504
 
     if not isinstance(labels, dict) or not isinstance(labels.get("data"), list):
         return "response from AI or service not valid", 400
