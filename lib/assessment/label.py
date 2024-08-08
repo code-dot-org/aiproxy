@@ -111,6 +111,7 @@ class Label:
         anthropic_prompt = self.compute_anthropic_prompt(prompt, rubric, student_code, examples=examples)
         if "claude-3" in bedrock_model:
             body = json.dumps({"anthropic_version": "bedrock-2023-05-31",
+                               "max_tokens": 4096,
                                "messages": [{"role": "user",
                                              "content": [{"type": "text",
                                                           "text": anthropic_prompt}
