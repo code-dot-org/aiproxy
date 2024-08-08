@@ -36,10 +36,10 @@ def recursive_upload(dir = None, parent_dirs=None):
     if os.path.isfile(f_path):
       if new_parent_dirs:
         print(f"uploading {f_path} to s3:cdo-ai/teaching_assistant/releases/{now}-{args.release_name}/{new_parent_dirs}/{f}")
-        s3.upload_file(f_path, 'cdo-ai', f"teaching_assistant/experiments/{now}-{args.release_name}/{new_parent_dirs}/{f}")
+        s3.upload_file(f_path, 'cdo-ai', f"teaching_assistant/releases/{now}-{args.release_name}/{new_parent_dirs}/{f}")
       else:
         print(f"uploading {f_path} to s3:cdo-ai/teaching_assistant/releases/{now}-{args.release_name}/{f}")
-        s3.upload_file(f_path, 'cdo-ai', f"teaching_assistant/experiments/{now}-{args.release_name}/{f}")
+        s3.upload_file(f_path, 'cdo-ai', f"teaching_assistant/releases/{now}-{args.release_name}/{f}")
     elif os.path.isdir(f_path):
       recursive_upload(f, new_parent_dirs)
 
