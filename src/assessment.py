@@ -68,6 +68,8 @@ def post_assessment():
             return f"OpenAI timeout: #{e}: ", 504
         elif 'bedrock' in llm_model:
             return f"Bedrock timeout: #{e}: ", 504
+        else:
+            return f"LLM timeout: #{e}: ", 504
 
     if not isinstance(labels, dict) or not isinstance(labels.get("data"), list):
         return "response from AI or service not valid", 400
