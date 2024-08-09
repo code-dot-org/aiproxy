@@ -6,14 +6,13 @@ import time
 import requests
 import logging
 import boto3
+from botocore.config import Config
 from threading import Lock
 
 from typing import List, Dict, Any
 from lib.assessment.config import VALID_LABELS, OPENAI_API_TIMEOUT
 from lib.assessment.code_feature_extractor import CodeFeatures
 from lib.assessment.decision_trees import DecisionTrees
-
-boto3.set_stream_logger('botocore', level='INFO')
 
 from io import StringIO
 
@@ -101,7 +100,7 @@ class Label:
             raise Exception("Unknown model: {}".format(llm_model))
 
     def bedrock_anthropic_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model=""):
-        bedrock = boto3.client(service_name='bedrock-runtime')
+        bedrock = self.get_bedrock_client(student_id)
 
         # strip 'bedrock.' from the model name
         bedrock_model = llm_model[8:]
@@ -197,7 +196,8 @@ class Label:
                 if cls._bedrock_client is None:
                     # print the student_id so we can debug if we see multiple clients being created
                     logging.info(f"creating bedrock client. student_id: {student_id}")
-                    cls._bedrock_client = boto3.client(service_name='bedrock-runtime')
+                    bedrock_config = Config(connect_timeout=150, read_timeout=150, retries={'max_attempts': 2})
+                    cls._bedrock_client = boto3.client(service_name='bedrock-runtime', config=bedrock_config)
         return cls._bedrock_client
 
     def openai_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model="", response_type='tsv'):
