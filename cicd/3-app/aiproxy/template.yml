@@ -212,6 +212,7 @@ Resources:
         - FARGATE
       NetworkMode: awsvpc
       ExecutionRoleArn: !ImportValue AiProxyECSTaskExecutionRoleArn
+      TaskRoleArn: !ImportValue AiProxyECSTaskRoleArn
       Cpu: 256
       Memory: 512
       ContainerDefinitions:
@@ -222,12 +223,24 @@ Resources:
           Essential: true
           PortMappings:
             - ContainerPort: 80
+          Secrets:
+            - Name: AIPROXY_API_KEY
+              ValueFrom: !Ref TempAiProxyApiKey
           LogConfiguration:
             LogDriver: awslogs
             Options:
               awslogs-group: !Ref LogGroup
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: ecs
+
+  TempAiProxyApiKey:
+    Type: 'AWS::SecretsManager::Secret'
+    Properties:
+      Name: !Sub "aiproxy/${AWS::StackName}/aiproxy_api_key"
+      Description: 'API key for AiProxy service'
+      GenerateSecretString:
+        PasswordLength: 32
+        ExcludePunctuation: true
 
   # ------------------
   #  Logging & Alerts

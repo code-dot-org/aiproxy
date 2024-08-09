@@ -3,7 +3,7 @@
 
 import logging
 
-from flask import Blueprint, request
+from flask import Blueprint, request, jsonify
 
 test_routes = Blueprint('test_routes', __name__)
 

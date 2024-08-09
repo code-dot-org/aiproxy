@@ -1,7 +1,7 @@
 # These routes (/assessment) issue AI driven rubric assessments.
 # The /test/assessment will issue a hard-coded AI assessment of a rubric.
 
-from flask import Blueprint, request
+from flask import Blueprint, request, jsonify
 
 import os
 import openai
@@ -14,15 +14,16 @@ from lib.assessment.config import DEFAULT_MODEL
 # Our assessment code
 from lib.assessment import assess
 from lib.assessment.assess import KeyConceptError
-from lib.assessment.label import InvalidResponseError, RequestTooLargeError, OpenaiServerError
+from lib.assessment.label import InvalidResponseError, RequestTooLargeError, OpenaiServerError, BedrockServerError
+
 
 assessment_routes = Blueprint('assessment_routes', __name__)
+
 
 # Submit a rubric assessment
 @assessment_routes.route('/assessment', methods=['POST'])
 def post_assessment():
     openai.api_key = os.getenv('OPENAI_API_KEY')
-
     if request.values.get("code", None) == None:
         return "`code` is required", 400
 
@@ -33,6 +34,7 @@ def post_assessment():
         return "`rubric` is required", 400
 
     examples = json.loads(request.values.get("examples", "[]"))
+    llm_model = request.values.get("model", DEFAULT_MODEL)
 
     try:
         labels = assess.label(
@@ -41,7 +43,7 @@ def post_assessment():
             rubric=request.values.get("rubric", ""),
             examples=examples,
             api_key=request.values.get("api-key", openai.api_key),
-            llm_model=request.values.get("model", DEFAULT_MODEL),
+            llm_model=llm_model,
             remove_comments=(request.values.get("remove-comments", "0") != "0"),
             num_responses=int(request.values.get("num-responses", "1")),
             temperature=float(request.values.get("temperature", "0.2")),
@@ -58,9 +60,16 @@ def post_assessment():
     except KeyConceptError as e:
         return e, 400
     except OpenaiServerError as e:
-        return e, 503
+        return f"OpenAI server error: #{e}: ", 503
+    except BedrockServerError as e:
+        return f"Bedrock server error: #{e}: ", 503
     except requests.exceptions.ReadTimeout as e:
-        return f"OpenAI timeout: #{e}: ", 504
+        if 'gpt' in llm_model:
+            return f"OpenAI timeout: #{e}: ", 504
+        elif 'bedrock' in llm_model:
+            return f"Bedrock timeout: #{e}: ", 504
+        else:
+            return f"LLM timeout: #{e}: ", 504
 
     if not isinstance(labels, dict) or not isinstance(labels.get("data"), list):
         return "response from AI or service not valid", 400
@@ -68,7 +77,7 @@ def post_assessment():
     return labels
 
 # Submit a test rubric assessment
-@assessment_routes.route('/test/assessment', methods=['GET','POST'])
+@assessment_routes.route('/test/assessment', methods=['GET', 'POST'])
 def test_assessment():
     openai.api_key = os.getenv('OPENAI_API_KEY')
     
@@ -91,6 +100,7 @@ def test_assessment():
             remove_comments=(request.values.get("remove-comments", "0") != "0"),
             num_responses=int(request.values.get("num-responses", "1")),
             temperature=float(request.values.get("temperature", "0.2")),
+            response_type='json'
         )
     except ValueError:
         return "One of the arguments is not parseable as a number", 400
@@ -103,7 +113,7 @@ def test_assessment():
     return labels
 
 # Submit a test rubric assessment for a blank project
-@assessment_routes.route('/test/assessment/blank', methods=['GET','POST'])
+@assessment_routes.route('/test/assessment/blank', methods=['GET', 'POST'])
 def test_assessment_blank():
     openai.api_key = os.getenv('OPENAI_API_KEY')
 
@@ -137,7 +147,7 @@ def test_assessment_blank():
     return labels
 
 # Submit a test rubric assessment with examples
-@assessment_routes.route('/test/assessment/examples', methods=['GET', 'POST'])
+@assessment_routes.route('/test/assessment/examples', methods=['GET'])
 def test_assessment_examples():
     openai.api_key = os.getenv('OPENAI_API_KEY')
 
@@ -181,7 +191,7 @@ def test_assessment_examples():
     return labels
 
 # Test assessment with code feature extractor
-@assessment_routes.route('/test/assessment/cfe', methods=['GET', 'POST'])
+@assessment_routes.route('/test/assessment/cfe', methods=['GET'])
 def test_assessment_cfe():
     openai.api_key = os.getenv('OPENAI_API_KEY')
 

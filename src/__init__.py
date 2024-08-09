@@ -9,8 +9,9 @@ from src.test import test_routes
 from src.openai import openai_routes
 from src.assessment import assessment_routes
 
+
 # Flask
-from flask import Flask
+from flask import Flask, jsonify, request
 
 # OpenAI library
 import openai
@@ -51,5 +52,12 @@ def create_app(test_config=None):
     app.register_blueprint(test_routes)
     app.register_blueprint(openai_routes)
     app.register_blueprint(assessment_routes)
+
+    @app.before_request
+    def require_aiproxy_api_key():
+        if request.method == "POST":
+            aiproxy_api_key = request.headers.get('Authorization')
+            if aiproxy_api_key != os.getenv('AIPROXY_API_KEY'):
+                return jsonify({"error": "Unauthorized"}), 401
 
     return app
