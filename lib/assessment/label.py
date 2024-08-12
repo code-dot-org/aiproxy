@@ -133,7 +133,7 @@ class Label:
         if status == 500:
             logging.warning(f"{student_id} Error calling the API: {status}")
             logging.warning(f"{student_id} Response body: {response['body']}")
-            raise BedrockServerError(f"Error calling Bedrock Anthropic API: {response['body']}")
+            raise BedrockServerError(f"Error calling Bedrock Anthropic API: {status}")
         elif status != 200:
             logging.error(f"{student_id} Error calling the API: {status}")
             logging.error(f"{student_id} Response body: {response['body']}")

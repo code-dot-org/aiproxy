@@ -45,4 +45,4 @@ def recursive_upload(dir = None, parent_dirs=None):
 
 recursive_upload()
 
-print(f"Upload complete! Update S3_AI_RELEASE_PATH at cdo/dashboard/app/jobs/concerns/ai_rubric_config.rb with the new release location: 'teaching_assistant/releases/{args.release_name}-{now}/'")
+print(f"Upload complete! Update S3_AI_RELEASE_PATH at cdo/dashboard/app/jobs/concerns/ai_rubric_config.rb with the new release location: 'teaching_assistant/releases/{now}-{args.release_name}/'")
