@@ -53,13 +53,14 @@ You can create a Development (aka 'adhoc') environment by setting the `ENVIRONME
 
 Notes:
 
+* this currently requires elevated permissions, an Infra engineer can help perform the initial creation
 * branch names are used as a unique identifier (stack name, among others). Therefore we can only deploy one CI/CD pipeline per branch per AWS Account.
 * your branch name cannot contain the character `/`, as this causes issues in AWS. Note that resources will be deployed with the tags `{EnvType = development}`.
 * for now, these must deployed to the production AWS account. There is planned work to enable these to be deployed to the Dev AWS account.
 
 Steps
 
-- First, login to the AWS production account. You can follow steps 1-3 [here](https://docs.google.com/document/d/1mMQK6HhniLsz9lynzhUcm7Tcw_2WVLBxADe0WzqL6rM/edit#bookmark=id.wtrskofu4rb9) to do so.
+- First, obtain appropraite AWS CLI permissions (currently requires admin permissions, find an Infra engineer)
 - Then, run the following command with your branch name:
    ```
    TARGET_BRANCH=mybranch ENVIRONMENT_TYPE=development cicd/2-cicd/deploy-cicd.sh
