@@ -16,7 +16,7 @@ class KeyConceptError(Exception):
 def label(code, prompt, rubric, examples=[], api_key='', llm_model=DEFAULT_MODEL, num_responses=1, temperature=0.2, remove_comments=False, response_type='tsv', code_feature_extractor=None, lesson=None):
   OPENAI_API_KEY = api_key
 
-  # # Set the key
+  # Set the key
   if "gpt" in llm_model:
     if OPENAI_API_KEY:
       os.environ['OPENAI_API_KEY'] = OPENAI_API_KEY
