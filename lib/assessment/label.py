@@ -401,7 +401,7 @@ class Label:
         try:
             choice_text = f"Choice {choice_index}: " if choice_index is not None else ''
             if not response_text:
-                raise InvalidResponseError("empty response")
+                raise InvalidResponseError(f"empty or invalid response:\n{choice}")
             text = response_text.strip()
 
             if response_type == 'json':
