@@ -6,6 +6,7 @@ import time
 import requests
 import logging
 import boto3
+from botocore.config import Config
 from threading import Lock
 
 from typing import List, Dict, Any
@@ -22,6 +23,9 @@ class RequestTooLargeError(Exception):
     pass
 
 class OpenaiServerError(Exception):
+    pass
+
+class BedrockServerError(Exception):
     pass
 
 class Label:
@@ -96,7 +100,7 @@ class Label:
             raise Exception("Unknown model: {}".format(llm_model))
 
     def bedrock_anthropic_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model=""):
-        bedrock = boto3.client(service_name='bedrock-runtime')
+        bedrock = self.get_bedrock_client(student_id)
 
         # strip 'bedrock.' from the model name
         bedrock_model = llm_model[8:]
@@ -104,17 +108,41 @@ class Label:
             raise Exception(f"Error parsing llm_model: {llm_model} bedrock_model: {bedrock_model}")
 
         anthropic_prompt = self.compute_anthropic_prompt(prompt, rubric, student_code, examples=examples)
-        body = json.dumps({
-            "prompt": anthropic_prompt,
-            "max_tokens_to_sample": 4000,
-            "temperature": temperature,
-            # "top_p": 0.9,
-        })
+        if "claude-3" in bedrock_model:
+            body = json.dumps({"anthropic_version": "bedrock-2023-05-31",
+                               "max_tokens": 4096,
+                               "messages": [{"role": "user",
+                                             "content": [{"type": "text",
+                                                          "text": anthropic_prompt}
+                                                        ]
+                                            }]
+                              })
+        else:
+            body = json.dumps({
+                "prompt": anthropic_prompt,
+                "max_tokens_to_sample": 4000,
+                "temperature": temperature,
+                # "top_p": 0.9,
+            })
         accept = 'application/json'
         content_type = 'application/json'
         response = bedrock.invoke_model(body=body, modelId=bedrock_model, accept=accept, contentType=content_type)
+        
+        status = response['ResponseMetadata']['HTTPStatusCode']
 
+        if status == 500:
+            logging.warning(f"{student_id} Error calling the API: {status}")
+            logging.warning(f"{student_id} Response body: {response['body']}")
+            raise BedrockServerError(f"Error calling Bedrock Anthropic API: {status}")
+        elif status != 200:
+            logging.error(f"{student_id} Error calling the API: {status}")
+            logging.error(f"{student_id} Response body: {response['body']}")
+            return None
+        
         response_body = json.loads(response.get('body').read())
+
+        if '\\"Stretch\\"' in response_body["content"][0]["text"]:
+            response_body["content"][0]["text"] = response_body["content"][0]["text"].replace('\\"Stretch\\"', "“Stretch”")   
 
         data = self.get_response_data_if_valid(response_body, rubric, student_id, response_type='json')
 
@@ -168,7 +196,8 @@ class Label:
                 if cls._bedrock_client is None:
                     # print the student_id so we can debug if we see multiple clients being created
                     logging.info(f"creating bedrock client. student_id: {student_id}")
-                    cls._bedrock_client = boto3.client(service_name='bedrock-runtime')
+                    bedrock_config = Config(connect_timeout=150, read_timeout=150, retries={'max_attempts': 2})
+                    cls._bedrock_client = boto3.client(service_name='bedrock-runtime', config=bedrock_config)
         return cls._bedrock_client
 
     def openai_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model="", response_type='tsv'):
@@ -362,9 +391,13 @@ class Label:
         if 'message' in choice.keys(): # OpenAI response
             response_text = choice['message']['content']
             finish_reason = choice['finish_reason']
-        elif 'completion' in choice.keys(): # Claude response
+        elif 'completion' in choice.keys(): # Claude 2 response
             response_text = choice['completion']
             finish_reason = choice['stop_reason']
+        elif 'content' in choice.keys(): # Claude 3 response
+            response_text = choice['content'][0]['text']
+            finish_reason = choice['stop_reason']
+
         try:
             choice_text = f"Choice {choice_index}: " if choice_index is not None else ''
             if not response_text:
@@ -407,7 +440,7 @@ class Label:
         try:
             data = json.loads(json_text)
         except json.JSONDecodeError as e:
-            if finish_reason == 'length':
+            if finish_reason == 'length' or finish_reason == 'max_tokens':
                 raise RequestTooLargeError(f"{student_id}: JSON decoding error")
             raise InvalidResponseError(f"JSON decoding error: {e}\n{json_text}")
 
@@ -479,6 +512,7 @@ class Label:
                 raise InvalidResponseError(f'incorrect column names. unexpected: {unexpected_columns} missing: {missing_columns}')
 
         key_concepts_from_response = list(set(row["Key Concept"] for row in response_data))
+
         if sorted(rubric_key_concepts) != sorted(key_concepts_from_response):
             unexpected_concepts = set(key_concepts_from_response) - set(rubric_key_concepts)
             unexpected_concepts = None if len(unexpected_concepts) == 0 else unexpected_concepts
