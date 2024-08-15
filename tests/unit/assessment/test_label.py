@@ -9,7 +9,7 @@ from io import StringIO
 import requests
 import pytest
 
-from lib.assessment.label import Label, InvalidResponseError, RequestTooLargeError, OpenaiServerError
+from lib.assessment.label import Label, InvalidResponseError, RequestTooLargeError, OpenaiServerError, BedrockServerError
 
 
 @pytest.fixture
@@ -942,6 +942,148 @@ class TestLabelStudentWork:
 
         ai_label_student_work_mock.assert_called_once()
 
+class TestAiLabelStudentWork:
+
+    @pytest.fixture
+    def assessment_return_value(self, randomstring):
+        """ Creates the return value for the bedrock server calls.
+        """
+
+        return randomstring(10)
+
+    def test_should_pass_arguments_to_correct_method_based_on_llm_model(self, mocker, label, prompt, rubric, code, student_id, examples, num_responses, temperature):
+        openai_label_student_work_mock = mocker.patch.object(
+            Label, 
+            'openai_label_student_work',
+            return_value={
+            'metadata': {
+                'agent': 'openai',
+            },
+            'data': 'response from openai'
+        })
+
+        bedrock_meta_label_student_work_mock = mocker.patch.object(
+            Label, 
+            'bedrock_meta_label_student_work',
+            return_value={
+            'metadata': {
+                'agent': 'meta',
+            },
+            'data': 'response from meta'
+        })
+
+        bedrock_anthropic_label_student_work_mock = mocker.patch.object(
+            Label, 
+            'bedrock_anthropic_label_student_work',
+            return_value={
+            'metadata': {
+                'agent': 'anthropic',
+            },
+            'data': 'response from anthropic'
+        })
+
+        label.ai_label_student_work(prompt=prompt, rubric=rubric, student_code=code, student_id=student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model='gpt-4-turbo-2024-04-09', response_type=json)
+        openai_label_student_work_mock.assert_called_once()
+
+        label.ai_label_student_work(prompt=prompt, rubric=rubric, student_code=code, student_id=student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model='bedrock.meta.llama2-70b-chat-v1', response_type=json)
+        bedrock_meta_label_student_work_mock.assert_called_once()
+
+        label.ai_label_student_work(prompt=prompt, rubric=rubric, student_code=code, student_id=student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model='bedrock.anthropic.claude-3-5-sonnet-20240620-v1:0', response_type=json)
+        bedrock_anthropic_label_student_work_mock.assert_called_once()
+
+    def test_bedrock_anthropic_label_student_work_should_return_response_if_valid(self, mocker, label, prompt, rubric, code, student_id, examples, num_responses, temperature):
+        
+        body_data = '{"content": [{"text": "response text"}]}'
+        response_data = [{"Key Concept 1": "Some text"},
+                          {"Key Concept 2": "Some more text"}]
+
+        class mock_bedrock_client:
+            def invoke_model(body, modelId, accept, contentType):
+                return {'ResponseMetadata': {'HTTPStatusCode': 200}, 'body': StringIO(body_data)}
+
+        get_bedrock_client_mock = mocker.patch.object(
+            Label,
+            'get_bedrock_client',
+            return_value=mock_bedrock_client
+        )
+
+        get_response_data_if_valid_mock = mocker.patch.object(
+            Label,
+            'get_response_data_if_valid',
+            return_value=response_data
+        )
+
+        response = label.bedrock_anthropic_label_student_work(prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model='bedrock.anthropic.claude-3-5-sonnet-20240620-v1:0')
+        get_bedrock_client_mock.assert_called_once()
+        get_response_data_if_valid_mock.assert_called_once()
+        assert response['metadata']['agent'] == 'anthropic'
+
+    def test_bedrock_anthropic_label_student_work_should_raise_error_on_500_response(self, mocker, label, prompt, rubric, code, student_id, examples, num_responses, temperature, caplog):
+        
+        body_data = '{"content": [{"text": "response text"}]}'
+        response_data = [{"Key Concept 1": "Some text"},
+                          {"Key Concept 2": "Some more text"}]
+
+        class mock_bedrock_client:
+            def invoke_model(body, modelId, accept, contentType):
+                return {'ResponseMetadata': {'HTTPStatusCode': 500}, 'body': None}
+
+        get_bedrock_client_mock = mocker.patch.object(
+            Label,
+            'get_bedrock_client',
+            return_value=mock_bedrock_client
+        )
+
+        with pytest.raises(BedrockServerError) as bedrock_error:
+            response = label.bedrock_anthropic_label_student_work(prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model='bedrock.anthropic.claude-3-5-sonnet-20240620-v1:0')
+        assert "BedrockServerError('Error calling Bedrock Anthropic API: 500')" in str(bedrock_error)
+
+    def test_bedrock_anthropic_label_student_work_should_log_error_on_non_200_response(self, mocker, label, prompt, rubric, code, student_id, examples, num_responses, temperature, caplog):
+        
+        body_data = '{"content": [{"text": "response text"}]}'
+        response_data = [{"Key Concept 1": "Some text"},
+                          {"Key Concept 2": "Some more text"}]
+
+        class mock_bedrock_client:
+            def invoke_model(body, modelId, accept, contentType):
+                return {'ResponseMetadata': {'HTTPStatusCode': 400}, 'body': None}
+
+        get_bedrock_client_mock = mocker.patch.object(
+            Label,
+            'get_bedrock_client',
+            return_value=mock_bedrock_client
+        )
+
+        response = label.bedrock_anthropic_label_student_work(prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model='bedrock.anthropic.claude-3-5-sonnet-20240620-v1:0')
+        assert "Error calling the API: 400" in str(caplog.records)
+        assert response == None
+
+    def test_bedrock_meta_label_student_work_should_return_response_if_valid(self, mocker, label, prompt, rubric, code, student_id, examples, num_responses, temperature):
+        
+        body_data = '{"content": [{"text": "response text"}]}'
+        response_data = [{"Key Concept 1": "Some text"},
+                          {"Key Concept 2": "Some more text"}]
+
+        class mock_bedrock_client:
+            def invoke_model(body, modelId, accept, contentType):
+                return {'ResponseMetadata': {'HTTPStatusCode': 200}, 'body': StringIO(body_data)}
+
+        get_bedrock_client_mock = mocker.patch.object(
+            Label,
+            'get_bedrock_client',
+            return_value=mock_bedrock_client
+        )
+
+        get_response_data_if_valid_mock = mocker.patch.object(
+            Label,
+            'get_response_data_if_valid',
+            return_value=response_data
+        )
+
+        response = label.bedrock_meta_label_student_work(prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model='bedrock.meta.llama2-13b-chat-v1')
+        get_bedrock_client_mock.assert_called_once()
+        get_response_data_if_valid_mock.assert_called_once()
+        assert response['metadata']['agent'] == 'meta'
 
 class TestGetConsensusResponse:
     @pytest.fixture
