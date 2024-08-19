@@ -13,7 +13,7 @@ from lib.assessment.label import Label
 class KeyConceptError(Exception):
   pass
 
-def label(code, prompt, rubric, examples=[], api_key='', llm_model=DEFAULT_MODEL, num_responses=1, temperature=0.2, remove_comments=False, response_type='tsv', code_feature_extractor=None, lesson=None):
+def validate_and_label(code, prompt, rubric, examples=[], api_key='', llm_model=DEFAULT_MODEL, num_responses=1, temperature=0.2, remove_comments=False, response_type='tsv', code_feature_extractor=None, lesson=None):
   OPENAI_API_KEY = api_key
 
   # Set the key
