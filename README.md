@@ -26,12 +26,21 @@ The configuration is done via environment variables stored in the `config.txt` f
 For local development, copy the `config.txt.sample` file to `config.txt` to have a
 starting point. Set the `OPENAI_API_KEY` variable to a valid OpenAI API key to
 enable that service. Or, otherwise set that variable the appropriate way when
-deploying the service. Also, retrieve the AIPROXY_API_KEY from the AWS Secrets Manager
-and add that to config.txt.
+deploying the service. Also, retrieve `aiproxy/aiproxy/aiproxy_api_key` from the AWS Secrets Manager
+and add that to config.txt as `AIPROXY_API_KEY`.
 
-To access AWS Bedrock models from a local aiproxy container, copy the 'AIProxy Local IAM User'
-information from the Engineering 1Password environment and add it to `.aws/credentials`
-under the name `bedrock_development`.
+To access AWS Bedrock models from a local aiproxy container, copy the `aws_access_key_id`,
+`aws_secret_access_key`, and `region` from 'AIProxy Local IAM User' in the Engineering 1Password
+folder and add them to `.aws/credentials` under the name `bedrock_development`.
+
+Example:
+
+```
+[bedrock_development]
+aws_access_key_id = <copy from 1password>
+aws_secret_access_key = <copy from 1password>
+region = <copy from 1password>
+```
 
 To control the logging information, use the `LOG_LEVEL` configuration parameter. Set
 to `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`. The `DEBUG` setting is the
