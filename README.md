@@ -26,7 +26,7 @@ The configuration is done via environment variables stored in the `config.txt` f
 For local development, copy the `config.txt.sample` file to `config.txt` to have a
 starting point. Set the `OPENAI_API_KEY` variable to a valid OpenAI API key to
 enable that service. Or, otherwise set that variable the appropriate way when
-deploying the service. Also, retrieve `aiproxy/aiproxy/aiproxy_api_key` from the AWS Secrets Manager
+deploying the service. Also, retrieve `aiproxy/aiproxy-test/aiproxy_api_key` from the AWS Secrets Manager
 and add that to config.txt as `AIPROXY_API_KEY`.
 
 To control the logging information, use the `LOG_LEVEL` configuration parameter. Set
