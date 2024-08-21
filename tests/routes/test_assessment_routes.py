@@ -38,7 +38,13 @@ class TestPostAssessment:
 
         assert response.status_code == 200
 
-        # check that get_bedrock_client_mock was called
+        # validate response data
+        response_data = response.json
+        assert response_data['metadata']['agent'] == 'anthropic'
+        learning_goal = response_data['data'][2]
+        assert learning_goal['Key Concept'] == "Position - Elements and the Coordinate System"
+        assert learning_goal['Label'] == "Limited Evidence"
+
         get_bedrock_client_mock.assert_called_once()
 
     def test_returns_4xx_when_bedrock_returns_mismatched_key_concept(self, mocker, client, lesson_11_claude_request_data, lesson_11_claude_response_body_mismatched):
@@ -108,6 +114,40 @@ class TestPostAssessment:
         response = client.post('/assessment', query_string=request_data, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
 
         assert response.status_code == 200
+
+    def test_uses_code_feature_extractor_when_requested(self, client, mocker, lesson_11_claude_request_data, lesson_11_claude_response_body):
+        # stub the bedrock response
+        response_body = lesson_11_claude_response_body
+        invoke_model_response = {'ResponseMetadata': {'HTTPStatusCode': 200}, 'body': io.StringIO(response_body)}
+        class mock_bedrock_client:
+            def invoke_model(body, modelId, accept, contentType):
+                assert accept == 'application/json'
+                assert contentType == 'application/json'
+                return invoke_model_response
+        get_bedrock_client_mock = mocker.patch.object(
+            Label,
+            'get_bedrock_client',
+            return_value=mock_bedrock_client
+        )
+
+        # send the flask request
+        request_data = lesson_11_claude_request_data
+        request_data['code-feature-extractor'] = ["Position - Elements and the Coordinate System"],
+        request_data['lesson'] = 'csd3-2023-L11'
+        os.environ['AIPROXY_API_KEY'] = 'test_key'
+        response = client.post('/assessment', query_string=request_data, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
+
+        assert response.status_code == 200
+
+        # validate response data
+        response_data = response.json
+        assert response_data['metadata']['agent'] == 'anthropic, code feature extractor'
+        learning_goal = response_data['data'][2]
+        assert learning_goal['Key Concept'] == "Position - Elements and the Coordinate System"
+        # LLM value overridden by CFE
+        assert learning_goal['Label'] == "No Evidence"
+
+        get_bedrock_client_mock.assert_called_once()
 
 
 class TestPostAssessmentUnitTests:
