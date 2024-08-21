@@ -12,12 +12,11 @@ def lesson_11_rubric():
     """ Creates a rubric in CSV format, based on csd3-2023-L11.
     """
 
-    output = """Key Concept,Extensive Evidence,Convincing Evidence,Limited Evidence,No Evidence
+    yield """Key Concept,Extensive Evidence,Convincing Evidence,Limited Evidence,No Evidence
 Program Development - Program Sequence,You sequenced the program well and and all elements on the screen appear as intended.,Your program may contain a few incorrectly sequenced code resulting in a few elements hidden behind others unintentionally.,"Your program has significant sequencing errors, resulting in many elements unintentionally hidden or overlapping others.","Errors in program sequencing are significant enough to keep the output from resembling the intended scene."
 Modularity - Sprites and Sprite Properties,"At least 2 sprites created, each with at least one property updated after creation.","At least 1 sprite created with at least one property updated after creation.","At least 1 sprite created. No properties updated after creation.","No sprites are used in the program."
 Position - Elements and the Coordinate System,"At least 2 shapes, 2 sprites, and 2 lines of text are placed correctly on the screen using the coordinate system.","At least 1 shape, 2 sprites, and 1 line of text are placed on the screen using the coordinate system.","A cumulative of at least a total of 3 elements are placed on the screen using the coordinate system (e.g 2 sprites & 1 line of text or 1 sprite, 1 shape, & 1 line of text)","No elements (shapes, sprites, or text) are placed on the screen using the coordinate system."
 """
-    yield output
 
 @pytest.fixture
 def stub_code():
@@ -42,7 +41,7 @@ def openai_model():
 @pytest.fixture
 def lesson_11_claude_request_data(stub_code, stub_prompt, lesson_11_rubric, bedrock_claude_model):
     rubric = lesson_11_rubric
-    request_data = {
+    yield {
         "code": stub_code,
         "prompt": stub_prompt,
         "rubric": rubric,
@@ -53,7 +52,6 @@ def lesson_11_claude_request_data(stub_code, stub_prompt, lesson_11_rubric, bedr
         "num-responses": "2",
         "temperature": "0.2",
     }
-    yield request_data
 
 @pytest.fixture
 def lesson_11_openai_request_data(lesson_11_claude_request_data, openai_model):
