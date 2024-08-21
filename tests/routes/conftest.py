@@ -52,7 +52,7 @@ def lesson_11_request_data(stub_code, stub_prompt, lesson_11_rubric, bedrock_cla
     yield request_data
 
 @pytest.fixture
-def lesson_11_response_data():
+def lesson_11_eval():
     yield [
         {
             "Key Concept": "Program Development - Program Sequence",
@@ -77,9 +77,9 @@ def lesson_11_response_data():
         }
     ]
 
-def get_bedrock_claude_response_body(response_data):
-    response_json = json.dumps(response_data)
-    body_data = {
+def get_bedrock_claude_response_data(eval_data):
+    eval_json = json.dumps(eval_data)
+    return {
         "id": "msg_bdrk_01234567890abcdefghijklm",
         "type": "message",
         "role": "assistant",
@@ -87,7 +87,7 @@ def get_bedrock_claude_response_body(response_data):
         "content": [
             {
                 "type": "text",
-                "text": response_json
+                "text": eval_json
             }
         ],
         "stop_reason": "end_turn",
@@ -97,14 +97,22 @@ def get_bedrock_claude_response_body(response_data):
             "output_tokens": 972
         }
     }
-    return json.dumps(body_data, indent=2)
 
 @pytest.fixture
-def lesson_11_response_body(lesson_11_response_data):
-    yield get_bedrock_claude_response_body(lesson_11_response_data)
+def lesson_11_response_body(lesson_11_eval):
+    body_data = get_bedrock_claude_response_data(lesson_11_eval)
+    yield json.dumps(body_data)
 
 @pytest.fixture
-def lesson_11_response_body_mismatched(lesson_11_response_data):
-    response_data = lesson_11_response_data
-    response_data[0]["Key Concept"] = "Bogus Key Concept"
-    yield get_bedrock_claude_response_body(response_data)
+def lesson_11_response_body_mismatched(lesson_11_eval):
+    eval = lesson_11_eval
+    eval[0]["Key Concept"] = "Bogus Key Concept"
+    body_data = get_bedrock_claude_response_data(eval)
+    yield json.dumps(body_data)
+
+@pytest.fixture
+def lesson_11_response_body_too_large():
+    unparsable_json = '["unparsable JSON"'
+    body_data = get_bedrock_claude_response_data(unparsable_json)
+    body_data['stop_reason'] = 'max_tokens'
+    yield json.dumps(body_data)
