@@ -261,16 +261,6 @@ def lesson_11_response_data():
         }
     ]
 
-@pytest.fixture
-def lesson_11_response_json(lesson_11_response_data):
-    yield json.dumps(lesson_11_response_data)
-
-@pytest.fixture
-def lesson_11_response_json_mismatched(lesson_11_response_data):
-    response_data = lesson_11_response_data
-    response_data[0]["Key Concept"] = "Bogus Key Concept"
-    yield json.dumps(response_data)
-
 def get_response_body(response_json):
     body_data = {
         "id": "msg_bdrk_01234567890abcdefghijklm",
@@ -293,12 +283,16 @@ def get_response_body(response_json):
     return json.dumps(body_data, indent=2)
 
 @pytest.fixture
-def lesson_11_response_body(lesson_11_response_json):
-    yield get_response_body(lesson_11_response_json)
+def lesson_11_response_body(lesson_11_response_data):
+    response_json = json.dumps(lesson_11_response_data)
+    yield get_response_body(response_json)
 
 @pytest.fixture
-def lesson_11_response_body_mismatched(lesson_11_response_json_mismatched):
-    yield get_response_body(lesson_11_response_json_mismatched)
+def lesson_11_response_body_mismatched(lesson_11_response_data):
+    response_data = lesson_11_response_data
+    response_data[0]["Key Concept"] = "Bogus Key Concept"
+    response_json = json.dumps(response_data)
+    yield get_response_body(response_json)
 
 class TestIntegrationPostAssessment:
     """ Tests POST to '/assessment' to start an assessment.
