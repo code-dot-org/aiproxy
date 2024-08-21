@@ -40,9 +40,9 @@ from happening. Most logging happens at `INFO`, which is the default setting.
 
   - If you are on WSL, installing docker on the linux system wouldn't work as linux itself is running in a container. Install docker desktop instead following these instructions: https://learn.microsoft.com/en-us/windows/wsl/tutorials/wsl-containers
 
-- To access AWS Bedrock models from a local aiproxy container, copy the `aws_access_key_id`,
+- To access AWS Bedrock models and other relevant AWS permissions from a local aiproxy container, copy the `aws_access_key_id`,
   `aws_secret_access_key`, and `region` from 'AIProxy Local IAM User' in the Engineering 1Password
-  folder and add them to `.aws/credentials` under the name `bedrock_development`.
+  folder and add them to `.aws/credentials` under the name `aiproxy_development`.
 
   Example:
 

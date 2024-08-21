@@ -8,4 +8,4 @@ services:
     volumes:
       - ~/.aws:/root/.aws:ro
     environment:
-      - AWS_PROFILE=bedrock_development
+      - AWS_PROFILE=aiproxy_development
