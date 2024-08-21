@@ -220,11 +220,19 @@ Position - Elements and the Coordinate System,"At least 2 shapes, 2 sprites, and
     yield output
 
 @pytest.fixture
-def lesson_11_request_data(lesson_11_rubric):
+def stub_code():
+    yield 'stub-code'
+
+@pytest.fixture
+def stub_prompt():
+    yield 'stub-prompt'
+
+@pytest.fixture
+def lesson_11_request_data(stub_code, stub_prompt, lesson_11_rubric):
     rubric = lesson_11_rubric
     request_data = {
-        "code": 'test-code',
-        "prompt": 'test-prompt',
+        "code": stub_code,
+        "prompt": stub_prompt,
         "rubric": rubric,
         "api-key": 'test-api-key',
         "examples": "[]",
@@ -299,12 +307,16 @@ class TestIntegrationPostAssessment:
     This is an integration test because it tests all the way to the AI API request, rather than just checking what gets passed to Label.
     """
 
-    def test_succeeds_when_bedrock_returns_valid_response(self, mocker, client, lesson_11_request_data, lesson_11_response_body):
+    def test_succeeds_when_bedrock_returns_valid_response(self, mocker, client, stub_code, stub_prompt, lesson_11_rubric, lesson_11_request_data, lesson_11_response_body):
         # stub the bedrock response
         response_body = lesson_11_response_body
         invoke_model_response = {'ResponseMetadata': {'HTTPStatusCode': 200}, 'body': io.StringIO(response_body)}
         class mock_bedrock_client:
             def invoke_model(body, modelId, accept, contentType):
+                assert stub_code in body
+                assert stub_prompt in body
+                rubric_headers = lesson_11_rubric.split('\n')[0]
+                assert rubric_headers in body
                 assert modelId == 'anthropic.claude-3-5-sonnet-20240620-v1:0'
                 assert accept == 'application/json'
                 assert contentType == 'application/json'
@@ -331,9 +343,6 @@ class TestIntegrationPostAssessment:
         invoke_model_response = {'ResponseMetadata': {'HTTPStatusCode': 200}, 'body': io.StringIO(response_body)}
         class mock_bedrock_client:
             def invoke_model(body, modelId, accept, contentType):
-                assert modelId == 'anthropic.claude-3-5-sonnet-20240620-v1:0'
-                assert accept == 'application/json'
-                assert contentType == 'application/json'
                 return invoke_model_response
         get_bedrock_client_mock = mocker.patch.object(
             Label,
