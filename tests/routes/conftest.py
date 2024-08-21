@@ -100,19 +100,19 @@ def get_bedrock_claude_response_data(eval_data):
 
 @pytest.fixture
 def lesson_11_response_body(lesson_11_eval):
-    body_data = get_bedrock_claude_response_data(lesson_11_eval)
-    yield json.dumps(body_data)
+    response_data = get_bedrock_claude_response_data(lesson_11_eval)
+    yield json.dumps(response_data)
 
 @pytest.fixture
 def lesson_11_response_body_mismatched(lesson_11_eval):
     eval = lesson_11_eval
     eval[0]["Key Concept"] = "Bogus Key Concept"
-    body_data = get_bedrock_claude_response_data(eval)
-    yield json.dumps(body_data)
+    response_data = get_bedrock_claude_response_data(eval)
+    yield json.dumps(response_data)
 
 @pytest.fixture
 def lesson_11_response_body_too_large():
     unparsable_json = '["unparsable JSON"'
-    body_data = get_bedrock_claude_response_data(unparsable_json)
-    body_data['stop_reason'] = 'max_tokens'
-    yield json.dumps(body_data)
+    response_data = get_bedrock_claude_response_data(unparsable_json)
+    response_data['stop_reason'] = 'max_tokens'
+    yield json.dumps(response_data)
