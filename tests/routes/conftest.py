@@ -36,7 +36,11 @@ def bedrock_claude_model(claude_model):
     yield 'bedrock.' + claude_model
 
 @pytest.fixture
-def lesson_11_request_data(stub_code, stub_prompt, lesson_11_rubric, bedrock_claude_model):
+def openai_model():
+    yield 'gpt-4-turbo-2024-04-09'
+
+@pytest.fixture
+def lesson_11_claude_request_data(stub_code, stub_prompt, lesson_11_rubric, bedrock_claude_model):
     rubric = lesson_11_rubric
     request_data = {
         "code": stub_code,
@@ -49,6 +53,13 @@ def lesson_11_request_data(stub_code, stub_prompt, lesson_11_rubric, bedrock_cla
         "num-responses": "2",
         "temperature": "0.2",
     }
+    yield request_data
+
+@pytest.fixture
+def lesson_11_openai_request_data(lesson_11_claude_request_data, openai_model):
+    request_data = lesson_11_claude_request_data
+    request_data['model'] = openai_model
+    request_data['response-type'] = 'json'
     yield request_data
 
 @pytest.fixture
@@ -77,7 +88,7 @@ def lesson_11_eval():
         }
     ]
 
-def get_bedrock_claude_response_data(eval_data):
+def get_claude_response_data(eval_data):
     eval_json = json.dumps(eval_data)
     return {
         "id": "msg_bdrk_01234567890abcdefghijklm",
@@ -98,21 +109,49 @@ def get_bedrock_claude_response_data(eval_data):
         }
     }
 
+def get_openai_response_data(eval_data):
+    return {
+        "id": "chatcmpl-8FpJ3JGggzw1sfU7V2zkGsTnmH8vn",
+        "object": "chat.completion",
+        "created": 1698782833,
+        "model": "gpt-4-0613",
+        "choices": [
+            {
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": json.dumps(eval_data)
+                },
+                "finish_reason": "stop"
+            }
+        ],
+        "usage": {
+            "prompt_tokens": 1798,
+            "completion_tokens": 1071,
+            "total_tokens": 2869
+        }
+    }
+
 @pytest.fixture
-def lesson_11_response_body(lesson_11_eval):
-    response_data = get_bedrock_claude_response_data(lesson_11_eval)
+def lesson_11_claude_response_body(lesson_11_eval):
+    response_data = get_claude_response_data(lesson_11_eval)
     yield json.dumps(response_data)
 
 @pytest.fixture
-def lesson_11_response_body_mismatched(lesson_11_eval):
+def lesson_11_claude_response_body_mismatched(lesson_11_eval):
     eval = lesson_11_eval
     eval[0]["Key Concept"] = "Bogus Key Concept"
-    response_data = get_bedrock_claude_response_data(eval)
+    response_data = get_claude_response_data(eval)
     yield json.dumps(response_data)
 
 @pytest.fixture
-def lesson_11_response_body_too_large():
+def lesson_11_claude_response_body_too_large():
     unparsable_json = '["unparsable JSON"'
-    response_data = get_bedrock_claude_response_data(unparsable_json)
+    response_data = get_claude_response_data(unparsable_json)
     response_data['stop_reason'] = 'max_tokens'
     yield json.dumps(response_data)
+
+@pytest.fixture
+def lesson_11_openai_response_data(lesson_11_eval):
+    response_data = get_openai_response_data(lesson_11_eval)
+    yield response_data

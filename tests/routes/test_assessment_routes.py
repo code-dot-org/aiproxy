@@ -1,3 +1,4 @@
+import json
 import io
 import openai
 import os
@@ -10,9 +11,9 @@ class TestPostAssessment:
     These tests attempt to cover the /assessment route end-to-end, stubbing out only the bedrock client.
     """
 
-    def test_succeeds_when_bedrock_returns_valid_response(self, mocker, client, stub_code, stub_prompt, lesson_11_rubric, claude_model, lesson_11_request_data, lesson_11_response_body):
+    def test_succeeds_when_bedrock_returns_valid_response(self, mocker, client, stub_code, stub_prompt, lesson_11_rubric, claude_model, lesson_11_claude_request_data, lesson_11_claude_response_body):
         # stub the bedrock response
-        response_body = lesson_11_response_body
+        response_body = lesson_11_claude_response_body
         invoke_model_response = {'ResponseMetadata': {'HTTPStatusCode': 200}, 'body': io.StringIO(response_body)}
         class mock_bedrock_client:
             def invoke_model(body, modelId, accept, contentType):
@@ -31,7 +32,7 @@ class TestPostAssessment:
         )
 
         # send the flask request
-        request_data = lesson_11_request_data
+        request_data = lesson_11_claude_request_data
         os.environ['AIPROXY_API_KEY'] = 'test_key'
         response = client.post('/assessment', query_string=request_data, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
 
@@ -40,9 +41,9 @@ class TestPostAssessment:
         # check that get_bedrock_client_mock was called
         get_bedrock_client_mock.assert_called_once()
 
-    def test_returns_4xx_when_bedrock_returns_mismatched_key_concept(self, mocker, client, lesson_11_request_data, lesson_11_response_body_mismatched):
+    def test_returns_4xx_when_bedrock_returns_mismatched_key_concept(self, mocker, client, lesson_11_claude_request_data, lesson_11_claude_response_body_mismatched):
         # stub the bedrock response
-        response_body = lesson_11_response_body_mismatched
+        response_body = lesson_11_claude_response_body_mismatched
         invoke_model_response = {'ResponseMetadata': {'HTTPStatusCode': 200}, 'body': io.StringIO(response_body)}
         class mock_bedrock_client:
             def invoke_model(body, modelId, accept, contentType):
@@ -54,7 +55,7 @@ class TestPostAssessment:
         )
 
         # send the flask request
-        request_data = lesson_11_request_data
+        request_data = lesson_11_claude_request_data
         os.environ['AIPROXY_API_KEY'] = 'test_key'
         response = client.post('/assessment', query_string=request_data, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
 
@@ -64,9 +65,9 @@ class TestPostAssessment:
         get_bedrock_client_mock.assert_called_once()
 
 
-    def test_should_return_413_on_request_too_large_error(self, mocker, client, randomstring, lesson_11_rubric, bedrock_claude_model, lesson_11_response_body_too_large):
+    def test_should_return_413_on_request_too_large_error(self, mocker, client, randomstring, lesson_11_rubric, bedrock_claude_model, lesson_11_claude_response_body_too_large):
         # stub the bedrock response
-        response_body = lesson_11_response_body_too_large
+        response_body = lesson_11_claude_response_body_too_large
         invoke_model_response = {'ResponseMetadata': {'HTTPStatusCode': 200}, 'body': io.StringIO(response_body)}
         class mock_bedrock_client:
             def invoke_model(body, modelId, accept, contentType):
@@ -93,6 +94,20 @@ class TestPostAssessment:
         assert response.status_code == 413
 
         get_bedrock_client_mock.assert_called_once()
+
+    def test_succeeds_when_openai_returns_valid_response(self, requests_mock, client, lesson_11_openai_request_data, lesson_11_openai_response_data):
+        # stub the openai response
+        requests_mock.post(
+            'https://api.openai.com/v1/chat/completions',
+            json=lesson_11_openai_response_data
+        )
+
+        # send the flask request
+        request_data = lesson_11_openai_request_data
+        os.environ['AIPROXY_API_KEY'] = 'test_key'
+        response = client.post('/assessment', query_string=request_data, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
+
+        assert response.status_code == 200
 
 
 class TestPostAssessmentUnitTests:
