@@ -306,9 +306,9 @@ class Label:
         # If any learning goals were assessed by the code feature extractor, replace the AI results with cfe results
         if cfe_results:
             response["metadata"]["agent"] += ", " + cfe_results["metadata"]["agent"]
-            new_data = list(filter(lambda assessment: assessment["Key Concept"] not in code_feature_extractor, response["data"]))
-            new_data.extend(cfe_results["data"])
-            response["data"] = new_data
+            for i, row in enumerate(response["data"]):
+                if row["Key Concept"] in code_feature_extractor:
+                    response["data"][i] = [cfe_row for cfe_row in cfe_results["data"] if cfe_row["Key Concept"] == row["Key Concept"]][0]
 
         # only write to cache if the response is valid
         if write_cached and ai_result:
