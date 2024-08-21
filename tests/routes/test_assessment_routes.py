@@ -63,47 +63,6 @@ class TestPostAssessment:
         # check that get_bedrock_client_mock was called
         get_bedrock_client_mock.assert_called_once()
 
-    def test_should_return_400_when_no_code(self, client, randomstring):
-        os.environ['AIPROXY_API_KEY'] = 'test_key'
-        response = client.post('/assessment', query_string={
-          "prompt": randomstring(10),
-          "rubric": randomstring(10),
-          "api-key": randomstring(10),
-          "examples": "[]",
-          "model": randomstring(10),
-          "remove-comments": "1",
-          "num-responses": "1",
-          "temperature": "0.2",
-        }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
-        assert response.status_code == 400
-
-    def test_should_return_400_when_no_prompt(self, client, randomstring):
-        os.environ['AIPROXY_API_KEY'] = 'test_key'
-        response = client.post('/assessment', query_string={
-          "code": randomstring(10),
-          "rubric": randomstring(10),
-          "api-key": randomstring(10),
-          "examples": "[]",
-          "model": randomstring(10),
-          "remove-comments": "1",
-          "num-responses": "1",
-          "temperature": "0.2",
-        }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
-        assert response.status_code == 400
-
-    def test_should_return_400_when_no_rubric(self, client, randomstring):
-        os.environ['AIPROXY_API_KEY'] = 'test_key'
-        response = client.post('/assessment', query_string={
-          "code": randomstring(10),
-          "prompt": randomstring(10),
-          "api-key": randomstring(10),
-          "examples": "[]",
-          "model": randomstring(10),
-          "remove-comments": "1",
-          "num-responses": "1",
-          "temperature": "0.2",
-        }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
-        assert response.status_code == 400
 
     def test_should_return_413_on_request_too_large_error(self, mocker, client, randomstring, lesson_11_rubric, bedrock_claude_model, lesson_11_response_body_too_large):
         # stub the bedrock response
@@ -135,42 +94,84 @@ class TestPostAssessment:
 
         get_bedrock_client_mock.assert_called_once()
 
-    def test_should_return_400_when_passing_not_a_number_to_num_responses(self, client, randomstring):
-        os.environ['AIPROXY_API_KEY'] = 'test_key'
-        response = client.post('/assessment', query_string={
-          "code": randomstring(10),
-          "prompt": randomstring(10),
-          "rubric": randomstring(10),
-          "api-key": randomstring(10),
-          "examples": "[]",
-          "model": randomstring(10),
-          "remove-comments": "1",
-          "num-responses": "x",
-          "temperature": "0.2",
-        }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
-        assert response.status_code == 400
-
-    def test_should_return_400_when_passing_not_a_number_to_temperature(self, client, randomstring):
-        os.environ['AIPROXY_API_KEY'] = 'test_key'
-        response = client.post('/assessment', query_string={
-          "code": randomstring(10),
-          "prompt": randomstring(10),
-          "rubric": randomstring(10),
-          "api-key": randomstring(10),
-          "examples": "[]",
-          "model": randomstring(10),
-          "remove-comments": "1",
-          "num-responses": "2",
-          "temperature": "x",
-        }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
-        assert response.status_code == 400
-
 
 class TestPostAssessmentUnitTests:
     """ Tests POST to '/assessment' to start an assessment.
 
     These tests stub out the Label class to test the API endpoint in isolation.
     """
+
+    def test_should_return_400_when_no_code(self, client, randomstring):
+        os.environ['AIPROXY_API_KEY'] = 'test_key'
+        response = client.post('/assessment', query_string={
+            "prompt": randomstring(10),
+            "rubric": randomstring(10),
+            "api-key": randomstring(10),
+            "examples": "[]",
+            "model": randomstring(10),
+            "remove-comments": "1",
+            "num-responses": "1",
+            "temperature": "0.2",
+        }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
+        assert response.status_code == 400
+
+    def test_should_return_400_when_no_prompt(self, client, randomstring):
+        os.environ['AIPROXY_API_KEY'] = 'test_key'
+        response = client.post('/assessment', query_string={
+            "code": randomstring(10),
+            "rubric": randomstring(10),
+            "api-key": randomstring(10),
+            "examples": "[]",
+            "model": randomstring(10),
+            "remove-comments": "1",
+            "num-responses": "1",
+            "temperature": "0.2",
+        }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
+        assert response.status_code == 400
+
+    def test_should_return_400_when_no_rubric(self, client, randomstring):
+        os.environ['AIPROXY_API_KEY'] = 'test_key'
+        response = client.post('/assessment', query_string={
+            "code": randomstring(10),
+            "prompt": randomstring(10),
+            "api-key": randomstring(10),
+            "examples": "[]",
+            "model": randomstring(10),
+            "remove-comments": "1",
+            "num-responses": "1",
+            "temperature": "0.2",
+        }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
+        assert response.status_code == 400
+
+    def test_should_return_400_when_passing_not_a_number_to_num_responses(self, client, randomstring):
+        os.environ['AIPROXY_API_KEY'] = 'test_key'
+        response = client.post('/assessment', query_string={
+            "code": randomstring(10),
+            "prompt": randomstring(10),
+            "rubric": randomstring(10),
+            "api-key": randomstring(10),
+            "examples": "[]",
+            "model": randomstring(10),
+            "remove-comments": "1",
+            "num-responses": "x",
+            "temperature": "0.2",
+        }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
+        assert response.status_code == 400
+
+    def test_should_return_400_when_passing_not_a_number_to_temperature(self, client, randomstring):
+        os.environ['AIPROXY_API_KEY'] = 'test_key'
+        response = client.post('/assessment', query_string={
+            "code": randomstring(10),
+            "prompt": randomstring(10),
+            "rubric": randomstring(10),
+            "api-key": randomstring(10),
+            "examples": "[]",
+            "model": randomstring(10),
+            "remove-comments": "1",
+            "num-responses": "2",
+            "temperature": "x",
+        }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
+        assert response.status_code == 400
 
     def test_should_return_400_when_the_label_function_does_not_return_data(self, mocker, client, randomstring):
         label_mock = mocker.patch('lib.assessment.assess.validate_and_label')
