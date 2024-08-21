@@ -37,7 +37,7 @@ def post_assessment():
     llm_model = request.values.get("model", DEFAULT_MODEL)
 
     try:
-        labels = assess.label(
+        labels = assess.validate_and_label(
             code=request.values.get("code", ""),
             prompt=request.values.get("prompt", ""),
             rubric=request.values.get("rubric", ""),
@@ -91,7 +91,7 @@ def test_assessment():
         rubric = f.read()
 
     try:
-        labels = assess.label(
+        labels = assess.validate_and_label(
             code=code,
             prompt=prompt,
             rubric=rubric,
@@ -126,7 +126,7 @@ def test_assessment_blank():
         rubric = f.read()
 
     try:
-        labels = assess.label(
+        labels = assess.validate_and_label(
             code=code,
             prompt=prompt,
             rubric=rubric,
@@ -167,7 +167,7 @@ def test_assessment_examples():
         examples.append(f.read())
 
     try:
-        labels = assess.label(
+        labels = assess.validate_and_label(
             code=code,
             prompt=prompt,
             rubric=rubric,
@@ -208,7 +208,7 @@ def test_assessment_cfe():
         rubric = f.read()
 
     try:
-        labels = assess.label(
+        labels = assess.validate_and_label(
             code=code,
             prompt=prompt,
             rubric=rubric,

@@ -50,7 +50,7 @@ class TestPostAssessment:
         assert response.status_code == 400
 
     def test_should_return_413_on_request_too_large_error(self, mocker, client, randomstring):
-        mocker.patch('lib.assessment.assess.label').side_effect = RequestTooLargeError('')
+        mocker.patch('lib.assessment.assess.validate_and_label').side_effect = RequestTooLargeError('')
         os.environ['AIPROXY_API_KEY'] = 'test_key'
         response = client.post('/assessment', query_string={
           "code": randomstring(10),
@@ -96,7 +96,7 @@ class TestPostAssessment:
         assert response.status_code == 400
 
     def test_should_return_400_when_the_label_function_does_not_return_data(self, mocker, client, randomstring):
-        label_mock = mocker.patch('lib.assessment.assess.label')
+        label_mock = mocker.patch('lib.assessment.assess.validate_and_label')
         label_mock.return_value = []
 
         os.environ['AIPROXY_API_KEY'] = 'test_key'
@@ -115,7 +115,7 @@ class TestPostAssessment:
         assert response.status_code == 400
 
     def test_should_return_400_when_the_label_function_does_not_return_the_right_structure(self, mocker, client, randomstring):
-        label_mock = mocker.patch('lib.assessment.assess.label')
+        label_mock = mocker.patch('lib.assessment.assess.validate_and_label')
         label_mock.return_value = {
             'metadata': {},
             'data': {}
@@ -138,7 +138,7 @@ class TestPostAssessment:
 
     def test_should_pass_arguments_to_label_function(self, mocker, client, randomstring):
         response_type = 'json'
-        label_mock = mocker.patch('lib.assessment.assess.label')
+        label_mock = mocker.patch('lib.assessment.assess.validate_and_label')
         data = {
           "code": randomstring(10),
           "prompt": randomstring(10),
@@ -171,7 +171,7 @@ class TestPostAssessment:
         )
 
     def test_should_return_the_result_from_label_function_when_valid(self, mocker, client, randomstring):
-        label_mock = mocker.patch('lib.assessment.assess.label')
+        label_mock = mocker.patch('lib.assessment.assess.validate_and_label')
         label_mock.return_value = {
             'metadata': {},
             'data': [
@@ -209,7 +209,7 @@ class TestPostTestAssessment:
     """
 
     def test_should_return_400_on_openai_error(self, mocker, client, randomstring):
-        mocker.patch('lib.assessment.assess.label').side_effect = openai.error.InvalidRequestError('', '')
+        mocker.patch('lib.assessment.assess.validate_and_label').side_effect = openai.error.InvalidRequestError('', '')
         mock_open = mocker.mock_open(read_data='file data')
         mock_file = mocker.patch('builtins.open', mock_open)
         os.environ['AIPROXY_API_KEY'] = 'test_key'
@@ -258,7 +258,7 @@ class TestPostTestAssessment:
         assert response.status_code == 400
 
     def test_should_return_400_when_the_label_function_does_not_return_data(self, mocker, client, randomstring):
-        label_mock = mocker.patch('lib.assessment.assess.label')
+        label_mock = mocker.patch('lib.assessment.assess.validate_and_label')
         mock_open = mocker.mock_open(read_data='file data')
         mock_file = mocker.patch('builtins.open', mock_open)
         label_mock.return_value = []
@@ -277,7 +277,7 @@ class TestPostTestAssessment:
         assert response.status_code == 400
 
     def test_should_return_400_when_the_label_function_does_not_return_the_right_structure(self, mocker, client, randomstring):
-        label_mock = mocker.patch('lib.assessment.assess.label')
+        label_mock = mocker.patch('lib.assessment.assess.validate_and_label')
         mock_open = mocker.mock_open(read_data='file data')
         mock_file = mocker.patch('builtins.open', mock_open)
         label_mock.return_value = {
@@ -299,7 +299,7 @@ class TestPostTestAssessment:
         assert response.status_code == 400
 
     def test_should_return_the_result_from_label_function_when_valid(self, mocker, client, randomstring):
-        label_mock = mocker.patch('lib.assessment.assess.label')
+        label_mock = mocker.patch('lib.assessment.assess.validate_and_label')
         mock_open = mocker.mock_open(read_data='file data')
         mock_file = mocker.patch('builtins.open', mock_open)
         label_mock.return_value = {
@@ -335,7 +335,7 @@ class TestPostBlankAssessment:
     """
 
     def test_should_return_400_on_openai_error(self, mocker, client, randomstring):
-        mocker.patch('lib.assessment.assess.label').side_effect = openai.error.InvalidRequestError('', '')
+        mocker.patch('lib.assessment.assess.validate_and_label').side_effect = openai.error.InvalidRequestError('', '')
         mock_open = mocker.mock_open(read_data='file data')
         mock_file = mocker.patch('builtins.open', mock_open)
         os.environ['AIPROXY_API_KEY'] = 'test_key'
@@ -381,7 +381,7 @@ class TestPostBlankAssessment:
         assert response.status_code == 400
 
     def test_should_return_400_when_the_label_function_does_not_return_data(self, mocker, client, randomstring):
-        label_mock = mocker.patch('lib.assessment.assess.label')
+        label_mock = mocker.patch('lib.assessment.assess.validate_and_label')
         mock_open = mocker.mock_open(read_data='file data')
         mock_file = mocker.patch('builtins.open', mock_open)
         label_mock.return_value = []
@@ -399,7 +399,7 @@ class TestPostBlankAssessment:
         assert response.status_code == 400
 
     def test_should_return_400_when_the_label_function_does_not_return_the_right_structure(self, mocker, client, randomstring):
-        label_mock = mocker.patch('lib.assessment.assess.label')
+        label_mock = mocker.patch('lib.assessment.assess.validate_and_label')
         mock_open = mocker.mock_open(read_data='file data')
         mock_file = mocker.patch('builtins.open', mock_open)
         label_mock.return_value = {
@@ -420,7 +420,7 @@ class TestPostBlankAssessment:
         assert response.status_code == 400
 
     def test_should_pass_arguments_including_blank_code_to_label_function(self, mocker, client, randomstring):
-        label_mock = mocker.patch('lib.assessment.assess.label')
+        label_mock = mocker.patch('lib.assessment.assess.validate_and_label')
         mock_open = mocker.mock_open(read_data='file data')
         mock_file = mocker.patch('builtins.open', mock_open)
         data = {
@@ -448,7 +448,7 @@ class TestPostBlankAssessment:
         )
 
     def test_should_return_the_result_from_label_function_when_valid(self, mocker, client, randomstring):
-        label_mock = mocker.patch('lib.assessment.assess.label')
+        label_mock = mocker.patch('lib.assessment.assess.validate_and_label')
         mock_open = mocker.mock_open(read_data='file data')
         mock_file = mocker.patch('builtins.open', mock_open)
         label_mock.return_value = {

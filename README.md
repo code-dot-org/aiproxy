@@ -24,9 +24,10 @@ To Do:
 The configuration is done via environment variables stored in the `config.txt` file.
 
 For local development, copy the `config.txt.sample` file to `config.txt` to have a
-starting point. Then set the `OPENAI_API_KEY` variable to a valid OpenAI API key to
+starting point. Set the `OPENAI_API_KEY` variable to a valid OpenAI API key to
 enable that service. Or, otherwise set that variable the appropriate way when
-deploying the service.
+deploying the service. Also, retrieve `aiproxy/aiproxy-test/aiproxy_api_key` from the AWS Secrets Manager
+and add that to config.txt as `AIPROXY_API_KEY`.
 
 To control the logging information, use the `LOG_LEVEL` configuration parameter. Set
 to `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`. The `DEBUG` setting is the
@@ -38,6 +39,19 @@ from happening. Most logging happens at `INFO`, which is the default setting.
 - Install docker
 
   - If you are on WSL, installing docker on the linux system wouldn't work as linux itself is running in a container. Install docker desktop instead following these instructions: https://learn.microsoft.com/en-us/windows/wsl/tutorials/wsl-containers
+
+- To access AWS Bedrock models and other relevant AWS permissions from a local aiproxy container, copy the `aws_access_key_id`,
+  `aws_secret_access_key`, and `region` from 'AIProxy Local IAM User' in the Engineering 1Password
+  folder and add them to `.aws/credentials` under the name `aiproxy_development`.
+
+  Example:
+
+  ```
+  [bedrock_development]
+  aws_access_key_id = <copy from 1password>
+  aws_secret_access_key = <copy from 1password>
+  region = <copy from 1password>
+  ```
 
 - To build the app, use `docker compose build`.
   You will need to rebuild when you change the source.
