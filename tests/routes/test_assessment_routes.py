@@ -228,7 +228,15 @@ def stub_prompt():
     yield 'stub-prompt'
 
 @pytest.fixture
-def lesson_11_request_data(stub_code, stub_prompt, lesson_11_rubric):
+def claude_model():
+    yield 'anthropic.claude-3-5-sonnet-20240620-v1:0'
+
+@pytest.fixture
+def bedrock_claude_model(claude_model):
+    yield 'bedrock.' + claude_model
+
+@pytest.fixture
+def lesson_11_request_data(stub_code, stub_prompt, lesson_11_rubric, bedrock_claude_model):
     rubric = lesson_11_rubric
     request_data = {
         "code": stub_code,
@@ -236,7 +244,7 @@ def lesson_11_request_data(stub_code, stub_prompt, lesson_11_rubric):
         "rubric": rubric,
         "api-key": 'test-api-key',
         "examples": "[]",
-        "model": 'bedrock.anthropic.claude-3-5-sonnet-20240620-v1:0',
+        "model": bedrock_claude_model,
         "remove-comments": "1",
         "num-responses": "2",
         "temperature": "0.2",
@@ -307,7 +315,7 @@ class TestIntegrationPostAssessment:
     This is an integration test because it tests all the way to the AI API request, rather than just checking what gets passed to Label.
     """
 
-    def test_succeeds_when_bedrock_returns_valid_response(self, mocker, client, stub_code, stub_prompt, lesson_11_rubric, lesson_11_request_data, lesson_11_response_body):
+    def test_succeeds_when_bedrock_returns_valid_response(self, mocker, client, stub_code, stub_prompt, lesson_11_rubric, claude_model, lesson_11_request_data, lesson_11_response_body):
         # stub the bedrock response
         response_body = lesson_11_response_body
         invoke_model_response = {'ResponseMetadata': {'HTTPStatusCode': 200}, 'body': io.StringIO(response_body)}
@@ -317,7 +325,7 @@ class TestIntegrationPostAssessment:
                 assert stub_prompt in body
                 rubric_headers = lesson_11_rubric.split('\n')[0]
                 assert rubric_headers in body
-                assert modelId == 'anthropic.claude-3-5-sonnet-20240620-v1:0'
+                assert modelId == claude_model
                 assert accept == 'application/json'
                 assert contentType == 'application/json'
                 return invoke_model_response
