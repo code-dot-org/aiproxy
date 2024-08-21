@@ -236,8 +236,8 @@ def lesson_11_request_data(lesson_11_rubric):
     yield request_data
 
 @pytest.fixture
-def lesson_11_response_json():
-    response_data = [
+def lesson_11_response_data():
+    yield [
         {
             "Key Concept": "Program Development - Program Sequence",
             "Observations": "The program appears to be well-sequenced, with background set first, sprites created and positioned, sprite properties set, sprites drawn, and text added last.",
@@ -260,10 +260,18 @@ def lesson_11_response_json():
             "Grade": "Limited Evidence"
         }
     ]
-    yield json.dumps(response_data)
 
 @pytest.fixture
-def lesson_11_response_body(lesson_11_response_json):
+def lesson_11_response_json(lesson_11_response_data):
+    yield json.dumps(lesson_11_response_data)
+
+@pytest.fixture
+def lesson_11_response_json_mismatched(lesson_11_response_data):
+    response_data = lesson_11_response_data
+    response_data[0]["Key Concept"] = "Bogus Key Concept"
+    yield json.dumps(response_data)
+
+def get_response_body(response_json):
     body_data = {
         "id": "msg_bdrk_01234567890abcdefghijklm",
         "type": "message",
@@ -272,7 +280,7 @@ def lesson_11_response_body(lesson_11_response_json):
         "content": [
             {
                 "type": "text",
-                "text": lesson_11_response_json
+                "text": response_json
             }
         ],
         "stop_reason": "end_turn",
@@ -282,8 +290,15 @@ def lesson_11_response_body(lesson_11_response_json):
             "output_tokens": 972
         }
     }
-    yield json.dumps(body_data, indent=2)
+    return json.dumps(body_data, indent=2)
 
+@pytest.fixture
+def lesson_11_response_body(lesson_11_response_json):
+    yield get_response_body(lesson_11_response_json)
+
+@pytest.fixture
+def lesson_11_response_body_mismatched(lesson_11_response_json_mismatched):
+    yield get_response_body(lesson_11_response_json_mismatched)
 
 class TestIntegrationPostAssessment:
     """ Tests POST to '/assessment' to start an assessment.
@@ -313,6 +328,32 @@ class TestIntegrationPostAssessment:
         response = client.post('/assessment', query_string=request_data, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
 
         assert response.status_code == 200
+
+        # check that get_bedrock_client_mock was called
+        get_bedrock_client_mock.assert_called_once()
+
+    def test_returns_4xx_when_bedrock_returns_mismatched_key_concept(self, mocker, client, lesson_11_request_data, lesson_11_response_body_mismatched):
+        # stub the bedrock response
+        response_body = lesson_11_response_body_mismatched
+        invoke_model_response = {'ResponseMetadata': {'HTTPStatusCode': 200}, 'body': io.StringIO(response_body)}
+        class mock_bedrock_client:
+            def invoke_model(body, modelId, accept, contentType):
+                assert modelId == 'anthropic.claude-3-5-sonnet-20240620-v1:0'
+                assert accept == 'application/json'
+                assert contentType == 'application/json'
+                return invoke_model_response
+        get_bedrock_client_mock = mocker.patch.object(
+            Label,
+            'get_bedrock_client',
+            return_value=mock_bedrock_client
+        )
+
+        # send the flask request
+        request_data = lesson_11_request_data
+        os.environ['AIPROXY_API_KEY'] = 'test_key'
+        response = client.post('/assessment', query_string=request_data, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
+
+        assert response.status_code == 400
 
         # check that get_bedrock_client_mock was called
         get_bedrock_client_mock.assert_called_once()
