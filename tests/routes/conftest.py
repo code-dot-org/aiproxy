@@ -142,6 +142,9 @@ def lesson_11_claude_response_body_mismatched(lesson_11_eval):
     response_data = get_claude_response_data(eval)
     yield json.dumps(response_data)
 
+# Our response handling logic raises RequestTooLargeError when it cannot find or parse the response JSON,
+# and the stop reason indicates that the response was truncated:
+# https://github.com/code-dot-org/aiproxy/blob/3c5b70a4de4bc93f5def2541db1fb7081a05a6da/lib/assessment/label.py#L427-L437
 @pytest.fixture
 def lesson_11_claude_response_body_too_large():
     unparsable_json = '["unparsable JSON"'
