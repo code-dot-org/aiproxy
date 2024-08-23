@@ -1,97 +1,236 @@
+import json
+import io
 import openai
 import os
 
-from lib.assessment.label import RequestTooLargeError
+from lib.assessment.label import Label, RequestTooLargeError
 
 class TestPostAssessment:
     """ Tests POST to '/assessment' to start an assessment.
+
+    These tests attempt to cover the /assessment route end-to-end, stubbing out only the bedrock client.
+    """
+
+    def _get_bedrock_response(self, body, status=200):
+        return {
+            'ResponseMetadata': {'HTTPStatusCode': status},
+            'body': io.StringIO(body)
+        }
+
+    def test_succeeds_when_bedrock_returns_valid_response(self, mocker, client, stub_code, stub_prompt, lesson_11_rubric, claude_model, lesson_11_claude_request_data, lesson_11_claude_response_body):
+        # stub the bedrock response
+        bedrock_response = self._get_bedrock_response(lesson_11_claude_response_body)
+        class mock_bedrock_client:
+            def invoke_model(body, modelId, accept, contentType):
+                assert stub_code in body
+                assert stub_prompt in body
+                rubric_headers = lesson_11_rubric.split('\n')[0]
+                assert rubric_headers in body
+                assert modelId == claude_model
+                assert accept == 'application/json'
+                assert contentType == 'application/json'
+                return bedrock_response
+        get_bedrock_client_mock = mocker.patch.object(
+            Label,
+            'get_bedrock_client',
+            return_value=mock_bedrock_client
+        )
+
+        # send the flask request
+        os.environ['AIPROXY_API_KEY'] = 'test_key'
+        response = client.post(
+            '/assessment',
+            query_string=(lesson_11_claude_request_data),
+            headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"}
+        )
+
+        assert response.status_code == 200
+
+        # validate response data
+        response_data = response.json
+        assert response_data['metadata']['agent'] == 'anthropic'
+        learning_goal = response_data['data'][2]
+        assert learning_goal['Key Concept'] == "Position - Elements and the Coordinate System"
+        # Value provided by LLM stub response
+        assert learning_goal['Label'] == "Limited Evidence"
+
+        get_bedrock_client_mock.assert_called_once()
+
+    def test_returns_4xx_when_bedrock_returns_mismatched_key_concept(self, mocker, client, lesson_11_claude_request_data, lesson_11_claude_response_body_mismatched):
+        # stub the bedrock response
+        bedrock_response = self._get_bedrock_response(lesson_11_claude_response_body_mismatched)
+        class mock_bedrock_client:
+            def invoke_model(body, modelId, accept, contentType):
+                return bedrock_response
+        get_bedrock_client_mock = mocker.patch.object(
+            Label,
+            'get_bedrock_client',
+            return_value=mock_bedrock_client
+        )
+
+        # send the flask request
+        request_data = lesson_11_claude_request_data
+        os.environ['AIPROXY_API_KEY'] = 'test_key'
+        response = client.post('/assessment', query_string=request_data, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
+
+        assert response.status_code == 400
+
+        # check that get_bedrock_client_mock was called
+        get_bedrock_client_mock.assert_called_once()
+
+
+    def test_should_return_413_when_json_is_truncated_due_to_length(self, mocker, client, randomstring, lesson_11_rubric, bedrock_claude_model, lesson_11_claude_response_body_too_large):
+        # stub the bedrock response
+        bedrock_response = self._get_bedrock_response(lesson_11_claude_response_body_too_large)
+        class mock_bedrock_client:
+            def invoke_model(body, modelId, accept, contentType):
+                return bedrock_response
+        get_bedrock_client_mock = mocker.patch.object(
+            Label,
+            'get_bedrock_client',
+            return_value=mock_bedrock_client
+        )
+
+        # send the flask request
+        os.environ['AIPROXY_API_KEY'] = 'test_key'
+        response = client.post('/assessment', query_string={
+          "code": randomstring(10),
+          "prompt": randomstring(10),
+          "rubric": lesson_11_rubric,
+          "api-key": randomstring(10),
+          "examples": "[]",
+          "model": bedrock_claude_model,
+          "remove-comments": "1",
+          "num-responses": "1",
+          "temperature": "0.2",
+        }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
+
+        assert response.status_code == 413
+
+        get_bedrock_client_mock.assert_called_once()
+
+    def test_succeeds_when_openai_returns_valid_response(self, requests_mock, client, lesson_11_openai_request_data, lesson_11_openai_response_data):
+        # stub the openai response
+        requests_mock.post(
+            'https://api.openai.com/v1/chat/completions',
+            json=lesson_11_openai_response_data
+        )
+
+        # send the flask request
+        os.environ['AIPROXY_API_KEY'] = 'test_key'
+        response = client.post('/assessment', query_string=(lesson_11_openai_request_data),
+                               headers={"Content-type": "application/x-www-form-urlencoded",
+                                        "Authorization": "test_key"})
+
+        assert response.status_code == 200
+
+    def test_uses_code_feature_extractor_when_requested(self, client, mocker, lesson_11_claude_request_data, lesson_11_claude_response_body):
+        # stub the bedrock response
+        bedrock_response = self._get_bedrock_response(lesson_11_claude_response_body)
+        class mock_bedrock_client:
+            def invoke_model(body, modelId, accept, contentType):
+                return bedrock_response
+        get_bedrock_client_mock = mocker.patch.object(
+            Label,
+            'get_bedrock_client',
+            return_value=mock_bedrock_client
+        )
+
+        # send the flask request
+        request_data = lesson_11_claude_request_data
+        request_data['code-feature-extractor'] = ["Position - Elements and the Coordinate System"],
+        request_data['lesson'] = 'csd3-2023-L11'
+        os.environ['AIPROXY_API_KEY'] = 'test_key'
+        response = client.post('/assessment', query_string=request_data, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
+
+        assert response.status_code == 200
+
+        # validate response data
+        response_data = response.json
+        assert response_data['metadata']['agent'] == 'anthropic, code feature extractor'
+        learning_goal = response_data['data'][2]
+        assert learning_goal['Key Concept'] == "Position - Elements and the Coordinate System"
+        # LLM label overridden by CFE
+        assert learning_goal['Label'] == "No Evidence"
+
+        get_bedrock_client_mock.assert_called_once()
+
+
+class TestPostAssessmentUnitTests:
+    """ Tests POST to '/assessment' to start an assessment.
+
+    These tests stub out the Label class to test the API endpoint in isolation.
     """
 
     def test_should_return_400_when_no_code(self, client, randomstring):
         os.environ['AIPROXY_API_KEY'] = 'test_key'
         response = client.post('/assessment', query_string={
-          "prompt": randomstring(10),
-          "rubric": randomstring(10),
-          "api-key": randomstring(10),
-          "examples": "[]",
-          "model": randomstring(10),
-          "remove-comments": "1",
-          "num-responses": "1",
-          "temperature": "0.2",
+            "prompt": randomstring(10),
+            "rubric": randomstring(10),
+            "api-key": randomstring(10),
+            "examples": "[]",
+            "model": randomstring(10),
+            "remove-comments": "1",
+            "num-responses": "1",
+            "temperature": "0.2",
         }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
         assert response.status_code == 400
 
     def test_should_return_400_when_no_prompt(self, client, randomstring):
         os.environ['AIPROXY_API_KEY'] = 'test_key'
         response = client.post('/assessment', query_string={
-          "code": randomstring(10),
-          "rubric": randomstring(10),
-          "api-key": randomstring(10),
-          "examples": "[]",
-          "model": randomstring(10),
-          "remove-comments": "1",
-          "num-responses": "1",
-          "temperature": "0.2",
+            "code": randomstring(10),
+            "rubric": randomstring(10),
+            "api-key": randomstring(10),
+            "examples": "[]",
+            "model": randomstring(10),
+            "remove-comments": "1",
+            "num-responses": "1",
+            "temperature": "0.2",
         }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
         assert response.status_code == 400
 
     def test_should_return_400_when_no_rubric(self, client, randomstring):
         os.environ['AIPROXY_API_KEY'] = 'test_key'
         response = client.post('/assessment', query_string={
-          "code": randomstring(10),
-          "prompt": randomstring(10),
-          "api-key": randomstring(10),
-          "examples": "[]",
-          "model": randomstring(10),
-          "remove-comments": "1",
-          "num-responses": "1",
-          "temperature": "0.2",
+            "code": randomstring(10),
+            "prompt": randomstring(10),
+            "api-key": randomstring(10),
+            "examples": "[]",
+            "model": randomstring(10),
+            "remove-comments": "1",
+            "num-responses": "1",
+            "temperature": "0.2",
         }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
         assert response.status_code == 400
-
-    def test_should_return_413_on_request_too_large_error(self, mocker, client, randomstring):
-        mocker.patch('lib.assessment.assess.validate_and_label').side_effect = RequestTooLargeError('')
-        os.environ['AIPROXY_API_KEY'] = 'test_key'
-        response = client.post('/assessment', query_string={
-          "code": randomstring(10),
-          "prompt": randomstring(10),
-          "rubric": randomstring(10),
-          "api-key": randomstring(10),
-          "examples": "[]",
-          "model": randomstring(10),
-          "remove-comments": "1",
-          "num-responses": "1",
-          "temperature": "0.2",
-        }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
-        assert response.status_code == 413
 
     def test_should_return_400_when_passing_not_a_number_to_num_responses(self, client, randomstring):
         os.environ['AIPROXY_API_KEY'] = 'test_key'
         response = client.post('/assessment', query_string={
-          "code": randomstring(10),
-          "prompt": randomstring(10),
-          "rubric": randomstring(10),
-          "api-key": randomstring(10),
-          "examples": "[]",
-          "model": randomstring(10),
-          "remove-comments": "1",
-          "num-responses": "x",
-          "temperature": "0.2",
+            "code": randomstring(10),
+            "prompt": randomstring(10),
+            "rubric": randomstring(10),
+            "api-key": randomstring(10),
+            "examples": "[]",
+            "model": randomstring(10),
+            "remove-comments": "1",
+            "num-responses": "x",
+            "temperature": "0.2",
         }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
         assert response.status_code == 400
 
     def test_should_return_400_when_passing_not_a_number_to_temperature(self, client, randomstring):
         os.environ['AIPROXY_API_KEY'] = 'test_key'
         response = client.post('/assessment', query_string={
-          "code": randomstring(10),
-          "prompt": randomstring(10),
-          "rubric": randomstring(10),
-          "api-key": randomstring(10),
-          "examples": "[]",
-          "model": randomstring(10),
-          "remove-comments": "1",
-          "num-responses": "2",
-          "temperature": "x",
+            "code": randomstring(10),
+            "prompt": randomstring(10),
+            "rubric": randomstring(10),
+            "api-key": randomstring(10),
+            "examples": "[]",
+            "model": randomstring(10),
+            "remove-comments": "1",
+            "num-responses": "2",
+            "temperature": "x",
         }, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
         assert response.status_code == 400
 
@@ -197,8 +336,6 @@ class TestPostAssessment:
 
         os.environ['AIPROXY_API_KEY'] = 'test_key'
         response = client.post('/assessment', query_string=data, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
-
-        print(response.data)
 
         assert response.status_code == 200
         assert response.json == label_mock.return_value
@@ -435,7 +572,6 @@ class TestPostBlankAssessment:
         }
         os.environ['AIPROXY_API_KEY'] = 'test_key'
         response = client.post('/test/assessment/blank', query_string=data, headers={"Content-type": "application/x-www-form-urlencoded", "Authorization": "test_key"})
-        print(response.data)
         label_mock.assert_called_with(
             code='',
             prompt='file data',

@@ -144,7 +144,7 @@ class Label:
         if '\\"Stretch\\"' in response_body["content"][0]["text"]:
             response_body["content"][0]["text"] = response_body["content"][0]["text"].replace('\\"Stretch\\"', "“Stretch”")   
 
-        data = self.get_response_data_if_valid(response_body, rubric, student_id, response_type='json')
+        data = self.get_response_data_if_valid(response_body, rubric, student_id, response_type='json', reraise=True)
 
         return {
             'metadata': {

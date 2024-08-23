@@ -53,7 +53,6 @@ def mock_env_vars(request):
         yield
     else:
         from unittest.mock import patch
-        print("no env vars")
         # Ensure the os.environ passes out a new dictionary
         with patch.dict(os.environ, {}, clear=True):
             yield
