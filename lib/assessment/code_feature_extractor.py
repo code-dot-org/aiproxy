@@ -42,7 +42,9 @@ user_interaction_functions = ['keyDown',
                               'mouseIsOver', 
                               'mousePressedOver', 
                               'mouseWentDown', 
-                              'mouseWentUp']
+                              'mouseWentUp',
+                              'World.mouseX',
+                              'World.mouseY']
 
 # This class contains delegate and helper functions to extract relevant features
 # from code for assessment. New features should be added to the features dictionary.
@@ -349,6 +351,8 @@ class CodeFeatures:
       if 'left' in conditional_info["test"]:
         if (type(conditional_info["test"]['left']) == dict and 'identifier' in conditional_info["test"]["left"].keys()) or (type(conditional_info["test"]['right']) == dict and 'identifier' in conditional_info["test"]['right'].keys()):
           conditional_info = {**conditional_info, 'trigger': 'variable'}
+        elif (type(conditional_info["test"]['left']) == dict and 'object' in conditional_info["test"]["left"].keys()) and f"{conditional_info['test']['left']['object']}.{conditional_info['test']['left']['property']}" in user_interaction_functions or (type(conditional_info["test"]['right']) == dict and 'object' in conditional_info["test"]['right'].keys() and f"{conditional_info['test']['right']['object']}.{conditional_info['test']['right']['property']}" in user_interaction_functions):
+          conditional_info = {**conditional_info, 'trigger': 'user'}
         elif (type(conditional_info["test"]['left']) == dict and 'object' in conditional_info["test"]["left"].keys()) or (type(conditional_info["test"]['right']) == dict and 'object' in conditional_info["test"]['right'].keys()):
           conditional_info = {**conditional_info, 'trigger': 'object'}
         elif (type(conditional_info["test"]['left']) == dict and 'user_interaction' in conditional_info["test"]["left"].keys()) or (type(conditional_info["test"]['right']) == dict and 'user_interaction' in conditional_info["test"]['right'].keys()):
@@ -526,7 +530,7 @@ class CodeFeatures:
           logging.error(err)
           line_num = int(err.replace("Line ", "").split(":")[0])
           program_slice = '\n'.join(program.split('\n')[line_num:])
-          parse_code(program_slice, delegate)
+          parse_code(program_slice)
         else:
           logging.error(f"Parsing error: {err}")
 

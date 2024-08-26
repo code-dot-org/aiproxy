@@ -254,13 +254,13 @@ class DecisionTrees:
     elif sprites >= 1 and len(sprites_updated_in_draw) >= 1:
       self.assessment = "Convincing Evidence"
 
-    # Limited Evidence: At least 2 sprites
-    elif sprites >= 1 and len(sprites_updated_in_draw) == 0:
+    # Limited Evidence: At least 1 sprite
+    elif sprites >= 1:
       self.assessment = "Limited Evidence"
 
     # No Evidence: No sprites
     else:
-      self.assessment = "Limited Evidence"
+      self.assessment = "No Evidence"
 
   # Function to statically assess U3L18 'Position and Movement'
   def u3l18_position_assessment(self, data):
