@@ -16,6 +16,7 @@ import logging
 import pprint
 import boto3
 import subprocess
+import datetime
 
 from sklearn.metrics import accuracy_score, confusion_matrix
 from collections import defaultdict
@@ -28,7 +29,6 @@ from lib.assessment.confidence import get_pass_fail_confidence, get_exact_match_
 #globals
 prompt_file = 'system_prompt.txt'
 standard_rubric_file = 'standard_rubric.csv'
-actual_labels_file_old = 'expected_grades.csv'
 actual_labels_file = 'actual_labels.csv'
 output_dir_name = 'output'
 datasets_dir = 'datasets'
@@ -70,6 +70,7 @@ def command_line_options():
                         help='Generate confidence levels for each learning goal')
     parser.add_argument('-w', '--workers', type=int, default=7,
                         help='Number of workers to use for processing. Defaults to 7 workers.')
+    parser.add_argument('--new-labels', action='store_true', help='Generate new labels for the dataset using LLM')
 
     args = parser.parse_args()
 
@@ -189,8 +190,7 @@ def validate_rubrics(actual_labels, standard_rubric):
     standard_concepts = sorted([rubric_dict["Key Concept"] for rubric_dict in standard_rubric_dicts])
     if standard_concepts != actual_concepts:
         raise Exception(f"standard concepts do not match actual concepts:\n{standard_concepts}\n{actual_concepts}")
-
-
+    
 def validate_students(student_files, actual_labels):
     actual_students = sorted(actual_labels.keys())
     predicted_students = sorted([os.path.splitext(os.path.basename(student_file))[0] for student_file in student_files])
@@ -199,6 +199,21 @@ def validate_students(student_files, actual_labels):
     if unexpected_students:
         raise Exception(f"unexpected students: {unexpected_students}")
 
+def generate_new_labels_file(standard_rubric, predicted_labels, dataset_lesson_path):
+    standard_rubric_filelike = io.StringIO(standard_rubric)  # convert string to file-like object
+    standard_rubric_dicts = list(csv.DictReader(standard_rubric_filelike))
+    standard_concepts = sorted([rubric_dict["Key Concept"] for rubric_dict in standard_rubric_dicts])
+    with open(f'{dataset_lesson_path}/{datetime.datetime.now()}-new-labels.csv', 'w') as f:
+        writer = csv.writer(f, delimiter=',')
+        header = ["student"]
+        header.extend(standard_concepts)
+        writer.writerow(header)
+        students = predicted_labels.keys()
+        for student in students:
+            row = [student]
+            for label in predicted_labels[student]:
+                row.append(label["Label"])
+            writer.writerow(row)
 
 def compute_accuracy(actual_labels, predicted_labels, is_pass_fail):
     actual_by_criteria = defaultdict(list)
@@ -336,14 +351,13 @@ def main():
         response_type = params.get('response-type', 'tsv')
         prompt, standard_rubric = read_inputs(prompt_file, standard_rubric_file, params_lesson_prefix)
         student_files = get_student_files(options.max_num_students, dataset_lesson_prefix, student_ids=options.student_ids)
-        if os.path.exists(os.path.join(dataset_lesson_prefix, actual_labels_file_old)):
-            actual_labels = get_actual_labels(actual_labels_file_old, dataset_lesson_prefix)
-        else:
-            actual_labels = get_actual_labels(actual_labels_file, dataset_lesson_prefix)
-        examples = get_examples(params_lesson_prefix, response_type)
 
-        validate_rubrics(actual_labels, standard_rubric)
-        validate_students(student_files, actual_labels)
+        # If --new-labels, skip validation against existing actual labels file.
+        if not options.new_labels:
+            actual_labels = get_actual_labels(actual_labels_file, dataset_lesson_prefix)
+            validate_rubrics(actual_labels, standard_rubric)
+            validate_students(student_files, actual_labels)
+        examples = get_examples(params_lesson_prefix, response_type)
         rubric = standard_rubric
 
         # set up output and cache directories
@@ -360,6 +374,11 @@ def main():
         errors = [student_id for student_id, labels in predicted_labels if not labels]
         # predicted_labels contains metadata and data (labels), we care about the data key
         predicted_labels = {student_id: labels['data'] for student_id, labels in predicted_labels if labels}
+
+        # If --new-labels, generate labels file and skip accuracy checks
+        if options.new_labels:
+            generate_new_labels_file(standard_rubric, predicted_labels, dataset_lesson_prefix)
+            return True
 
         for is_pass_fail in [True, False]:
             output_filename = 'report-pass-fail.html' if is_pass_fail else 'report-exact-match.html'
