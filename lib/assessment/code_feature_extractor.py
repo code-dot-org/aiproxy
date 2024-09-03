@@ -526,7 +526,7 @@ class CodeFeatures:
           logging.error(err)
           line_num = int(err.replace("Line ", "").split(":")[0])
           program_slice = '\n'.join(program.split('\n')[line_num:])
-          parse_code(program_slice, delegate)
+          parse_code(program_slice)
         else:
           logging.error(f"Parsing error: {err}")
 

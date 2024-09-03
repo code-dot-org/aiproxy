@@ -208,7 +208,9 @@ def generate_new_labels_file(standard_rubric, predicted_labels, dataset_lesson_p
         header = ["student"]
         header.extend(standard_concepts)
         writer.writerow(header)
-        students = predicted_labels.keys()
+        students = list(predicted_labels.keys())
+        students.sort(key=lambda x: int(x.split('_')[1]))
+        logging.info(students)
         for student in students:
             row = [student]
             for label in predicted_labels[student]:
