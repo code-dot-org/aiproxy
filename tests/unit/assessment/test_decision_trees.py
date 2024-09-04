@@ -289,7 +289,6 @@ class TestDecisionTrees:
                                 'end': 8}]}
     decision_trees.assess(features, learning_goal, lesson)
     assert decision_trees.assessment == 'Extensive Evidence'
-    print(decision_trees.evidence)
     assert decision_trees.evidence == ["Line 13: Code contains 5 different shapes", 
                                        "Line 15: Code contains 5 different shapes", 
                                        "Line 16: Code contains 5 different shapes", 
