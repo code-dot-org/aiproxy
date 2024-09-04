@@ -1,3 +1,4 @@
+import re
 import os
 import csv
 import json
@@ -903,6 +904,121 @@ class TestLabelStudentWork:
             temperature=temperature,
             llm_model=llm_model,
             response_type=response_type
+        )
+
+    def test_should_ensure_evidence_is_a_string_without_commas_in_series(self, mocker, label, assessment_return_value, prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model):
+        test_for_blank_code_mock = mocker.patch.object(
+            Label, 'test_for_blank_code',
+            return_value=None
+        )
+
+        ai_result = assessment_return_value(rubric)
+        ai_result['data'][1]['Evidence'] = "Line 20, 21, 25: This is some evidence `some_code()` Lines 5, 6, 7: This is more evidence `more_code()` Line 4: `some()\ncode()`"
+
+        ai_label_student_work_mock = mocker.patch.object(
+            Label, 'ai_label_student_work',
+            return_value=ai_result
+        )
+
+        response_type = 'json'
+        expected_examples = examples(rubric)
+        result = label.label_student_work(
+            prompt, rubric, code, student_id,
+            examples=expected_examples,
+            num_responses=num_responses,
+            temperature=temperature,
+            write_cached=False,
+            llm_model=llm_model,
+            remove_comments=False,
+            response_type=response_type
+        )
+
+        # All evidence is a string without any newline
+        assert not any(
+            filter(
+                lambda kc: 'Evidence' in kc and re.match(r"Lines? \d+, ", kc['Evidence']),
+                result['data']
+            )
+        )
+
+    def test_should_ensure_evidence_is_a_string_without_newlines(self, mocker, label, assessment_return_value, prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model):
+        test_for_blank_code_mock = mocker.patch.object(
+            Label, 'test_for_blank_code',
+            return_value=None
+        )
+
+        ai_result = assessment_return_value(rubric)
+        ai_result['data'][1]['Evidence'] = "Line 20-25: This is some evidence `some_code()`\n\nLines 5-7: This is more evidence `more_code()`\n\nLine 4: `some()\ncode()`"
+
+        ai_label_student_work_mock = mocker.patch.object(
+            Label, 'ai_label_student_work',
+            return_value=ai_result
+        )
+
+        response_type = 'json'
+        expected_examples = examples(rubric)
+        result = label.label_student_work(
+            prompt, rubric, code, student_id,
+            examples=expected_examples,
+            num_responses=num_responses,
+            temperature=temperature,
+            write_cached=False,
+            llm_model=llm_model,
+            remove_comments=False,
+            response_type=response_type
+        )
+
+        # All evidence is a string without any newline
+        assert not any(
+            filter(
+                lambda kc: 'Evidence' in kc and "\n" in kc['Evidence'],
+                result['data']
+            )
+        )
+
+    def test_should_ensure_evidence_is_a_string_when_cfe_returns_an_array(self, mocker, label, assessment_return_value, prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model):
+        test_for_blank_code_mock = mocker.patch.object(
+            Label, 'test_for_blank_code',
+            return_value=None
+        )
+
+        ai_label_student_work_mock = mocker.patch.object(
+            Label, 'ai_label_student_work',
+            return_value=assessment_return_value(rubric)
+        )
+
+        cfe_result = assessment_return_value(rubric)
+        cfe_result['data'][1]['Evidence'] = [
+            "Lines 3-5: A sprite is created",
+            "Lines 7-8: A sprite is created"
+        ]
+        cfe_key_concept = cfe_result['data'][1]['Key Concept']
+
+        cfe_label_student_work_mock = mocker.patch.object(
+            Label, 'cfe_label_student_work',
+            return_value=cfe_result
+        )
+
+        response_type = 'json'
+        expected_examples = examples(rubric)
+        result = label.label_student_work(
+            prompt, rubric, code, student_id,
+            examples=expected_examples,
+            num_responses=num_responses,
+            code_feature_extractor=[cfe_key_concept],
+            temperature=temperature,
+            write_cached=False,
+            llm_model=llm_model,
+            remove_comments=False,
+            response_type=response_type
+        )
+
+        # All evidence is a string
+        assert not any(
+            filter(
+                lambda kc: 'Evidence' in kc and not isinstance(kc['Evidence'], str),
+                result['data']
+            )
         )
 
     def test_should_call_ai_assessment_when_static_assessment_returns_assessed_learning_goal(self, mocker, label, assessment_return_value, prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model):
