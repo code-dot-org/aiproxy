@@ -50,7 +50,7 @@ class DecisionTrees:
 
   def different_shapes_evidence(self, shapes, diff_shapes):
     for shape in shapes:
-      self.save_evidence_string(shape["start"], shape["end"], f"Code contains {len(diff_shapes)} different shapes: {diff_shapes}")
+      self.save_evidence_string(shape["start"], shape["end"], f"Code contains {len(diff_shapes)} different shapes")
 
   def total_objects_evidence(self, data, total_elements):
     for obj in data["objects"]:
