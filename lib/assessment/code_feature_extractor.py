@@ -1,5 +1,4 @@
 import esprima
-from lib.assessment.decision_trees import DecisionTrees
 import logging
 
 # Lists of arguments for object creation functions
@@ -14,7 +13,6 @@ function_args = {
     "rect": ["x", "y", "w", "h"],
     "regularPolygon": ["x", "y", "sides", "size"],
     "rgb": ["r", "g", "b", "a"],
-    "shape": ["x1", "y1", "xn", "yn"],
     "text": ["str", "x", "y", "width", "height"]
 }
 
@@ -110,6 +108,8 @@ class CodeFeatures:
         arg_values.append(argument.value)
       elif argument.type == "Identifier":
         arg_values.append(argument.name)
+      elif argument.type == "CallExpression":
+        arg_values.append(self.call_expression_helper(argument))
 
     # Combine function / method identifier and arguments
     if expression.callee.type == "MemberExpression":
@@ -463,6 +463,9 @@ class CodeFeatures:
             elif node_info["value"]["function"] in shape_functions:
               self.features["objects"].append({"identifier": node_info["identifier"], "properties": node_info["value"]["args"], "type": "shape", "start": node_info["start"], "end": node_info["end"]})
               self.features["object_types"]["shapes"] += 1
+              self.nodes.append(node)
+            else:
+              self.features["variables"].append({"identifier": node_info["identifier"], "properties": node_info["value"]["args"], "type": "none", "start": node_info["start"], "end": node_info["end"]})
               self.nodes.append(node)
           else:
             self.features["variables"].append({"identifier": node_info["identifier"], "value": node_info["value"], "start": node_info["start"], "end": node_info["end"]})
