@@ -517,6 +517,9 @@ class Label:
             # Get rid of newlines
             kc['Evidence'] = kc['Evidence'].replace("\n", " ")
 
+            # Get rid of multiline code blocks (``` -> `)
+            kc['Evidence'] = kc['Evidence'].replace("```", "`")
+
             # Convert "Lines x, y, z:" into "Lines x-z:"
             # Claude in particular likes to occasionally report evidence this way
             for match in re.finditer(r"Lines? (?P<start>\d+), (\d+)*, (?P<end>\d+)", kc['Evidence']):
