@@ -976,6 +976,41 @@ class TestLabelStudentWork:
             )
         )
 
+    def test_should_ensure_evidence_is_a_string_without_multiline_code_blocks(self, mocker, label, assessment_return_value, prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model):
+        test_for_blank_code_mock = mocker.patch.object(
+            Label, 'test_for_blank_code',
+            return_value=None
+        )
+
+        ai_result = assessment_return_value(rubric)
+        ai_result['data'][1]['Evidence'] = "Line 20-25: This is some evidence ```some_code()``` Lines 5-7: This is more evidence `more_code()` Line 4: ```some()\ncode()```"
+
+        ai_label_student_work_mock = mocker.patch.object(
+            Label, 'ai_label_student_work',
+            return_value=ai_result
+        )
+
+        response_type = 'json'
+        expected_examples = examples(rubric)
+        result = label.label_student_work(
+            prompt, rubric, code, student_id,
+            examples=expected_examples,
+            num_responses=num_responses,
+            temperature=temperature,
+            write_cached=False,
+            llm_model=llm_model,
+            remove_comments=False,
+            response_type=response_type
+        )
+
+        # All evidence is a string without any newline
+        assert not any(
+            filter(
+                lambda kc: 'Evidence' in kc and "```" in kc['Evidence'],
+                result['data']
+            )
+        )
+
     def test_should_ensure_evidence_is_a_string_when_cfe_returns_an_array(self, mocker, label, assessment_return_value, prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model):
         test_for_blank_code_mock = mocker.patch.object(
             Label, 'test_for_blank_code',
