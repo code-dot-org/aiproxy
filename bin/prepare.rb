@@ -34,7 +34,7 @@ csv_data = CSV.generate do |csv|
     project_link = row.first.last
 
     # Get the project id
-    project_link = project_link.match(/\/([^\/]+)\/view/)[1]
+    project_link = project_link.match(/\/([^\/]+)(?:\/view|\/?$)/)[1]
     tokens << project_link
     new_row = [project_link]
 

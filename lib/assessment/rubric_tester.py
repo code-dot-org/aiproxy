@@ -32,6 +32,7 @@ prompt_file = 'system_prompt.txt'
 standard_rubric_file = 'standard_rubric.csv'
 actual_labels_file = 'actual_labels.csv'
 output_dir_name = 'output'
+report_dir_name = 'reports'
 datasets_dir = 'datasets'
 cache_dir_name = 'cached_responses'
 accuracy_threshold_file = 'accuracy_thresholds.json'
@@ -363,6 +364,7 @@ def main():
 
         # set up output and cache directories
         os.makedirs(os.path.join(params_lesson_prefix, output_dir_name), exist_ok=True)
+        os.makedirs(os.path.join(params_lesson_prefix, report_dir_name), exist_ok=True)
         os.makedirs(os.path.join(params_lesson_prefix, cache_dir_name), exist_ok=True)
         if not options.use_cached:
             for file in glob.glob(f'{os.path.join(params_lesson_prefix, cache_dir_name)}/*'):
@@ -402,6 +404,21 @@ def main():
                 }
             }
             report = Report()
+            report.generate_csv_output(
+                os.path.join(params_lesson_prefix, report_dir_name),
+                prompt,
+                rubric,
+                accuracy=overall_accuracy_percent,
+                predicted_labels=predicted_labels,
+                actual_labels=actual_labels,
+                is_pass_fail=is_pass_fail,
+                accuracy_by_criteria=accuracy_by_criteria_percent,
+                errors=errors,
+                input_params=input_params,
+                confusion_by_criteria=confusion_by_criteria,
+                overall_confusion=overall_confusion,
+                label_names=label_names,
+            )
             report.generate_html_output(
                 output_file,
                 prompt,
