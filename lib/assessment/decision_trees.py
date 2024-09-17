@@ -12,6 +12,8 @@ class DecisionTrees:
   # feature extractor and relevant decision tree.
   def assess(self, features, learning_goal, lesson):
     match [learning_goal["Key Concept"], lesson]:
+      case ['Position - Shapes', 'csd3-2023-L7']:
+        self.u3l7_position_shapes_assessment(features)
       case ['Position - Elements and the Coordinate System', 'csd3-2023-L11']:
         self.u3l11_position_assessment(features)
       case ['Modularity - Sprites and Sprite Properties', 'csd3-2023-L14']:
@@ -45,6 +47,10 @@ class DecisionTrees:
           self.save_evidence_string(obj["start"], obj["end"], f"Code contains {sprites} sprite{'s' if sprites > 1 else ''}")
         elif obj["type"] == "text":
           self.save_evidence_string(obj["start"], obj["end"], f"Code contains {text} line{'s' if text > 1 else ''} of text")
+
+  def different_shapes_evidence(self, shapes, diff_shapes):
+    for shape in shapes:
+      self.save_evidence_string(shape["start"], shape["end"], f"Code contains {len(diff_shapes)} different shapes")
 
   def total_objects_evidence(self, data, total_elements):
     for obj in data["objects"]:
@@ -117,6 +123,33 @@ class DecisionTrees:
       
   # All decision tree functions should receive the code feature dictionary from the
   # CodeFeatureExtractor class when called.
+
+  # Function to statically assess U3L11 'Position - Elements and the Coordinate System'
+  def u3l7_position_shapes_assessment(self, data):
+
+    l7_shape_funcs = ["rect", "ellipse", "line", "arc", "point", "regularPolygon", "shape"]
+
+    shapes_list = [shape for shape in data["function_calls"] if shape["function"] in l7_shape_funcs]
+    diff_shapes = set([shape["function"] for shape in shapes_list])
+    diff_shapes_num = len(diff_shapes)
+    self.different_shapes_evidence(shapes_list, diff_shapes)
+
+    # Extensive Evidence: At least 4 shapes
+    if diff_shapes_num >= 4:
+      self.assessment = "Extensive Evidence"
+
+    # Convincing Evidence: At least 3 shapes
+    elif diff_shapes_num >= 3:
+      self.assessment = "Convincing Evidence"
+
+    # Limited Evidence: At least 1 shape.
+    elif diff_shapes_num >= 1:
+      self.assessment =  "Limited Evidence"
+
+    # No Evidence: No shapes
+    else:
+      self.assessment =  "No Evidence"
+
   # Function to statically assess U3L11 'Position - Elements and the Coordinate System'
   def u3l11_position_assessment(self, data):
 
