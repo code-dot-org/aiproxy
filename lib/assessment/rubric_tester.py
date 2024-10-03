@@ -17,6 +17,7 @@ import pprint
 import boto3
 import subprocess
 import datetime
+import shutil
 
 from sklearn.metrics import accuracy_score, confusion_matrix
 from collections import defaultdict
@@ -368,7 +369,7 @@ def main():
             for file in glob.glob(f'{os.path.join(params_lesson_prefix, cache_dir_name)}/*'):
                 os.remove(file)
 
-        # call label function to either call openAI or read from cache
+        # call label function to either call the AI agent or read from cache
         with concurrent.futures.ThreadPoolExecutor(max_workers=options.workers) as executor:
             predicted_labels = list(executor.map(lambda student_file: read_and_label_student_work(prompt, rubric, student_file, examples, options, params, params_lesson_prefix, response_type), student_files))
 
@@ -436,7 +437,7 @@ def main():
                         accuracy_failures[lesson]['key_concepts'][key_concept]['accuracy_score'] = accuracy_by_criteria[key_concept]
                         accuracy_failures[lesson]['key_concepts'][key_concept]['threshold'] = accuracy_thresholds[lesson]['key_concepts'][key_concept]
 
-            if not is_pass_fail:
+            if not is_pass_fail and shutil.which("open") is not None:
                 os.system(f"open {output_file}")
 
             if options.generate_confidence:

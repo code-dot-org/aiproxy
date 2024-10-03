@@ -32,9 +32,6 @@ class Label:
     _bedrock_client = None
     _bedrock_lock = Lock()
 
-    def __init__(self):
-        pass
-
     # Check to ensure that student project is not blank. Assessment is statically generated for blank code.
     def test_for_blank_code(self, rubric, student_code, student_id):
         rubric_key_concepts = list(set(row['Key Concept'] for row in csv.DictReader(rubric.splitlines())))
@@ -310,6 +307,9 @@ class Label:
                 if row["Key Concept"] in code_feature_extractor:
                     response["data"][i] = [cfe_row for cfe_row in cfe_results["data"] if cfe_row["Key Concept"] == row["Key Concept"]][0]
 
+        # Sanitize Evidence
+        self._sanitize_result(response['data'])
+
         # only write to cache if the response is valid
         if write_cached and ai_result:
             with open(os.path.join(cache_prefix, f"cached_responses/{student_id}.json"), 'w+') as f:
@@ -499,6 +499,32 @@ class Label:
             if "Grade" in row.keys():
                 row['Label'] = row['Grade']
                 del row['Grade']
+
+    def _sanitize_result(self, data):
+        for kc in data:
+            if not 'Evidence' in kc:
+                continue
+
+            # Ensure all Evidence is a string delimited by spaces (and not newlines)
+            if isinstance(kc.get('Evidence'), list):
+                # The CFE might return a list here. We want a single string
+                kc['Evidence'] = ' '.join(kc['Evidence'])
+
+            if not isinstance(kc.get('Evidence'), str):
+                # Ensure that the Evidence field is a string in some way before continuing
+                kc['Evidence'] = str(kc['Evidence'])
+
+            # Get rid of newlines
+            kc['Evidence'] = kc['Evidence'].replace("\n", " ")
+
+            # Get rid of multiline code blocks (``` -> `)
+            kc['Evidence'] = kc['Evidence'].replace("```", "`")
+
+            # Convert "Lines x, y, z:" into "Lines x-z:"
+            # Claude in particular likes to occasionally report evidence this way
+            for match in re.finditer(r"Lines? (?P<start>\d+), (\d+)*, (?P<end>\d+)", kc['Evidence']):
+                # Match the fully matched string with the first number and last number as a range
+                kc['Evidence'] = kc['Evidence'].replace(match[0], f"Lines {match['start']}-{match['end']}")
 
     def _validate_server_response(self, response_data, rubric):
         expected_columns = ["Key Concept", "Observations", "Label", "Reason"]
