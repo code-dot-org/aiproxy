@@ -16,7 +16,8 @@ SUPPORTED_MODELS = [
     'gpt-4-32k-0613',
     'gpt-4-1106-preview',
     'gpt-4-0125-preview',
-    'gpt-4-turbo-2024-04-09'
+    'gpt-4-turbo-2024-04-09',
+    'gpt-4o-2024-05-13'
 ]
 DEFAULT_MODEL = 'bedrock.anthropic.claude-3-5-sonnet-20240620-v1:0'
 LESSONS = ['csd3-2023-L7','csd3-2023-L11','csd3-2023-L14','csd3-2023-L18','csd3-2023-L21','csd3-2023-L24','csd3-2023-L28']
