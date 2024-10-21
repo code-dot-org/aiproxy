@@ -47,7 +47,7 @@ from happening. Most logging happens at `INFO`, which is the default setting.
   Example:
 
   ```
-  [bedrock_development]
+  [aiproxy_development]
   aws_access_key_id = <copy from 1password>
   aws_secret_access_key = <copy from 1password>
   region = <copy from 1password>
