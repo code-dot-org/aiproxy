@@ -82,7 +82,8 @@ class CodeFeatures:
         case "UnaryExpression":
           output.append(self.unary_expression_helper(exp))
         case _:
-          logging.info(f"binary expression outlier: {exp}") # DEBUG
+          logging.info(f"binary expression outlier: {exp.type}")
+          logging.debug(f"binary expression outlier: {exp}")
     return {"left": output[0], "operator": expression.operator, "right": output[1], "start": expression.loc.start.line, "end": expression.loc.end.line}
 
   # Helper function for parsing function calls. Outputs a dictionary containing the
@@ -142,7 +143,8 @@ class CodeFeatures:
               case "UpdateExpression":
                 draw_loop_body.append(self.update_expression_helper(statement.expression))
               case _:
-                logging.info(f"draw loop outlier expression: {statement.expression}")
+                logging.info(f"draw loop outlier expression: {statement.expression.type}")
+                logging.debug(f"draw loop outlier expression: {statement.expression}")
           case "VariableDeclaration":
             for declaration in self.variable_declaration_helper(statement):
               draw_loop_body.append(declaration)
@@ -151,7 +153,8 @@ class CodeFeatures:
           case "FunctionDeclaration":
             draw_loop_body.append(self.function_def_helper(statement))
           case _:
-            logging.info(f"draw loop outlier statement: {statement}")
+            logging.info(f"draw loop outlier statement: {statement.type}")
+            logging.debug(f"draw loop outlier statement: {statement}")
       return draw_loop_body
 
   def function_def_helper(self, node):
@@ -170,7 +173,8 @@ class CodeFeatures:
               case "UpdateExpression":
                 function_body.append(self.update_expression_helper(statement.expression))
               case _:
-                logging.info(f"draw loop outlier expression: {statement.expression}")
+                logging.info(f"draw loop outlier expression: {statement.expression.type}")
+                logging.debug(f"draw loop outlier expression: {statement.expression}")
           case "VariableDeclaration":
             for declaration in self.variable_declaration_helper(statement):
               function_body.append(declaration)
@@ -179,7 +183,8 @@ class CodeFeatures:
           case "FunctionDeclaration":
             function_body.append(self.function_def_helper(statement))
           case _:
-            logging.info(f"draw loop outlier statement: {statement}")
+            logging.info(f"draw loop outlier statement: {statement.type}")
+            logging.debug(f"draw loop outlier statement: {statement}")
       return {"function": node.id.name, "body": function_body, "start": start, "end": end, "calls": 0}
 
   # Helper function to parse all statements in an if block
@@ -200,7 +205,8 @@ class CodeFeatures:
         case "UnaryExpression":
           test = self.unary_expression_helper(node.test)
         case _:
-          logging.info(f"conditional test outlier: {node.test}")
+          logging.info(f"conditional test outlier: {node.test.type}")
+          logging.debug(f"conditional test outlier: {node.test}")
       consequent = []
       for statement in node.consequent.body:
         match statement.type:
@@ -213,7 +219,8 @@ class CodeFeatures:
               case "UpdateExpression":
                 consequent.append(self.update_expression_helper(statement.expression))
               case _:
-                logging.info(f"conditional consequent outlier expression: {statement.expression}")
+                logging.info(f"conditional consequent outlier expression: {statement.expression.type}")
+                logging.debug(f"conditional consequent outlier expression: {statement.expression}")
           case "VariableDeclaration":
             for declaration in self.variable_declaration_helper(statement):
               consequent.append(declaration)
@@ -222,7 +229,8 @@ class CodeFeatures:
           case "FunctionDeclaration":
             consequent.append(self.function_def_helper(statement))
           case _:
-            logging.info(f"conditional consequent outlier statement: {statement}")
+            logging.info(f"conditional consequent outlier statement: {statement.type}")
+            logging.debug(f"conditional consequent outlier statement: {statement}")
       alternate = []
       if node.alternate and node.alternate.body:
         for statement in node.alternate.body:
@@ -236,7 +244,8 @@ class CodeFeatures:
                 case "UpdateExpression":
                   alternate.append(self.update_expression_helper(statement.expression))
                 case _:
-                  logging.info(f"conditional alternate outlier expression: {statement.expression}")
+                  logging.info(f"conditional alternate outlier expression: {statement.expression.type}")
+                  logging.debug(f"conditional alternate outlier expression: {statement.expression}")
             case "VariableDeclaration":
               for declaration in self.variable_declaration_helper(statement):
                 alternate.append(declaration)
@@ -245,7 +254,8 @@ class CodeFeatures:
             case "FunctionDeclaration":
               alternate.append(self.function_def_helper(statement))
             case _:
-              logging.info(f"conditional alternate outlier statement: {statement}")
+              logging.info(f"conditional alternate outlier statement: {statement.type}")
+              logging.debug(f"conditional alternate outlier statement: {statement}")
       return {"test": test, "consequent": consequent, "alternate": alternate, "start": node.loc.start.line, "end": node.loc.end.line}
 
   # This function is used to extract statements from all conditional paths,
@@ -269,7 +279,8 @@ class CodeFeatures:
     if expression.object.type == "Identifier":
       member_expression = {"object": expression.object.name, "property": expression.property.name, "start": expression.loc.start.line, "end": expression.loc.end.line}
     else:
-      logging.info(f"member expression outlier: {expression}") # DEBUG
+      logging.info(f"member expression outlier: {expression.object.type}")
+      logging.debug(f"member expression outlier: {expression}")
     return member_expression
 
   # Helper function to parse unary functions. Returns a float combining the
@@ -278,7 +289,8 @@ class CodeFeatures:
     if expression.argument.type == "Literal":
       return float(expression.operator + expression.argument.raw)
     else:
-      logging.info(f"unary expression outlier: {expression}") #DEBUG
+      logging.info(f"unary expression outlier: {expression.argument.type}")
+      logging.debug(f"unary expression outlier: {expression}")
 
   def update_expression_helper(self, expression):
     argument = {}
@@ -288,7 +300,8 @@ class CodeFeatures:
       case "Identifier":
         argument = expression.argument.name
       case _:
-        logging.info(f"update expression argument outlier: {expression.argument}")
+        logging.info(f"update expression argument outlier: {expression.argument.type}")
+        logging.debug(f"update expression argument outlier: {expression.argument}")
     return {"operator":expression.operator, "argument":argument, "start": expression.loc.start.line, "end": expression.loc.end.line}
 
   def variable_declaration_helper(self, node):
@@ -321,7 +334,8 @@ class CodeFeatures:
         case "UnaryExpression":
           output.append(self.unary_expression_helper(exp))
         case _:
-          logging.info(f"variable assignment outlier: {exp}")
+          logging.info(f"variable assignment outlier: {exp.type}")
+          logging.debug(f"variable assignment outlier: {exp}")
     return {"assignee": output[0], "value": output[1], "start": node.loc.start.line, "end": node.loc.end.line}
   
   # Extractor functions: These functions utilize helper functions to return
