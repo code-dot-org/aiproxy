@@ -186,7 +186,7 @@ Resources:
     Type: AWS::ApplicationAutoScaling::ScalableTarget
     Properties:
       MaxCapacity: 10
-      MinCapacity: 1
+      MinCapacity: 2
       ResourceId: !Sub service/${ECSCluster}/${ECSService.Name}
       RoleARN: !ImportValue AiProxyECSAutoscaleRoleArn
       ScalableDimension: ecs:service:DesiredCount
