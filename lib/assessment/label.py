@@ -79,10 +79,11 @@ class Label:
             dt.assess(cfe.features, learning_goal, lesson)
             results["data"].append({"Label": dt.assessment,
                                     "Key Concept": learning_goal["Key Concept"],
-                                    "Observations": cfe.features,
+                                    "Observations": '',
                                     "Reason": learning_goal[dt.assessment] if dt.assessment else '',
                                     "Evidence": dt.evidence,
                                         })
+            logging.debug(f"Key Concept: {learning_goal['Key Concept']} CFE features: {cfe.features}")
 
         return results
 
