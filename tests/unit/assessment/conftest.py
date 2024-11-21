@@ -270,7 +270,7 @@ def openai_gpt_response(randomstring):
             'Key Concept': key_concept,
             'Observations': randomstring(10),
             'Grade': label,
-            'Reason': randomstring(10)
+            'Reason': f"stub-reason-{randomstring(10)}"
         }
 
     def gen_tabular_response(choice_data, output_type):

@@ -181,7 +181,7 @@ class TestGetResponseDataIfValid:
         assert result is not None
         assert len(result) == len(parsed_rubric)
 
-    def test_should_work_for_json_response_type(self, label, rubric, student_id, openai_gpt_response, output_type='json'):
+    def test_can_parse_json_response_type(self, label, rubric, student_id, openai_gpt_response, output_type='json'):
         ai_response = openai_gpt_response(rubric, num_responses=1, output_type=output_type)
         choice = ai_response['choices'][0]
 
@@ -192,6 +192,19 @@ class TestGetResponseDataIfValid:
         assert result is not None
         assert len(result) == len(parsed_rubric)
 
+    def test_can_parse_json_strings_containing_newlines(self, label, rubric, student_id, openai_gpt_response, output_type='json'):
+        ai_response = openai_gpt_response(rubric, num_responses=1, output_type=output_type)
+        choice = ai_response['choices'][0]
+
+        # add newline inside "Reason" field
+        choice['message']['content'] = choice['message']['content'].replace('stub-reason-', 'stub-reason\n')
+
+        parsed_rubric = list(csv.DictReader(rubric.splitlines()))
+
+        # It should parse them out to get the same number of rows as the rubric
+        result = label.get_response_data_if_valid(choice, rubric, student_id, response_type='json')
+        assert result is not None
+        assert len(result) == len(parsed_rubric)
 
     @pytest.mark.parametrize("output_type", ['tsv', 'csv', 'markdown'])
     def test_should_work_for_different_output_types_with_leading_text(self, label, rubric, student_id, openai_gpt_response, output_type):
