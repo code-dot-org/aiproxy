@@ -439,7 +439,7 @@ class Label:
         json_text = match.group(1)
 
         try:
-            data = json.loads(json_text)
+            data = json.loads(json_text, strict=False)
         except json.JSONDecodeError as e:
             if finish_reason == 'length' or finish_reason == 'max_tokens':
                 raise RequestTooLargeError(f"{student_id}: JSON decoding error")
