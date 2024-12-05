@@ -1,8 +1,12 @@
-import os
 import csv
+import hashlib
 import io
 import json
 import math
+import os
+import re
+from datetime import datetime
+from itertools import product, chain
 from typing import List, Dict, Any
 from lib.assessment.config import VALID_LABELS, PASSING_LABELS
 
@@ -82,6 +86,132 @@ class Report:
             confusion_table += '</tr>'
         confusion_table += '</table>'
         return confusion_table
+
+    def _label_to_number(self, label):
+        if 'Extensive' in label:
+            return 3
+        elif 'Convincing' in label:
+            return 2
+        elif 'Limited' in label:
+            return 1
+
+        return 0
+
+    def _key_concept_to_filename(self, key_concept):
+        ret = re.sub(r'[^\w\s]', '', key_concept)
+        ret = re.sub(r'\s+', '-', ret)
+        ret = re.sub(r'^-+|-+$', '', ret)
+        return ret.lower()
+
+    def generate_csv_output(self, output_path, prompt, rubric, accuracy=None, predicted_labels=None, actual_labels=None, is_pass_fail=False, accuracy_by_criteria=None, errors=[], input_params={}, confusion_by_criteria=None, overall_confusion=None, label_names=None):
+        # Note: We open the CSV file with the newlines turned off as required by CSV writing
+
+        # Keeps track of the rubric changes
+        rubric_hash = hashlib.sha1(rubric.encode('utf-8')).hexdigest()
+
+        # Keeps track of prompt changes
+        prompt_hash = hashlib.sha1(prompt.encode('utf-8')).hexdigest()
+
+        # String to append based on pass/fail vs. exact match
+        matching_type = "partial" if is_pass_fail else "exact"
+
+        # Get the list of key concepts
+        key_concepts = list(map(lambda label: label['Key Concept'], list(predicted_labels.values())[0]))
+
+        # Reform accuracy to something writable
+        accuracy = 'NaN' if accuracy is None or math.isnan(accuracy) else str(accuracy)
+
+        output_file = os.path.join(output_path, f"{input_params['lesson_name']}-{matching_type}-metadata.csv")
+        with open(output_file, 'w+', newline='') as file:
+            csv_writer = csv.writer(file)
+
+            # Write Header
+            csv_writer.writerow(["RUBRIC_HASH", "PROMPT_HASH", "DATE", "IS_PASS_FAIL", "ERRORS", "ACCURACY"])
+
+            # Write data
+            is_pass_fail_value = "TRUE" if is_pass_fail else "FALSE"
+            csv_writer.writerow([rubric_hash, prompt_hash, datetime.now().isoformat(), is_pass_fail_value, ';'.join(errors), accuracy])
+
+        # Write sample report and aggregate
+        output_file = os.path.join(output_path, f"{input_params['lesson_name']}-sample-accuracy.csv")
+        with open(output_file, 'w+', newline='') as file:
+            csv_writer = csv.writer(file)
+
+            # Write Header
+            csv_writer.writerow(["STUDENT_ID", "LEARNING_GOAL", "ACTUAL", "PREDICTED", "PASS_FAIL_DIFF", "DIFF"])
+
+            # Go through each student and each label
+            for student_id, labels in predicted_labels.items():
+                for label in labels:
+                    criteria = label['Key Concept']
+                    actual = actual_labels[student_id][criteria]
+                    predicted = label['Label']
+                    diff = self._label_to_number(predicted) - self._label_to_number(actual)
+                    pass_fail_diff = (self._label_to_number(predicted) // 2) - (self._label_to_number(actual) // 2)
+                    csv_writer.writerow([student_id, criteria, actual, predicted, pass_fail_diff, diff])
+
+        output_file = os.path.join(output_path, f"{input_params['lesson_name']}-{matching_type}-accuracy.csv")
+        with open(output_file, 'w+', newline='') as file:
+            csv_writer = csv.writer(file)
+
+            # Write Header
+            csv_writer.writerow(["LEARNING_GOAL", "ACCURACY"])
+
+            # Write the overall accuracy (repeated from the metadata report)
+            csv_writer.writerow(["OVERALL", accuracy])
+
+            # For each learning goal, print the accuracy
+            for key_concept in key_concepts:
+                cur_accuracy = accuracy_by_criteria.get(key_concept)
+                cur_accuracy = 'NaN' if cur_accuracy is None or math.isnan(cur_accuracy) else str(cur_accuracy)
+                csv_writer.writerow([key_concept, cur_accuracy])
+
+        labels = ["EXTENSIVE", "CONVINCING", "LIMITED", "NO"]
+
+        # First write confusion matrix for all goals
+        output_file = os.path.join(output_path, f"{input_params['lesson_name']}-{matching_type}-confusion.csv")
+        with open(output_file, 'w+', newline='') as file:
+            csv_writer = csv.writer(file)
+
+            # Write Header
+            if is_pass_fail:
+                csv_writer.writerow(["KEY_CONCEPT", "TRUE_POSITIVE", "FALSE_NEGATIVE", "FALSE_POSITIVE", "TRUE_NEGATIVE"])
+            else:
+                # Yield a permutation of all labels to form the header
+                items = list(map(lambda lst: '/'.join(lst), product(labels, labels)))
+                csv_writer.writerow(["KEY_CONCEPT", *items])
+
+            # A 'chain' just flattens the 2d matrix into the row-ordered list
+            # Write all the values in the overall matrix into the CSV
+            csv_writer.writerow(["OVERALL", *list(chain(*overall_confusion))])
+
+            # Write a row for each concept as well
+            for key_concept, confusion_matrix in confusion_by_criteria.items():
+                csv_writer.writerow([key_concept, *list(chain(*confusion_matrix))])
+
+        # Write learning goal accuracy reports
+        for key_concept in key_concepts:
+            slug = self._key_concept_to_filename(key_concept)
+            output_file = os.path.join(output_path, f"{input_params['lesson_name']}-sample-accuracy-{slug}.csv")
+
+            with open(output_file, 'w+', newline='') as file:
+                csv_writer = csv.writer(file)
+
+                # Write Header
+                csv_writer.writerow(["STUDENT_ID", "ACTUAL", "PREDICTED", "PASS_FAIL_DIFF", "DIFF"])
+
+                # Search the report data for just info relevant to this key concept
+                for student_id, labels in predicted_labels.items():
+                    for label in labels:
+                        criteria = label['Key Concept']
+                        if criteria != key_concept:
+                            continue
+
+                        actual = actual_labels[student_id][criteria]
+                        predicted = label['Label']
+                        diff = self._label_to_number(predicted) - self._label_to_number(actual)
+                        pass_fail_diff = (self._label_to_number(predicted) // 2) - (self._label_to_number(actual) // 2)
+                        csv_writer.writerow([student_id, actual, predicted, pass_fail_diff, diff])
 
     def generate_html_output(self, output_file, prompt, rubric, accuracy=None, predicted_labels=None, actual_labels=None, is_pass_fail=False, accuracy_by_criteria=None, errors=[], input_params={}, confusion_by_criteria=None, overall_confusion=None, label_names=None, prefix='sample_code'):
         link_base_url = f'file://{os.getcwd()}/{prefix}'
