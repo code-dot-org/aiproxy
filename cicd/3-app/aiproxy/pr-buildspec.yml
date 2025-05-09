@@ -48,4 +48,3 @@ phases:
         if [ "$CODEBUILD_BUILD_SUCCEEDING" != "1" ]; then
           echo "Previous phase failed; aborting post_build"
           exit 1
-        fi
