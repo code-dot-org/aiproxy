@@ -151,52 +151,51 @@ Resources:
     Properties:
       Handler: index.handler
       Runtime: python3.9
-      CodeUri:
-        ZipFile: |
-          # Lambda authorizer for PR builds
-          # 1. Import modules
-          import os
-          import json
-          import boto3
-          from urllib import request
+      InlineCode: |
+        # Lambda authorizer for PR builds
+        # 1. Import modules
+        import os
+        import json
+        import boto3
+        from urllib import request
 
-          def handler(event, context):
-              # Fetch GitHub token from Secrets Manager
-              sm = boto3.client('secretsmanager')
-              secret = sm.get_secret_value(SecretId=os.environ['GITHUB_TOKEN_SECRET_ARN'])
-              token = json.loads(secret['SecretString'])['token']
+        def handler(event, context):
+            # Fetch GitHub token from Secrets Manager
+            sm = boto3.client('secretsmanager')
+            secret = sm.get_secret_value(SecretId=os.environ['GITHUB_TOKEN_SECRET_ARN'])
+            token = json.loads(secret['SecretString'])['token']
 
-              # Parse PR event details
-              detail = event.get('detail', {})
-              pr = detail.get('pull_request', {})
+            # Parse PR event details
+            detail = event.get('detail', {})
+            pr = detail.get('pull_request', {})
 
-              # Only process PRs against configured branch
-              if pr.get('base', {}).get('ref') != os.environ['GitHubBranch']:
-                  return
+            # Only process PRs against configured branch
+            if pr.get('base', {}).get('ref') != os.environ['GitHubBranch']:
+                return
 
-              # Get PR author login
-              login = pr.get('user', {}).get('login')
+            # Get PR author login
+            login = pr.get('user', {}).get('login')
 
-              # Call GitHub API to check permission
-              url = (
-                  f"https://api.github.com/repos/"
-                  f"{os.environ['GitHubOwner']}/{os.environ['GitHubRepo']}/"
-                  f"collaborators/{login}/permission"
-              )
-              req = request.Request(
-                  url,
-                  headers={
-                      'Authorization': f"token {token}",
-                      'Accept': 'application/vnd.github.v3+json'
-                  }
-              )
-              with request.urlopen(req) as resp:
-                  data = json.loads(resp.read().decode())
+            # Call GitHub API to check permission
+            url = (
+                f"https://api.github.com/repos/"
+                f"{os.environ['GitHubOwner']}/{os.environ['GitHubRepo']}/"
+                f"collaborators/{login}/permission"
+            )
+            req = request.Request(
+                url,
+                headers={
+                    'Authorization': f"token {token}",
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            )
+            with request.urlopen(req) as resp:
+                data = json.loads(resp.read().decode())
 
-              # If user has write/maintain/admin access, start CodeBuild
-              if data.get('permission') in ['write', 'maintain', 'admin']:
-                  cb = boto3.client('codebuild')
-                  cb.start_build(projectName=os.environ['CODEBUILD_PROJECT'])
+            # If user has write/maintain/admin access, start CodeBuild
+            if data.get('permission') in ['write', 'maintain', 'admin']:
+                cb = boto3.client('codebuild')
+                cb.start_build(projectName=os.environ['CODEBUILD_PROJECT'])
       Environment:
         Variables:
           GITHUB_TOKEN_SECRET_ARN: !Ref GitHubTokenSecretArn
