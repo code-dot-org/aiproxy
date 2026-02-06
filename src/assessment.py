@@ -36,6 +36,9 @@ def post_assessment():
     examples = json.loads(request.values.get("examples", "[]"))
     llm_model = request.values.get("model", DEFAULT_MODEL)
 
+    request_id = request.headers.get("X-Request-Id")
+    traceparent = request.headers.get("traceparent")
+
     try:
         labels = assess.validate_and_label(
             code=request.values.get("code", ""),
@@ -49,7 +52,9 @@ def post_assessment():
             temperature=float(request.values.get("temperature", "0.2")),
             response_type=request.values.get("response-type", "tsv"),
             code_feature_extractor=(request.values.get("code-feature-extractor", None)),
-            lesson=(request.values.get("lesson", None))
+            lesson=(request.values.get("lesson", None)),
+            request_id=request_id,
+            traceparent=traceparent
         )
     except ValueError:
         return "One of the arguments is not parseable as a number", 400
