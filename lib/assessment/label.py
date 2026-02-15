@@ -87,17 +87,17 @@ class Label:
 
         return results
 
-    def ai_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model="", response_type='tsv'):
+    def ai_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model="", response_type='tsv', request_id=None, traceparent=None):
         if llm_model.startswith("gpt"):
-            return self.openai_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model, response_type=response_type)
+            return self.openai_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model, response_type=response_type, request_id=request_id, traceparent=traceparent)
         elif llm_model.startswith("bedrock.meta"):
-            return self.bedrock_meta_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
+            return self.bedrock_meta_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model, request_id=request_id, traceparent=traceparent)
         elif llm_model.startswith("bedrock.anthropic"):
-            return self.bedrock_anthropic_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
+            return self.bedrock_anthropic_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model, request_id=request_id, traceparent=traceparent)
         else:
             raise Exception("Unknown model: {}".format(llm_model))
 
-    def bedrock_anthropic_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model=""):
+    def bedrock_anthropic_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model="", request_id=None, traceparent=None):
         bedrock = self.get_bedrock_client(student_id)
 
         # strip 'bedrock.' from the model name
@@ -144,15 +144,21 @@ class Label:
 
         data = self.get_response_data_if_valid(response_body, rubric, student_id, response_type='json', reraise=True)
 
+        metadata = {
+            'agent': 'anthropic',
+            'request': body,
+        }
+        if request_id:
+            metadata['request_id'] = request_id
+        if traceparent:
+            metadata['traceparent'] = traceparent
+
         return {
-            'metadata': {
-                'agent': 'anthropic',
-                'request': body,
-            },
+            'metadata': metadata,
             'data': data,
         }
 
-    def bedrock_meta_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model=""):
+    def bedrock_meta_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model="", request_id=None, traceparent=None):
         bedrock = self.get_bedrock_client(student_id)
 
         # strip 'bedrock.' from the model name
@@ -177,11 +183,17 @@ class Label:
 
         data = self.get_response_data_if_valid(generation, rubric, student_id, response_type='json')
 
+        metadata = {
+            'agent': 'meta',
+            'request': body,
+        }
+        if request_id:
+            metadata['request_id'] = request_id
+        if traceparent:
+            metadata['traceparent'] = traceparent
+
         return {
-            'metadata': {
-                'agent': 'meta',
-                'request': body,
-            },
+            'metadata': metadata,
             'data': data,
         }
 
@@ -198,13 +210,17 @@ class Label:
                     cls._bedrock_client = boto3.client(service_name='bedrock-runtime', config=bedrock_config)
         return cls._bedrock_client
 
-    def openai_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model="", response_type='tsv'):
+    def openai_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model="", response_type='tsv', request_id=None, traceparent=None):
         # Determine the OpenAI URL and headers
         api_url = 'https://api.openai.com/v1/chat/completions'
         headers = {
             'Content-Type': 'application/json',
             'Authorization': f"Bearer {os.getenv('OPENAI_API_KEY')}"
         }
+        if request_id:
+            headers['X-Request-Id'] = request_id
+        if traceparent:
+            headers['traceparent'] = traceparent
 
         # Compute the input we are giving to OpenAI
         messages = self.compute_messages(prompt, rubric, student_code, examples=examples)
@@ -235,12 +251,18 @@ class Label:
 
         response_data = self.response_data_from_choices(info, rubric, student_id, response_type=response_type)
 
+        metadata = {
+            'agent': 'openai',
+            'usage': info['usage'],
+            'request': data,
+        }
+        if request_id:
+            metadata['request_id'] = request_id
+        if traceparent:
+            metadata['traceparent'] = traceparent
+
         return {
-            'metadata': {
-                'agent': 'openai',
-                'usage': info['usage'],
-                'request': data,
-            },
+            'metadata': metadata,
             'data': response_data,
         }
 
@@ -251,7 +273,7 @@ class Label:
             response.json().get('error', {}).get('code') == 'context_length_exceeded'
         )
 
-    def label_student_work(self, prompt, rubric, student_code, student_id, examples=[], use_cached=False, write_cached=False, num_responses=0, temperature=0.0, llm_model="", remove_comments=False, response_type='tsv', cache_prefix="", code_feature_extractor=None, lesson=None):
+    def label_student_work(self, prompt, rubric, student_code, student_id, examples=[], use_cached=False, write_cached=False, num_responses=0, temperature=0.0, llm_model="", remove_comments=False, response_type='tsv', cache_prefix="", code_feature_extractor=None, lesson=None, request_id=None, traceparent=None):
         if use_cached and os.path.exists(os.path.join(cache_prefix, f"cached_responses/{student_id}.json")):
             with open(os.path.join(cache_prefix, f"cached_responses/{student_id}.json"), 'r') as f:
                 return json.load(f)
@@ -278,7 +300,7 @@ class Label:
         
         # Send data to LLM for assessment
         try:
-            ai_result = self.ai_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model, response_type=response_type)
+            ai_result = self.ai_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model, response_type=response_type, request_id=request_id, traceparent=traceparent)
         except requests.exceptions.ReadTimeout as exception:
             logging.warning(f"{student_id} request timed out in {(time.time() - start_time):.0f} seconds.")
             raise exception
@@ -292,11 +314,15 @@ class Label:
         logging.info(f"{student_id} request succeeded in {elapsed:.0f} seconds. {tokens} tokens used.")
 
         # Craft the response dictionary
+        response_metadata = {
+            'time': elapsed,
+            'student_id': student_id,
+        }
+        response_metadata['request_id'] = request_id if request_id
+        response_metadata['traceparent'] = traceparent if traceparent
+
         response = {
-            'metadata': {
-                'time': elapsed,
-                'student_id': student_id,
-            },
+            'metadata': response_metadata,
             'data': ai_result.get('data', []),
         }
         response['metadata'].update(ai_result.get('metadata', {}))

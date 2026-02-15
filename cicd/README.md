@@ -74,6 +74,51 @@ By setting the `TARGET_BRANCH` you can create a new CI/CD pipeline that watches 
 TARGET_BRANCH=mybranch cicd/2-cicd/deploy-cicd.sh
 ```
 
+## Pull Request Authorizer Hook
+
+This CI/CD stack now includes an EventBridge‐driven Lambda that verifies PR authors via the GitHub API before kicking off CodeBuild.  It replaces the old `AllowedActorAccountIds` regex hack.
+
++-------------------+      +--------------------+      +----------------------+      +--------------+
+| GitHub PullReq   |----->| CodeStar Connection |----->| EventBridge Rule     |----->| Lambda       |
+| (opened/update)  |      | (AWS integration)   |      | (filters branch &     |      | (authorizes  |
++-------------------+      +--------------------+      |  action)              |      +--------------+
+                                                                                               |
+                                                                                               v
+                                                                                      +---------------+
+                                                                                      | CodeBuild     |
+                                                                                      | (start_build) |
+                                                                                      +---------------+
+
+### GitHub Setup
+1. Create a CodeStar Connection to your repo (`code-dot-org/aiproxy`).
+2. In your AWS account, ensure that connection exists and the ARN is passed as `CodeStarConnectionResourceId`.
+3. No manual webhooks needed: AWS EventBridge will subscribe to PR events under `aws.partner/github.com/${GitHubOwner}/${GitHubRepo}`.
+
+### How It Works
+1. **EventBridge Rule** listens for `Pull Request State Change` events (actions: opened, reopened, synchronize) on the target branch.
+2. **Lambda Authorizer** fetches your GitHub PAT from Secrets Manager, calls `/repos/{owner}/{repo}/collaborators/{login}/permission`, and checks if permission is `write`, `maintain`, or `admin`.
+3. If authorized, Lambda calls `StartBuild` on your `PullRequestBuildProject`.
+
+### Testing Locally Without a Real PR
+1. **Simulate EventBridge event** with AWS CLI:
+   ```shell
+   aws events put-events --entries '[{
+     "Source": "aws.partner/github.com/code-dot-org/aiproxy",
+     "DetailType": "Pull Request State Change",
+     "Detail": "{ \"action\": \"opened\", \"pull_request\": { \"base\": { \"ref\": \"main\" }, \"user\": { \"login\": \"YOUR_GITHUB_ID\" } } }"
+   }]' --region us-east-1
+   ```
+2. **Invoke Lambda locally** (with SAM CLI):
+   - Install [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html).
+   - `cd cicd/2-cicd`
+   - `sam local invoke PullRequestAuthorizerFunction --event event.json`
+     where `event.json` contains the same structure as above.
+3. **Verify**: check CloudWatch logs for the Lambda, and see if CodeBuild start was called (check in AWS Console).
+
+### Important
+- Make sure your GitHub PAT has `repo` and `read:org`/`collaborator:read` scopes.
+- The Secret ARN must be passed as `GitHubTokenSecretArn` when deploying the stack.
+
 ## Debugging & Troubleshooting
 
 ### Debugging `template.yml.erb`

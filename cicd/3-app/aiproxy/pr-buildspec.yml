@@ -25,16 +25,26 @@ phases:
       - echo Logging in to Docker Hub...
       - echo $DOCKER_HUB_TOKEN | docker login -u $DOCKER_HUB_USERNAME --password-stdin
 
-
   build:
     commands:
-      - set -e
+      - |
+        set -e
+        # Determine branch and commit
+        BRANCH_NAME=${CODEBUILD_WEBHOOK_HEAD_REF#"refs/heads/"}
+        COMMIT_HASH=${CODEBUILD_RESOLVED_SOURCE_VERSION:0:7}
 
-      - BRANCH_NAME=${CODEBUILD_WEBHOOK_HEAD_REF#"refs/heads/"}
-      - COMMIT_HASH=${CODEBUILD_RESOLVED_SOURCE_VERSION:0:7}
+        # Change to source directory
+        cd $CODEBUILD_SRC_DIR
 
-      - cd $CODEBUILD_SRC_DIR
+        # Run lint, build, and tests; abort on first failure
+        ./ci-lint.sh
+        ./ci-build.sh
+        ./ci-test.sh
 
-      - ./ci-lint.sh
-      - ./ci-build.sh
-      - ./ci-test.sh
+  post_build:
+    commands:
+      - echo "Verifying build success before moving on: $CODEBUILD_BUILD_SUCCEEDING"
+      - |
+        if [ "$CODEBUILD_BUILD_SUCCEEDING" != "1" ]; then
+          echo "Previous phase failed; aborting post_build"
+          exit 1

@@ -31,6 +31,9 @@ Parameters:
     Description: A 'production' cicd stack includes automated tests in the pipeline and deploys 'test' and 'production' environments. Whereas a 'development' type will only deploy a development environment.
     Default: production
     AllowedValues: [development, production]
+  GitHubTokenSecretArn:
+    Type: String
+    Description: ARN of the SecretsManager secret containing a GitHub personal-access token with collaborator:read scope
 
 Conditions:
   TargetsMainBranch: !Equals [ !Ref GitHubBranch, main ]
@@ -140,18 +143,106 @@ Resources:
       Artifacts:
         Type: NO_ARTIFACTS
       Triggers:
-        Webhook: true
-        FilterGroups:
-          - - Pattern: !Sub ^refs/heads/${GitHubBranch}$
-              Type: BASE_REF
-            - Pattern: PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED,PULL_REQUEST_REOPENED
-              Type: EVENT
-            # Manual PAUSE button, to disable non-GitHib-maintainers from triggering (we need to find a replacement for CodeBuild for this repo's CI, or make it not public)
-            - Pattern: ^(31292421|113540108|10283727|105933103|16494556|11708250|11284819|8747128|25372625|46464143|2205926|131809324|7014619|7144482|5107622|68714964|8001765|1372238|5184438|2933346|137330041|208083|26844240|12300669|4108328|107423305|1859238|244100|37230822|82185575|8324574|38662275|137838584|95503833|117784268|9256643|24883357|22244040|25193259|8573958|29001621|113938636|66776217|43474485|33666587|5454101|98911841|8847422|5552007|65205145|108825710|1382374|126921802|85528507|769225|223277|2157034|14046120|1466175|137829631|142271809|56283563|146779710|124813947|31674)$
-              Type: ACTOR_ACCOUNT_ID
-  
-  # The CodeBuild Project is used in the CodePipeline pipeline to prepare for a release.
-  # It will perform any steps defined in the referenced buildspec.yml file.
+        Webhook: false
+
+  # Add Lambda authorizer to call GitHub API and start build only for maintainers
+  PullRequestAuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      Runtime: python3.9
+      InlineCode: |
+        # Lambda authorizer for PR builds
+        # 1. Import modules
+        import os
+        import json
+        import boto3
+        from urllib import request
+
+        def handler(event, context):
+            # Fetch GitHub token from Secrets Manager
+            sm = boto3.client('secretsmanager')
+            secret = sm.get_secret_value(SecretId=os.environ['GITHUB_TOKEN_SECRET_ARN'])
+            token = json.loads(secret['SecretString'])['token']
+
+            # Parse PR event details
+            detail = event.get('detail', {})
+            pr = detail.get('pull_request', {})
+
+            # Only process PRs against configured branch
+            if pr.get('base', {}).get('ref') != os.environ['GitHubBranch']:
+                return
+
+            # Get PR author login
+            login = pr.get('user', {}).get('login')
+
+            # Call GitHub API to check permission
+            url = (
+                f"https://api.github.com/repos/"
+                f"{os.environ['GitHubOwner']}/{os.environ['GitHubRepo']}/"
+                f"collaborators/{login}/permission"
+            )
+            req = request.Request(
+                url,
+                headers={
+                    'Authorization': f"token {token}",
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            )
+            with request.urlopen(req) as resp:
+                data = json.loads(resp.read().decode())
+
+            # If user has write/maintain/admin access, start CodeBuild
+            if data.get('permission') in ['write', 'maintain', 'admin']:
+                cb = boto3.client('codebuild')
+                cb.start_build(projectName=os.environ['CODEBUILD_PROJECT'])
+      Environment:
+        Variables:
+          GITHUB_TOKEN_SECRET_ARN: !Ref GitHubTokenSecretArn
+          GitHubOwner: !Ref GitHubOwner
+          GitHubRepo: !Ref GitHubRepo
+          GitHubBranch: !Ref GitHubBranch
+          CODEBUILD_PROJECT: !Ref PullRequestBuildProject
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: secretsmanager:GetSecretValue
+              Resource: !Ref GitHubTokenSecretArn
+            - Effect: Allow
+              Action: codebuild:StartBuild
+              Resource: !GetAtt PullRequestBuildProject.Arn
+      Timeout: 60
+
+  # Add EventBridge rule to trigger the authorizer on PR events
+  PullRequestEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub "${AWS::StackName}-pr-event-rule"
+      EventPattern:
+        source:
+          - !Sub "aws.partner/github.com/${GitHubOwner}/${GitHubRepo}"
+        detail-type:
+          - "Pull Request State Change"
+        detail:
+          action: [opened,reopened,synchronize]
+          pull_request:
+            base:
+              ref: [!Ref GitHubBranch]
+      Targets:
+        - Id: PullRequestAuthorizer
+          Arn: !GetAtt PullRequestAuthorizerFunction.Arn
+
+  # Grant EventBridge permission to invoke the lambda
+  PermissionForEventsToInvokeLambda:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref PullRequestAuthorizerFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt PullRequestEventRule.Arn
+
   AppBuildProject:
     Type: AWS::CodeBuild::Project
     Properties:

@@ -13,7 +13,7 @@ from lib.assessment.label import Label
 class KeyConceptError(Exception):
   pass
 
-def validate_and_label(code, prompt, rubric, examples=[], api_key='', llm_model=DEFAULT_MODEL, num_responses=1, temperature=0.2, remove_comments=False, response_type='tsv', code_feature_extractor=None, lesson=None):
+def validate_and_label(code, prompt, rubric, examples=[], api_key='', llm_model=DEFAULT_MODEL, num_responses=1, temperature=0.2, remove_comments=False, response_type='tsv', code_feature_extractor=None, lesson=None, request_id=None, traceparent=None):
   OPENAI_API_KEY = api_key
 
   # Set the key
@@ -47,6 +47,8 @@ def validate_and_label(code, prompt, rubric, examples=[], api_key='', llm_model=
       response_type=response_type,
       code_feature_extractor=code_feature_extractor,
       lesson=lesson,
+      request_id=request_id,
+      traceparent=traceparent,
   )
 
 def get_example_key_concepts(example_response, response_type):

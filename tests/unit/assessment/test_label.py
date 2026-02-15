@@ -1155,6 +1155,47 @@ class TestAiLabelStudentWork:
         label.ai_label_student_work(prompt=prompt, rubric=rubric, student_code=code, student_id=student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model='bedrock.anthropic.claude-3-5-sonnet-20240620-v1:0', response_type=json)
         bedrock_anthropic_label_student_work_mock.assert_called_once()
 
+    def test_openai_label_student_work_adds_request_id_and_traceparent_headers(self, mocker, label, prompt, rubric, code, student_id, num_responses, temperature):
+        request_id = "req-123"
+        traceparent = "00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01"
+        response_mock = mocker.Mock()
+        response_mock.status_code = 200
+        response_mock.json.return_value = {'choices': [], 'usage': {}}
+        mocker.patch.object(Label, 'compute_messages', return_value=[])
+        mocker.patch.object(Label, 'response_data_from_choices', return_value=[])
+        post_mock = mocker.patch('lib.assessment.label.requests.post', return_value=response_mock)
+
+        label.openai_label_student_work(
+            prompt,
+            rubric,
+            code,
+            student_id,
+            num_responses=num_responses,
+            temperature=temperature,
+            llm_model='gpt-4',
+            response_type='json',
+            request_id=request_id,
+            traceparent=traceparent
+        )
+
+        headers = post_mock.call_args[1]['headers']
+        assert headers['X-Request-Id'] == request_id
+        assert headers['traceparent'] == traceparent
+        result = label.openai_label_student_work(
+            prompt,
+            rubric,
+            code,
+            student_id,
+            num_responses=num_responses,
+            temperature=temperature,
+            llm_model='gpt-4',
+            response_type='json',
+            request_id=request_id,
+            traceparent=traceparent
+        )
+        assert result['metadata']['request_id'] == request_id
+        assert result['metadata']['traceparent'] == traceparent
+
     def test_bedrock_anthropic_label_student_work_should_return_response_if_valid(self, mocker, label, prompt, rubric, code, student_id, examples, num_responses, temperature):
         
         body_data = '{"content": [{"text": "response text"}]}'
