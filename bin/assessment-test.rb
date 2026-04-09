@@ -19,7 +19,7 @@ example_rubric = File.read('tests/data/example.tsv')
 examples = [[example_code, example_rubric]]
 
 form_data = [
-  ['model', 'gpt-4-0613'],
+  ['model', 'bedrock.us.anthropic.claude-sonnet-4-5-20250929-v1:0'],
   ['code', code],
   ['prompt', prompt],
   ['rubric', rubric],
