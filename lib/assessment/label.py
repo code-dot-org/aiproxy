@@ -105,11 +105,11 @@ class Label:
 
         bedrock = self.get_bedrock_client(student_id)
 
-        # strip 'bedrock.' from the model name
-        bedrock_model = f'arn:aws:bedrock:{aws_region}:{aws_account.strip()}:inference-profile/{llm_model[8:]}'
-        logging.log(100, bedrock_model)
-        # if not bedrock_model.startswith("anthropic."):
-        #     raise Exception(f"Error parsing llm_model: {llm_model} bedrock_model: {bedrock_model}")
+        # Update claude 4+ to use inference profiles. Otherwise, claude 3 just needs 'bedrock.' stripped from the beginning
+        if not "claude-3" in llm_model:
+            bedrock_model = f'arn:aws:bedrock:{aws_region}:{aws_account.strip()}:inference-profile/{llm_model[8:]}'
+        else:
+            bedrock_model = llm_model[8:]
 
         anthropic_prompt = self.compute_anthropic_prompt(prompt, rubric, student_code, examples=examples)
         if "claude" in bedrock_model:
@@ -204,10 +204,12 @@ class Label:
                     cls._bedrock_client = boto3.client(service_name='bedrock-runtime', config=bedrock_config)
         return cls._bedrock_client
     
+    # When using inference profiles, we need to access the AWS account ID
     def get_aws_account(cls):
         if cls._aws_account is None:
-            result = subprocess.run('aws sts get-caller-identity --query Account --output text', shell=True, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            cls._aws_account = result.stdout
+            with cls._bedrock_lock:
+                result = subprocess.run('aws sts get-caller-identity --query Account --output text', shell=True, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                cls._aws_account = result.stdout
         return cls._aws_account
 
     def openai_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model="", response_type='tsv'):
