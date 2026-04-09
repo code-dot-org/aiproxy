@@ -5,10 +5,11 @@ COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 RUN apt-get update && \
-    apt-get install -y curl unzip gosu && \
+    apt-get install -y curl unzip gosu --no-install-recommends && \
     curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
     unzip awscliv2.zip && \
-    gosu root ./aws/install
+    gosu root ./aws/install && \
+    rm -rf /var/lib/apt/lists
 
 COPY ./tests /app/tests
 COPY ./lib /app/lib
