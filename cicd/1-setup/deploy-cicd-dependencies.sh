@@ -31,7 +31,8 @@ aws cloudformation create-change-set \
   --tags Key=EnvType,Value=infrastructure \
   --change-set-name $CHANGESET_NAME \
   --change-set-type $CHANGESET_TYPE \
-  "$@"
+  "$@" \
+  | cat
 
 echo Waiting for change set to be ready...
 set +e
@@ -59,7 +60,8 @@ aws cloudformation describe-change-set \
   --stack-name $STACK_NAME \
   --change-set-name $CHANGESET_NAME \
   --query "Changes[*].ResourceChange.{Action:Action,Resource:LogicalResourceId,Type:ResourceType,Replacement:Replacement}" \
-  --output table
+  --output table \
+  | cat
 echo ""
 
 read -r -p "Execute this change set? [y/N] " response
