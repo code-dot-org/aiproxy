@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 echo Deploying AiProxy CICD Pipeline
 
 # Create/Update the AiProxy build/deploy pipeline stack. This is manually created and maintained, but should not require elevated permissions.
@@ -10,7 +12,7 @@ echo Deploying AiProxy CICD Pipeline
 
 # 'Developer' role requires a specific service role for all CloudFormation operations.
 if [[ $(aws sts get-caller-identity --query Arn --output text) =~ "assumed-role/Developer/" ]]; then
-  # Append the role-arn option to the positional parameters $@ passed to cloudformation deploy.
+  # Append the role-arn option to the positional parameters $@ passed to cloudformation commands.
   set -- "$@" --role-arn "arn:aws:iam::$(aws sts get-caller-identity --query Account --output text):role/admin/CloudFormationService"
 fi
 
@@ -35,6 +37,7 @@ ENVIRONMENT_TYPE=${ENVIRONMENT_TYPE-'production'}
 GITHUB_BADGE_ENABLED=${GITHUB_BADGE_ENABLED-'true'}
 
 TEMPLATE_FILE=cicd/2-cicd/cicd.template.yml
+CHANGESET_NAME="deploy-$(date +%Y%m%d%H%M%S)"
 
 echo Validating cloudformation template...
 aws cloudformation validate-template \
@@ -43,19 +46,75 @@ aws cloudformation validate-template \
 
 ACCOUNT=$(aws sts get-caller-identity --query "Account" --output text)
 
-read -r -p "Would you like to deploy this template to AWS account $ACCOUNT? [y/N] " response
-if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]
-then
-  echo Updating cloudformation stack...
-  aws cloudformation deploy \
+if aws cloudformation describe-stacks --stack-name $STACK_NAME &>/dev/null; then
+  CHANGESET_TYPE="UPDATE"
+else
+  CHANGESET_TYPE="CREATE"
+fi
+
+echo "Creating change set '$CHANGESET_NAME' for stack '$STACK_NAME' in account $ACCOUNT..."
+aws cloudformation create-change-set \
+  --stack-name $STACK_NAME \
+  --template-body file://${TEMPLATE_FILE} \
+  --parameters \
+    ParameterKey=GitHubBranch,ParameterValue=$TARGET_BRANCH \
+    ParameterKey=GitHubBadgeEnabled,ParameterValue=$GITHUB_BADGE_ENABLED \
+    ParameterKey=EnvironmentType,ParameterValue=$ENVIRONMENT_TYPE \
+  --capabilities CAPABILITY_IAM \
+  --tags Key=EnvType,Value=${ENVIRONMENT_TYPE} \
+  --change-set-name $CHANGESET_NAME \
+  --change-set-type $CHANGESET_TYPE \
+  "$@"
+
+echo Waiting for change set to be ready...
+set +e
+aws cloudformation wait change-set-create-complete \
+  --stack-name $STACK_NAME \
+  --change-set-name $CHANGESET_NAME
+WAIT_EXIT=$?
+set -e
+
+if [ $WAIT_EXIT -ne 0 ]; then
+  STATUS=$(aws cloudformation describe-change-set \
     --stack-name $STACK_NAME \
-    --template-file $TEMPLATE_FILE \
-    --parameter-overrides GitHubBranch=$TARGET_BRANCH GitHubBadgeEnabled=$GITHUB_BADGE_ENABLED EnvironmentType=$ENVIRONMENT_TYPE \
-    --capabilities CAPABILITY_IAM \
-    --tags EnvType=${ENVIRONMENT_TYPE} \
+    --change-set-name $CHANGESET_NAME \
+    --query "StatusReason" --output text)
+  echo "Change set failed: $STATUS"
+  aws cloudformation delete-change-set \
+    --stack-name $STACK_NAME \
+    --change-set-name $CHANGESET_NAME
+  exit 0
+fi
+
+echo ""
+echo "=== Change Set ==="
+aws cloudformation describe-change-set \
+  --stack-name $STACK_NAME \
+  --change-set-name $CHANGESET_NAME \
+  --query "Changes[*].ResourceChange.{Action:Action,Resource:LogicalResourceId,Type:ResourceType,Replacement:Replacement}" \
+  --output table
+echo ""
+
+read -r -p "Execute this change set? [y/N] " response
+if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+  echo "Executing change set..."
+  aws cloudformation execute-change-set \
+    --stack-name $STACK_NAME \
+    --change-set-name $CHANGESET_NAME \
     "$@"
+
+  echo "Waiting for stack to complete..."
+  if [ "$CHANGESET_TYPE" = "CREATE" ]; then
+    aws cloudformation wait stack-create-complete --stack-name $STACK_NAME
+  else
+    aws cloudformation wait stack-update-complete --stack-name $STACK_NAME
+  fi
 
   echo Complete!
 else
+  echo "Discarding change set..."
+  aws cloudformation delete-change-set \
+    --stack-name $STACK_NAME \
+    --change-set-name $CHANGESET_NAME
   echo Exiting...
 fi
