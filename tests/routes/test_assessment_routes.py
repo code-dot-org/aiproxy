@@ -36,6 +36,12 @@ class TestPostAssessment:
             return_value=mock_bedrock_client
         )
 
+        get_aws_account_mock = mocker.patch.object(
+            Label,
+            'get_aws_account',
+            return_value='12345'
+        )
+
         # send the flask request
         os.environ['AIPROXY_API_KEY'] = 'test_key'
         response = client.post(
@@ -67,6 +73,11 @@ class TestPostAssessment:
             'get_bedrock_client',
             return_value=mock_bedrock_client
         )
+        get_aws_account_mock = mocker.patch.object(
+            Label,
+            'get_aws_account',
+            return_value='12345'
+        )
 
         # send the flask request
         request_data = lesson_11_claude_request_data
@@ -89,6 +100,11 @@ class TestPostAssessment:
             Label,
             'get_bedrock_client',
             return_value=mock_bedrock_client
+        )
+        get_aws_account_mock = mocker.patch.object(
+            Label,
+            'get_aws_account',
+            return_value='12345'
         )
 
         # send the flask request
@@ -134,6 +150,11 @@ class TestPostAssessment:
             Label,
             'get_bedrock_client',
             return_value=mock_bedrock_client
+        )
+        get_aws_account_mock = mocker.patch.object(
+            Label,
+            'get_aws_account',
+            return_value='12345'
         )
 
         # send the flask request

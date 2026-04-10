@@ -1170,6 +1170,11 @@ class TestAiLabelStudentWork:
             'get_bedrock_client',
             return_value=mock_bedrock_client
         )
+        get_aws_account_mock = mocker.patch.object(
+            Label,
+            'get_aws_account',
+            return_value='12345'
+        )
 
         get_response_data_if_valid_mock = mocker.patch.object(
             Label,
@@ -1197,6 +1202,11 @@ class TestAiLabelStudentWork:
             'get_bedrock_client',
             return_value=mock_bedrock_client
         )
+        get_aws_account_mock = mocker.patch.object(
+            Label,
+            'get_aws_account',
+            return_value='12345'
+        )
 
         with pytest.raises(BedrockServerError) as bedrock_error:
             response = label.bedrock_anthropic_label_student_work(prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model='bedrock.anthropic.claude-3-5-sonnet-20240620-v1:0')
@@ -1216,6 +1226,11 @@ class TestAiLabelStudentWork:
             Label,
             'get_bedrock_client',
             return_value=mock_bedrock_client
+        )
+        get_aws_account_mock = mocker.patch.object(
+            Label,
+            'get_aws_account',
+            return_value='12345'
         )
 
         response = label.bedrock_anthropic_label_student_work(prompt, rubric, code, student_id, examples, num_responses, temperature, llm_model='bedrock.anthropic.claude-3-5-sonnet-20240620-v1:0')
