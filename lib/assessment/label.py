@@ -8,6 +8,7 @@ import logging
 import boto3
 from botocore.config import Config
 from threading import Lock
+import subprocess
 
 from typing import List, Dict, Any
 from lib.assessment.config import VALID_LABELS, OPENAI_API_TIMEOUT
@@ -31,6 +32,7 @@ class BedrockServerError(Exception):
 class Label:
     _bedrock_client = None
     _bedrock_lock = Lock()
+    _aws_account = None
 
     # Check to ensure that student project is not blank. Assessment is statically generated for blank code.
     def test_for_blank_code(self, rubric, student_code, student_id):
@@ -92,21 +94,25 @@ class Label:
             return self.openai_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model, response_type=response_type)
         elif llm_model.startswith("bedrock.meta"):
             return self.bedrock_meta_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
-        elif llm_model.startswith("bedrock.anthropic"):
+        elif llm_model.startswith("bedrock.anthropic") or llm_model.startswith("bedrock.us.anthropic"):
             return self.bedrock_anthropic_label_student_work(prompt, rubric, student_code, student_id, examples=examples, num_responses=num_responses, temperature=temperature, llm_model=llm_model)
         else:
             raise Exception("Unknown model: {}".format(llm_model))
 
     def bedrock_anthropic_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model=""):
+        aws_account = self.get_aws_account()
+        aws_region  = 'us-east-1'
+
         bedrock = self.get_bedrock_client(student_id)
 
-        # strip 'bedrock.' from the model name
-        bedrock_model = llm_model[8:]
-        if not bedrock_model.startswith("anthropic."):
-            raise Exception(f"Error parsing llm_model: {llm_model} bedrock_model: {bedrock_model}")
+        # Update claude 4+ to use inference profiles. Otherwise, claude 3 just needs 'bedrock.' stripped from the beginning
+        if not "claude-3" in llm_model:
+            bedrock_model = f'arn:aws:bedrock:{aws_region}:{aws_account.strip()}:inference-profile/{llm_model[8:]}'
+        else:
+            bedrock_model = llm_model[8:]
 
         anthropic_prompt = self.compute_anthropic_prompt(prompt, rubric, student_code, examples=examples)
-        if "claude-3" in bedrock_model:
+        if "claude" in bedrock_model:
             body = json.dumps({"anthropic_version": "bedrock-2023-05-31",
                                "max_tokens": 4096,
                                "messages": [{"role": "user",
@@ -197,6 +203,14 @@ class Label:
                     bedrock_config = Config(connect_timeout=150, read_timeout=150, retries={'max_attempts': 2})
                     cls._bedrock_client = boto3.client(service_name='bedrock-runtime', config=bedrock_config)
         return cls._bedrock_client
+    
+    # When using inference profiles, we need to access the AWS account ID
+    def get_aws_account(cls):
+        if cls._aws_account is None:
+            with cls._bedrock_lock:
+                result = subprocess.run('aws sts get-caller-identity --query Account --output text', shell=True, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                cls._aws_account = result.stdout
+        return cls._aws_account
 
     def openai_label_student_work(self, prompt, rubric, student_code, student_id, examples=[], num_responses=0, temperature=0.0, llm_model="", response_type='tsv'):
         # Determine the OpenAI URL and headers
