@@ -29,14 +29,16 @@ These resources are deployed manually when changes occur. We could make yet anot
 
 Finally, all of the above need some Roles to exist in the AWS accounts before we can run things with appropriate permisions. These roles are exported and used elsewhere. Elevated permissions are required to update these (likely by an Infra Engineer). This only needs to be created once, as roles and other resources can be shared by all CI/CD stacks for this application.
 
-* "deploy-setup.sh" - Shell script to create/update this stack
+* "deploy-cicd-dependendies.sh" - Shell script to create/update this stack
 * "setup.template.yml" - AWS resources for the Setup infrastructure
+
+## Ruby
+
+The `.ruby-version` file at the repo root is a convenience default for local development. Ruby is not used by the application itself — the app runs on Python. The only Ruby tooling in this repo is the `aws-google` gem used for AWS SSO credential management when running deploy scripts locally.
 
 ## Deploying CI/CD resources
 
 ### Deploying the `main` CI/CD Pipeline
-
-_Note: If you receive errors with the 'aws-google' gem, you may need to switch to Ruby 3.1 first, via `rbenv local 3.1`._
 
 1. Create/Update the Setup stack (one time, or when changes to the Setup stack occur)
    `cicd/1-setup/deploy-cicd-dependencies.sh` (with elevated AWS permissions)
@@ -87,19 +89,6 @@ cfn-lint app-template-test.yml
 
 This will run cloudformation lint on you template changes and give you a quicker feedback cycle when fixing up syntax.
 Just delete app-template-test.yml when you are done.
-
-### Resolving "Error when retrieving credentials" when running deploy commands
-
-Because of some nuances of our AWS SSO integration and tooling, you might need to temporarily change Ruby versions when running scripts that interact with the AWS CLI. You might receive an error like the following.
-
-```
-Error when retrieving credentials from custom-process: rbenv: aws-google: command not found
-
-The `aws-google' command exists in these Ruby versions:
-  2.7.5
-```
-
-If this occurs, you can simply run `rbenv local 2.7.5` or whatever version is suggested (should be the same version used in the code-dot-org/code-dot-org repository) and try running the script again.
 
 ### Resolving error when deploying the "2-cicd" stack "Failed to call CreateWebhook"
 
