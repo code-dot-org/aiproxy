@@ -175,10 +175,13 @@ Resources:
                   - bedrock:InvokeModel
                   - bedrock:GetInferenceProfile
                 Resource:
-                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/anthropic.claude-v2"
-                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0"
-                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/anthropic.claude-3-5-sonnet-20240620-v1:0"
-                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0"
+                  # Foundation model ARNs use wildcard region because inference profiles
+                  # route requests across multiple regions (e.g. us.* profiles route to
+                  # us-east-1, us-east-2, and us-west-2).
+                  - "arn:aws:bedrock:*::foundation-model/anthropic.claude-v2"
+                  - "arn:aws:bedrock:*::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0"
+                  - "arn:aws:bedrock:*::foundation-model/anthropic.claude-3-5-sonnet-20240620-v1:0"
+                  - "arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0"
                   - !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:inference-profile/us.anthropic.*sonnet*"
 
   ECSServiceAutoScalingRole:
